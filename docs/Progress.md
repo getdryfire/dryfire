@@ -22,20 +22,22 @@ Update this file when work ships, phases change, or priorities shift.
 
 > Actively building. Code is being written.
 
-### AC-004 — Spec loader with positioned errors (implemented, uncommitted)
-Three-stage load pipeline (SPEC §4.1), TDD; gate green (82 tests, ruff,
-mypy --strict, 5/5 contracts).
-- `adapters/driven/spec/positions.py` — `Position`, `load_positioned`, `locate`
-  (lifted from `spikes/locate.py`, ticket-authorized; modernized for ruff/mypy).
-- `errors.py` — `SpecError`, pydantic-code→plain-language table, `render()` caret
-  output (spike format).
-- `loader.py` — pipeline: `$ref` resolution + **new** env interpolation → assertion-kind
-  pre-pass → pydantic (real AC-003 `Suite`) → collected/position-sorted errors with
-  cascade suppression. Public `load_suite`/`load_suites`.
-- Golden fixture `tests/fixtures/broken/all_five.eval.yaml` + pinned rendered output.
-- **Notes:** missing `${VAR}` records a positioned error and substitutes `""` to let the
-  pass continue; `KNOWN_ASSERTIONS` is a static stand-in until AC-010's registry; golden
-  test normalizes the path to basename for CWD independence.
+### AC-005 — Configuration resolution (implemented, uncommitted)
+Discovery + the precedence chain producing a fully-resolved `ResolvedCase`, TDD;
+gate green (100 tests, ruff, mypy --strict, 5/5 contracts).
+- `domain/model/case.py` — frozen `ResolvedCase` (identity + resolved settings +
+  system/input/expect). Domain-pure.
+- `adapters/driven/spec/config.py` — `BUILTIN_*` defaults, pure `resolve()`
+  (override > case > suite > project > built-in), `discover_config` (walks up;
+  none → None, not an error), `load_project_config`, `glob_suites` (relative to
+  the config dir).
+- **Decisions:** extended AC-003's `Case` with case-level `model`/`max_turns`/
+  `temperature`/`on_unmocked` (the ticket's `case > suite` level needs them; AC-003
+  under-modeled `Case`). Built-ins include `provider="anthropic"` + `model=
+  "claude-sonnet-4-6"` (SPEC §4.2 values) so a bare suite leaves no None. `tools`/
+  `mocks` are **not** in `ResolvedCase` — the domain can't hold spec `MockRule`; the
+  mock domain model is AC-008's, attached to the runner then. Concurrency is
+  run-level (`BUILTIN_CONCURRENCY` for AC-012), not per-case.
 
 ---
 
@@ -43,14 +45,22 @@ mypy --strict, 5/5 contracts).
 
 > Committed work, ready to start. Ordered by the EPIC-001 dependency graph.
 
-1. **AC-005** — project config discovery + default-resolution precedence chain
-2. **AC-006 — FakeProvider**, then the AC-007/008/010 fan-out per the sequencing diagram
+1. **AC-006 — FakeProvider** (shipped in-package; scripted `ModelResponse` sequence,
+   records requests, deterministic ids)
+2. **AC-007/008/010 fan-out** per the sequencing diagram → AC-009 (loop)
 
 ---
 
 ## Shipped
 
 > Working in the codebase. Committed and tested.
+
+### AC-004 — Spec loader with positioned errors (2026-07-31, PR #3)
+- `adapters/driven/spec/`: `positions.py` (Position/load_positioned/locate, lifted),
+  `errors.py` (SpecError, message table, render() caret output), `loader.py` (three-stage
+  pipeline: $ref + env interpolation → assertion-kind → pydantic → sorted errors with
+  cascade suppression; `load_suite`/`load_suites`). Golden fixture pins the five error
+  classes.
 
 ### AC-003 — Spec models (2026-07-31, PR #2)
 - `adapters/driven/spec/models.py` — ProjectConfig/Defaults/CassetteConfig/Suite/Case/
