@@ -1,10 +1,10 @@
 """Assertion registry queries (SPEC §6.3).
 
-Replaces AC-004's inline stub as the backing for known-kind validation. Seeds the
-six v0.1 kind *names* so the spec loader recognises them for validation; the real
-`Assertion` classes are registered by AC-011 via `@register`. `known_kinds()` is
-the union, so a hypothetical seventh assertion appears automatically once
-registered (EPIC-001 success criterion 7).
+The backing for known-kind validation (replacing AC-004's inline stub) and the
+uniform constructor for assertions. The six v0.1 assertions self-register via the
+`structural` import at the bottom, so `known_kinds()` is purely registration-driven
+and a hypothetical seventh appears automatically once registered (EPIC-001
+success criterion 7).
 """
 
 from __future__ import annotations
@@ -15,16 +15,12 @@ from pydantic import BaseModel
 
 from agentcheck.domain.assertions.base import _REGISTRY, Assertion
 
-# The v0.1 kind names. Seeded for spec-time validation before AC-011 registers
-# concrete assertions; AC-011 may drop this once all six are registered.
-_V01_KINDS = frozenset(
-    {"calls_tool", "not_calls_tool", "tool_args", "call_order", "max_turns", "final_contains"}
-)
-
 
 def known_kinds() -> frozenset[str]:
-    """Every kind the spec loader accepts: seeded v0.1 names plus registrations."""
-    return _V01_KINDS | frozenset(_REGISTRY)
+    """Every kind the spec loader accepts — purely the registered assertions. The
+    six v0.1 kinds register via the `structural` import below, and a seventh
+    appears here automatically once registered (SPEC §6.3)."""
+    return frozenset(_REGISTRY)
 
 
 def get(kind: str) -> type[Assertion] | None:
@@ -43,3 +39,23 @@ def validate_args(kind: str, raw: Any) -> BaseModel | None:
     if args_model is None:
         return None
     return args_model.model_validate(raw)
+
+
+def build(kind: str, raw: Any) -> Assertion:
+    """Validate raw args and construct the assertion instance. The uniform
+    constructor the loop (AC-009) uses to turn an `expect` entry into an
+    assertion. Raises KeyError for an unregistered kind, ValidationError for bad
+    args."""
+    cls = _REGISTRY.get(kind)
+    if cls is None:
+        raise KeyError(f"no assertion registered for kind {kind!r}")
+    args_model: type[BaseModel] | None = getattr(cls, "Args", None)
+    args = args_model.model_validate(raw) if args_model is not None else None
+    constructor: Any = cls
+    return constructor(args)  # type: ignore[no-any-return]
+
+
+# Import the concrete assertions for their registration side effects, so the six
+# v0.1 kinds are always available. Adding a new assertion is a new file plus one
+# import line here — no changes to the loop, loader, or reporters (SPEC §6.3).
+from agentcheck.domain.assertions import structural  # noqa: E402, F401

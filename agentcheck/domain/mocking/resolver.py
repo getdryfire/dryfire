@@ -75,15 +75,18 @@ def merge_mocks(
     return {**suite_mocks, **case_mocks}
 
 
-def _matches_when(when: dict[str, Any], args: dict[str, Any]) -> bool:
+def matches_subset(when: dict[str, Any], args: dict[str, Any]) -> bool:
     """Deep subset: every key/value in `when` present and equal in `args`; nested
-    dicts recurse; lists (and other values) compare by equality."""
+    dicts recurse; lists (and other values) compare by equality.
+
+    Shared by the mock resolver's `when` and the `tool_args` assertion so the two
+    can never drift (SPEC §4.4, §6.1)."""
     for key, expected in when.items():
         if key not in args:
             return False
         actual = args[key]
         if isinstance(expected, dict) and isinstance(actual, dict):
-            if not _matches_when(expected, actual):
+            if not matches_subset(expected, actual):
                 return False
         elif actual != expected:
             return False
@@ -115,7 +118,7 @@ class MockResolver:
         # still match a catch-all (handled above).
         if call.malformed_arguments is not None:
             return False
-        return _matches_when(rule.when, call.arguments)
+        return matches_subset(rule.when, call.arguments)
 
     def _result(self, call: ToolCall, rule: MockRule, index: int) -> ToolResult:
         outcome = rule.outcome
