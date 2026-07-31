@@ -221,6 +221,34 @@ without arg-checking — AC-004 unaffected. AC-011 can drop the seed once all si
 restores it (`.clear()`/`.update()` in place, since `registry.py` holds a by-reference alias)
 so toy registrations in one test don't leak into another (or collide as duplicates).
 
+## Structural assertions (AC-011)
+
+### One shared subset matcher, not two
+`tool_args` and the mock resolver's `when` are the same deep-subset match. Promoted
+`resolver._matches_when` → public `matches_subset` and imported it in both, per the ticket's
+"do not write a second one that can drift." A rename + one call-site update; AC-008 tests
+stayed green.
+
+### Failure rendering is byte-sensitive — generate then pin
+`render_failure` must match SPEC §6 exactly (`✗`, `→`, and values aligned at column 14, with
+continuation lines indented to match). Generated the output, eyeballed it against the spec,
+then wrote the golden file — same characterize-then-pin flow as AC-004. `json.dumps` (not
+`repr`) gives the double-quoted args the spec shows.
+
+### Registering the six ripples outward — expect it
+`registry` importing `structural` means the loader now arg-validates `calls_tool` etc., so
+AC-004's fixture args had to be valid (they were: `calls_tool: lookup_order`, a bare string via
+`RootModel[str | CountSpec]`). It also invalidated one AC-010 test that assumed `calls_tool`
+was unregistered — updated it to a genuinely-unregistered kind. With the six always
+registered, the `_V01_KINDS` seed became dead and was removed (`known_kinds()` is now purely
+`frozenset(_REGISTRY)`).
+
+### Scalar/union assertion args need RootModel
+`calls_tool: lookup_order` (bare string) and `final_contains: [a, b]` (list) aren't dicts, so a
+plain `BaseModel` can't validate them. `RootModel[str | CountSpec]` / `RootModel[str | list[str]]`
+validate the raw scalar/union directly; dict-shaped args (`tool_args`) stay a `BaseModel` with
+`extra="forbid"`.
+
 ## Session Notes
 
 ### 2026-07-30 — AC-001 + toolchain

@@ -11,7 +11,7 @@ from agentcheck.domain.assertions.base import (
     register,
     safe_evaluate,
 )
-from agentcheck.domain.assertions.registry import get, known_kinds, validate_args
+from agentcheck.domain.assertions.registry import build, get, known_kinds, validate_args
 from agentcheck.domain.model.trace import Trace
 
 pytestmark = pytest.mark.usefixtures("registry_isolation")
@@ -105,9 +105,33 @@ class TestValidateArgs:
             validate_args("toy", {"n": "not-an-int"})
 
     def test_unregistered_kind_validates_to_none(self) -> None:
-        # A seeded-but-unregistered kind (real assertion arrives in AC-011) has
-        # no args model yet, so there is nothing to validate.
-        assert validate_args("calls_tool", "anything") is None
+        # An entirely unregistered kind has no args model, so there is nothing to
+        # validate. (The six v0.1 kinds are registered by AC-011's structural.py.)
+        assert validate_args("definitely_not_a_registered_kind", "anything") is None
+
+
+class TestBuild:
+    def test_build_validates_and_constructs(self) -> None:
+        @register
+        class Toy:
+            kind: ClassVar[str] = "toy"
+
+            class Args(BaseModel):
+                n: int
+
+            def __init__(self, args: Any) -> None:
+                self.n = args.n
+
+            def evaluate(self, trace: Trace) -> AssertionResult:  # pragma: no cover
+                return AssertionResult(kind="toy", description="", passed=True, message="")
+
+        built = build("toy", {"n": 7})
+        assert isinstance(built, Toy)
+        assert built.n == 7
+
+    def test_build_unknown_kind_raises(self) -> None:
+        with pytest.raises(KeyError):
+            build("not_registered", {})
 
 
 class TestKnownKinds:

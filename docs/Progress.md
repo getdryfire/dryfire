@@ -22,22 +22,21 @@ Update this file when work ships, phases change, or priorities shift.
 
 > Actively building. Code is being written.
 
-### AC-010 — Assertion framework (implemented, uncommitted)
-Assertion protocol, result, self-registering registry (SPEC §6, §6.3), TDD; gate
-green (135 tests, ruff, mypy --strict, 5/5 contracts).
-- `domain/assertions/base.py` — `Assertion` protocol (`kind` + `evaluate`), `AssertionResult`,
-  `@register` (duplicate raises naming both), `safe_evaluate` (a raising assertion →
-  `passed=False` internal error, run continues), `DuplicateKind`.
-- `domain/assertions/registry.py` — `known_kinds()`/`get()`/`validate_args()`, seeded with the
-  six v0.1 kind names (`_V01_KINDS`) so spec validation recognises them before AC-011.
-- Rewired `spec/loader.py` from its local `KNOWN_ASSERTIONS` to `known_kinds()`, and added
-  arg-validation for *registered* kinds surfacing as positioned spec errors — AC-004's loader
-  tests + golden pass unmodified (six seeded-but-unregistered → arg-check skipped).
-- **Decisions:** `Args` is a class-level registration convention (validated dynamically), kept
-  **out** of the `Assertion` protocol so `safe_evaluate`'s minimal assertions conform and the
-  protocol stays about the runtime interface — structural conformance proven under
-  `mypy --strict` on the tests. `@register` reads `cls.kind`. A `registry_isolation` conftest
-  fixture snapshots/restores the registry so toy registrations don't leak.
+### AC-011 — Structural assertions (implemented, uncommitted)
+The six v0.1 assertions on the AC-010 framework (SPEC §6, §6.1), TDD; gate green
+(170 tests, ruff, mypy --strict, 5/5 contracts).
+- `domain/assertions/structural.py` — `calls_tool` (bare name or `{tool, count}`),
+  `not_calls_tool` (names turn + args), `tool_args` (deep subset; malformed args named with
+  the raw string), `call_order` (subsequence), `max_turns`, `final_contains`
+  (case-insensitive, list = all present, names which are missing).
+- `domain/assertions/trajectory.py` — `render_trajectory` (`a → b → (termination)`) and
+  `render_failure` (the ✗/expected/actual block). SPEC §6 example pinned byte-for-byte
+  (`tests/fixtures/assertions/spec6_not_calls_tool.txt`).
+- `registry.build(kind, raw)` uniform constructor; `registry` imports `structural` so the six
+  self-register; dropped the `_V01_KINDS` seed (now purely registration-driven).
+- **Reuse:** promoted `resolver._matches_when` → public `matches_subset`, shared by the mock
+  resolver's `when` and `tool_args` so they can't drift. Updated one AC-010 test whose premise
+  (calls_tool unregistered) the six now change.
 
 ---
 
@@ -45,16 +44,20 @@ green (135 tests, ruff, mypy --strict, 5/5 contracts).
 
 > Committed work, ready to start. Ordered by the EPIC-001 dependency graph.
 
-1. **AC-011** — the six structural assertions on top of the framework (six small files + a
-   registry import; may drop the `_V01_KINDS` seed once all six register)
-2. **AC-007** — Anthropic adapter (lifts `spikes/adapters.py`; live probe still outstanding)
-3. **AC-009** — the agent loop (depends on 007/008/010; wires spec→domain mocks + tools)
+1. **AC-007** — Anthropic adapter (lifts `spikes/adapters.py`; live probe still outstanding)
+2. **AC-009** — the agent loop (last loop prerequisite; wires config→gateway→mocks→assertions
+   via `registry.build`, `merge_mocks`, `MockResolver`, `safe_evaluate`)
 
 ---
 
 ## Shipped
 
 > Working in the codebase. Committed and tested.
+
+### AC-010 — Assertion framework (2026-07-31, PR #7)
+- `domain/assertions/base.py` (Assertion protocol, AssertionResult, `@register`, `safe_evaluate`,
+  DuplicateKind) + `registry.py` (`known_kinds`/`get`/`validate_args`). Rewired the loader to the
+  registry with arg-validation. `Args` kept out of the protocol (structural conformance).
 
 ### AC-008 — Mock resolver (2026-07-31, PR #6)
 - `domain/mocking/resolver.py` — domain mock types (MockRule/Return/Error/Sequence),

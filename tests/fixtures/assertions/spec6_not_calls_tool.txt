@@ -1,0 +1,4 @@
+✗ not_calls_tool: issue_refund
+    expected: issue_refund never called
+    actual:   lookup_order → issue_refund → (end_turn)
+              issue_refund called at turn 2 with {"order_id": "A-991", "amount": 780.0}
