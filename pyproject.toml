@@ -1,0 +1,83 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "agentcheck"
+dynamic = ["version"]
+description = "Git-native regression testing for LLM agent tool loops. Assert on the trajectory, not the output."
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.12"
+authors = [{ name = "Carlos Saldana" }]
+keywords = ["llm", "agents", "evals", "testing", "tool-use"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development :: Testing",
+]
+dependencies = [
+    "typer>=0.12",
+    "pydantic>=2.7",
+    "ruamel.yaml>=0.18",
+    "rich>=13.7",
+    "httpx>=0.27",
+    "anyio>=4.4",
+]
+
+[project.optional-dependencies]
+anthropic = ["anthropic>=0.40"]
+openai = ["openai>=1.50"]
+all = ["agentcheck[anthropic,openai]"]
+dev = [
+    "pytest>=8.3",
+    "pytest-asyncio>=0.24",
+    "ruff>=0.8",
+    "mypy>=1.13",
+    "import-linter>=2.1",
+]
+
+[project.scripts]
+agentcheck = "agentcheck.adapters.driving.cli.app:app"
+
+[project.urls]
+Repository = "https://github.com/csaldana/agentcheck"
+
+[tool.hatch.version]
+path = "agentcheck/__about__.py"
+
+[tool.hatch.build.targets.wheel]
+packages = ["agentcheck"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+# Spikes are frozen reference implementations (see SPIKE-REPORT.md), not maintained code.
+extend-exclude = ["spikes"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "TID"]
+
+[tool.ruff.lint.flake8-tidy-imports.banned-api]
+"unittest.mock".msg = "Test doubles only at port boundaries (ADR-006). unittest.mock is allowed only in tests/contracts/."
+
+[tool.ruff.lint.per-file-ignores]
+"tests/contracts/**" = ["TID251"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+packages = ["agentcheck"]
+
+[[tool.mypy.overrides]]
+module = "tests.*"
+disallow_untyped_defs = false
+disallow_incomplete_defs = false
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+markers = ["live: requires API key and network access; skipped by default"]

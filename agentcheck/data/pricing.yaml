@@ -1,0 +1,5 @@
+# Bundled pricing data: provider:model -> USD per million tokens.
+# Unknown model -> cost is None, never an exception (SPEC.md §3.2).
+# Populated in AC-017.
+version: 1
+models: {}

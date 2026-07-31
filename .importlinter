@@ -1,0 +1,58 @@
+[importlinter]
+root_package = agentcheck
+include_external_packages = True
+
+; Contract 1 — dependencies point inward: adapters -> application -> domain.
+[importlinter:contract:layers]
+name = Layered: adapters may import application may import domain, never the reverse
+type = layers
+layers =
+    agentcheck.adapters
+    agentcheck.application
+    agentcheck.domain
+
+; Contract 2 — domain independence.
+[importlinter:contract:domain-independence]
+name = Domain imports nothing from application or adapters
+type = forbidden
+source_modules =
+    agentcheck.domain
+forbidden_modules =
+    agentcheck.application
+    agentcheck.adapters
+
+; Contract 3 — domain third-party allowlist: pydantic and stdlib only (ADR-005).
+[importlinter:contract:domain-third-party-allowlist]
+name = Domain may import only pydantic and the stdlib
+type = forbidden
+source_modules =
+    agentcheck.domain
+forbidden_modules =
+    typer
+    ruamel
+    rich
+    httpx
+    anyio
+    anthropic
+    openai
+
+; Contract 4 — application purity.
+[importlinter:contract:application-purity]
+name = Application may not import any adapter
+type = forbidden
+source_modules =
+    agentcheck.application
+forbidden_modules =
+    agentcheck.adapters
+
+; Contract 5 — composition isolation. Only composition.py and the CLI may import
+; concrete driven adapters. Driving adapters other than the CLI must be added
+; here as they appear.
+[importlinter:contract:composition-isolation]
+name = Domain and application never touch concrete driven adapters
+type = forbidden
+source_modules =
+    agentcheck.domain
+    agentcheck.application
+forbidden_modules =
+    agentcheck.adapters.driven

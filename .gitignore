@@ -1,0 +1,19 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+.venv/
+.python-version.local
+
+# Tooling caches
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# agentcheck run artifacts are gitignored; cassettes (.agentcheck/cassettes/) are committed
+.agentcheck/runs/
+
+# OS
+.DS_Store
