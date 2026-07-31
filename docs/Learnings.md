@@ -354,6 +354,54 @@ exercise scheduler-level isolation. A malformed `expect` entry (`{"__nope__": 1}
 upfront, precisely so a bad entry isolates rather than aborting the run) — the realistic injectable
 raise for "one case raises, the other 9 complete."
 
+## Pricing and cost (AC-017)
+
+### AC-017 sequences BEFORE AC-013, not after
+The EPIC-001 dependency graph routes AC-012/AC-011 → **AC-017** → AC-013 → AC-014 → AC-015; the
+table lists AC-013's deps as "AC-011, AC-017". An earlier Progress.md "Up Next" had AC-013 first —
+wrong. AC-017 depends only on AC-002 and gives AC-013's golden-file cost column real `Rates` to
+draw on. Do AC-017 before AC-013.
+
+### Hexagonal split: the ticket's flat `pricing.py` is three files
+ARCHITECTURE §12 (line 510) maps `pricing.py` → `domain/pricing/calculator.py` (pure Usage+Rates→
+Decimal|None) **+** `adapters/driven/pricing/bundled.py` (`BundledPricingCatalog`). Add the
+`application/ports/pricing_catalog.py` port (`rates(provider, model) -> Rates | None`) so the
+calculator stays pure domain and the catalog (which does I/O) is a driven adapter. `Rates`/`Cost`
+live in the domain calculator; the port imports them (application → domain is allowed).
+
+### Decimal from the YAML boundary, not just in arithmetic
+Criterion 6 ("sum 1000 costs, no float drift") is about arithmetic — Decimal solves that. But a bare
+`0.30` in YAML loads as a float and `Decimal(0.30)` carries the float's dust. Fix: **quote every
+rate as a string** in `pricing.yaml` so pydantic parses `Decimal("0.30")` exactly. `Rates.cache_read`
+is `Decimal | None` (Optional) even though the bundled file always sets it — the None path is the
+"model without cache pricing" case (charge cache reads at the input rate, flag it on `Cost`).
+
+### Exact match only — a near-miss must return None
+SPEC §3.2 and the ticket are explicit: no prefix/fuzzy matching. `claude-sonnet-4-6-typo` → None,
+not the closest real model. A silent wrong price is worse than an honest `—`. The catalog is a plain
+`dict[str, Rates].get(f"{provider}:{model}")`.
+
+### The CLI may import a driven adapter; domain/application may not
+`--version` reads `BundledPricingCatalog().updated`. Contract 5 (composition-isolation) forbids
+`agentcheck.domain` and `agentcheck.application` from importing `agentcheck.adapters.driven` — the
+**CLI (`adapters.driving`) is not in that source list**, so the import is legal (the contract note
+even says "only composition.py and the CLI may import concrete driven adapters"). Keep the SDK-free
+bundled loader's file read lazy (in `__init__`, not at import) so `import agentcheck` stays cheap.
+
+### Package data ships by default under hatchling
+`data/pricing.yaml` is included in the wheel with no extra `force-include`/`artifacts` config —
+`[tool.hatch.build.targets.wheel] packages = ["agentcheck"]` pulls in non-`.py` files under the
+package. Verified with `uv build --wheel` + `unzip -l`. Access it via
+`importlib.resources.files("agentcheck").joinpath("data/pricing.yaml")` (robust for editable *and*
+wheel), not a `__file__`-relative path.
+
+### Consult the claude-api skill for model prices — don't guess
+The bundled table needed real Anthropic list prices. The `claude-api` skill's model table is the
+source (Opus 4.8/4.7/4.6 $5/$25, Sonnet 5/4.6 $3/$15, Haiku 4.5 $1/$5). Cache convention from the
+same skill: cache-read 0.1× input, cache-write 1.25× input (5-min TTL). v0.1 is Anthropic-only, so
+only `anthropic:*` keys — and the builtin model `claude-sonnet-4-6` must be present so a bare suite
+prices.
+
 ## Session Notes
 
 ### 2026-07-30 — AC-001 + toolchain
