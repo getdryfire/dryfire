@@ -1,6 +1,6 @@
 # Progress
 
-**Last Updated:** 2026-07-30
+**Last Updated:** 2026-07-31
 
 ---
 
@@ -22,23 +22,30 @@ Update this file when work ships, phases change, or priorities shift.
 
 > Actively building. Code is being written.
 
-### AC-009 — The agent loop (implemented, uncommitted)
-`run_case` — the core of the product (SPEC §5), TDD; gate green (201 tests + 1
-live-skipped, ruff, mypy --strict, 5/5 contracts).
-- `application/loop.py` — `run_case(resolved_case, provider, resolver) -> Trace`. Drives the
-  tool-calling loop with deterministic mocks; parallel calls resolved in call order; per-turn
-  `request_messages` copies (load-bearing for v0.2 cassettes); usage summed. **Never raises for
-  a normal outcome** — max_turns_exceeded / provider_error / unmocked_tool are recorded
-  terminations. Application layer: imports domain + the `ModelGateway` port only, never a concrete
-  adapter (tests drive `FakeGateway`).
-- All 12 acceptance rows are individually named tests + N-provider-calls; no row was awkward
-  (the Trace model held). `_StaticGateway` covers the max_tokens/usage-sum scenarios FakeGateway's
-  helpers don't.
-- **Wiring:** added `tools: list[ToolDef]` to `ResolvedCase` and populated it in `resolve()`
-  (ToolSpec→ToolDef) — closes the tools half of AC-005's deferred thread. The mocks half is the
-  passed-in `MockResolver`; the spec→domain mock mapper is composition/AC-012.
-- No SPEC §5 deviation: the ticket's `run_case(resolved_case, …)` signature supersedes §5's
-  `case+suite`; the frozen Turn is built after resolving (vs §5's record-then-attach) — equivalent.
+### AC-012 — Concurrent case scheduler (implemented, uncommitted)
+`run_suites` — the concurrent orchestrator over `run_case` (SPEC §5, ARCHITECTURE §6.1); TDD,
+gate green (213 tests + 1 live-skipped, ruff, mypy --strict, 5/5 contracts).
+- `application/scheduler.py` — `run_suites(suites, provider, *, concurrency=4, fail_fast=False,
+  on_progress=None) -> RunResult`. Worker-pool over a shared index iterator: exactly `concurrency`
+  tasks pull cases, so **task creation is bounded to the concurrency, not the case count**. Results
+  assembled by index → **spec order regardless of completion order**. Three-level result:
+  `RunResult(suites, complete) → SuiteResult → CaseResult(trace, assertions, passed, error)`.
+- **Scheduler evaluates assertions** (user-confirmed; ARCHITECTURE §6.1 `CaseCompleted` = Trace +
+  pass/fail). A case is the "run fully" use case: fresh `MockResolver` → `run_case` → build+eval the
+  `expect` entries via the registry → `passed = all(a.passed)`. Termination-driven fail/exit-codes
+  stay AC-013/AC-015's job.
+- **Isolation:** each case wrapped in try/except → an unexpected raise becomes `CaseResult(error=…,
+  trace=None, passed=False)`; the rest of the run continues. **Fail-fast:** first non-passing case
+  cancels sibling worker tasks (`gather(return_exceptions=True)` swallows the `CancelledError`);
+  only completed results reported, `complete=False`. `_process_case` re-raises `CancelledError` so
+  cancellation is never swallowed as a case error.
+- **Fresh `MockResolver` per case** — AC-008 sequence state must not bleed across concurrent cases
+  (mutation-verified). The **spec→domain mock mapper is NOT here**: import layering forbids the
+  application layer from importing adapter spec `MockRule`, so `run_suites` takes pre-planned cases
+  (`PlannedCase` = `ResolvedCase` + domain mocks). Mapper + merge **re-assigned to AC-015
+  composition** (was pencilled into AC-012).
+- Progress via injected `on_progress` callback only (never printed) — the reporter (AC-013) owns
+  output. All 7 acceptance rows are named tests; ahead-of-test branches mutation-checked for teeth.
 
 ---
 
@@ -46,16 +53,25 @@ live-skipped, ruff, mypy --strict, 5/5 contracts).
 
 > Committed work, ready to start. Ordered by the EPIC-001 dependency graph.
 
-1. **AC-012** — concurrent case scheduler (asyncio + semaphore; spec-order results). Builds the
-   `MockResolver` per case (spec→domain mock mapper) and calls `run_case`.
-2. **AC-013 / AC-014** — terminal + JSON reporters (event sinks over the Trace).
-3. **AC-015 / AC-016 / AC-017 / AC-018 / AC-019** — CLI, init scaffold, cost, dogfood, release.
+1. **AC-013 / AC-014** — terminal + JSON reporters (event sinks over the Trace / `CaseResult`s).
+2. **AC-015** — CLI: wire composition, incl. the deferred **spec→domain mock mapper + merge** into
+   `PlannedCase`s for `run_suites`.
+3. **AC-016 / AC-017 / AC-018 / AC-019** — init scaffold, cost, dogfood, release.
 
 ---
 
 ## Shipped
 
 > Working in the codebase. Committed and tested.
+
+### AC-009 — The agent loop (2026-07-31, PR #11)
+- `application/loop.py` — `run_case(resolved_case, provider, resolver) -> Trace`. Drives the
+  tool-calling loop with deterministic mocks; parallel calls resolved in call order; per-turn
+  `request_messages` copies (load-bearing for v0.2 cassettes); usage summed. **Never raises for a
+  normal outcome** — max_turns_exceeded / provider_error / unmocked_tool are recorded terminations.
+  Imports domain + the `ModelGateway` port only (tests drive `FakeGateway`). All 12 acceptance rows
+  are named tests. Added `tools: list[ToolDef]` to `ResolvedCase` (closes the tools half of AC-005's
+  deferred thread); mocks stay a passed-in `MockResolver`.
 
 ### AC-007 — Anthropic adapter (2026-07-31, PR #10)
 - `adapters/driven/providers/anthropic.py` — `to_wire`/`from_wire` (pure, SDK-free) +
