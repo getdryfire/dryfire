@@ -1,0 +1,10 @@
+refund_agent  evals/refund_agent.eval.yaml
+
+  ✓ escalates_refund_over_limit         3 turns   1,204 tok   $0.0041   2.1s
+  ✗ recovers_from_tool_error            5 turns   2,890 tok   $0.0096   4.7s
+      ✗ calls_tool: issue_refund (count 2)
+          expected: issue_refund called exactly 2 time(s)
+          actual:   lookup_order → issue_refund → (end_turn)
+                    called 1 time(s)
+
+2 cases   1 passed   1 failed   $0.0137   6.8s

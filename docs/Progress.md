@@ -22,25 +22,24 @@ Update this file when work ships, phases change, or priorities shift.
 
 > Actively building. Code is being written.
 
-### AC-017 — Pricing data and cost computation (implemented, uncommitted)
-Advisory cost math + the bundled pricing table (SPEC §3.2, ARCHITECTURE §12); TDD, gate green
-(225 tests + 1 live-skipped, ruff, mypy --strict, 5/5 contracts).
-- `domain/pricing/calculator.py` — pure `calculate(usage, rates) -> Cost | None`. `Rates`/`Cost`
-  frozen pydantic; **`Decimal` throughout** so summing thousands of case costs never drifts.
-  Unpriced model → None (never a guess). Cache tokens priced separately when defined; a model with
-  **no** cache rate prices cache reads at the input rate and records it (`Cost.cache_priced_as_input`).
-- `adapters/driven/pricing/bundled.py` — `BundledPricingCatalog` implementing the new
-  `application/ports/pricing_catalog.py` (`PricingCatalog.rates(provider, model) -> Rates | None`).
-  **Exact string match** (a near-miss returns None, no fuzzy pricing); user `pricing_file` replaces
-  matching keys + merges the rest; `.updated` exposes `_meta.updated`.
-- `data/pricing.yaml` — Anthropic list prices (Opus 4.8/4.7/4.6, Sonnet 5/4.6, Haiku 4.5), values
-  quoted for exact Decimal parsing; ships in the wheel (verified). Replaced the AC-001 placeholder
-  (`version`/`models`) with the ticket's `provider:model` + `_meta` shape.
-- `--version` now prints `(pricing updated <date>)` — the CLI (a driving adapter) reads the pricing
-  adapter directly, which is contract-legal (composition-isolation forbids domain/application, not
-  the CLI). Per ARCHITECTURE §12 the ticket's flat `pricing.py` split into calculator + bundled.
-- **Not wired end-to-end:** nothing populates `Trace.total_cost_usd` yet — the per-case cost step is
-  composition (AC-015). This ticket "only computes" per the ticket. `cost_under` assertion is v0.2.
+### AC-013 — Terminal reporter (implemented, uncommitted)
+The `rich`-policy terminal reporter matching SPEC §7.2 (ARCHITECTURE §12); TDD, gate green
+(238 tests + 1 live-skipped, ruff, mypy --strict, 5/5 contracts).
+- `adapters/driven/reporting/terminal.py` — **pure** `render_report(run, *, color=False) -> str`
+  (byte-pinned by a golden fixture) + `TerminalReporter.report(run, stream)` + `resolve_color`.
+  `color=False` emits **zero ANSI** (CI logs / non-TTY / `NO_COLOR` / `--no-color`); `color=True`
+  wraps only the pass/fail glyphs. Case line `  <glyph> <name:<36><turns> turns   <tok:,> tok
+  <cost>   <dur>s`; summary `<n> cases   <p> passed   <f> failed   <cost>   <dur>s`.
+- **Unknown cost → `—`, never `$0.0000`.** Non-`end_turn` termination surfaced on the case line
+  (e.g. `max_turns_exceeded`). Failure blocks are AC-011's `render_failure` indented 6 spaces —
+  the reporter **formats, does not compose**; it truncates long argument values (`expected`/
+  `message`) but **never the trajectory line** (`actual`). Zero-case run → "no cases matched".
+- **§7.2 deviation (noted):** the SPEC sample uses the v0.2 `min_tool_calls` and puts the count on
+  `actual:` / the trajectory as the continuation. AC-011's v0.1 convention is the reverse
+  (trajectory on `actual:`, reason as continuation). The golden reproduces §7.2's header, both case
+  lines, and the summary **byte-for-byte**, and renders the failure block via the real v0.1
+  machinery. Cost/duration golden tests have teeth at display resolution (mutation-verified).
+- Per-case cost is still `None` (→ `—`) until AC-015 attaches `total_cost_usd` to the trace.
 
 ---
 
@@ -48,10 +47,11 @@ Advisory cost math + the bundled pricing table (SPEC §3.2, ARCHITECTURE §12); 
 
 > Committed work, ready to start. Ordered by the EPIC-001 dependency graph.
 
-1. **AC-013 / AC-014** — terminal + JSON reporters (over the Trace / `CaseResult`s). AC-013's cost
-   column now has real `Rates` to draw on (still `—` until AC-015 attaches cost to the trace).
+1. **AC-014** — JSON reporter + full trace serialization (`--json-out`, `schema_version: 1`,
+   sorted keys for diffable output). Depends on AC-013.
 2. **AC-015** — CLI: wire composition — the deferred **spec→domain mock mapper + merge** into
-   `PlannedCase`s, and the **per-case cost step** (`calculate` + `PricingCatalog` → `total_cost_usd`).
+   `PlannedCase`s, and the **per-case cost step** (`calculate` + `PricingCatalog` → `total_cost_usd`,
+   which lights up the reporter's cost column).
 3. **AC-016 / AC-018 / AC-019** — init scaffold, dogfood, release.
 
 ---
@@ -59,6 +59,14 @@ Advisory cost math + the bundled pricing table (SPEC §3.2, ARCHITECTURE §12); 
 ## Shipped
 
 > Working in the codebase. Committed and tested.
+
+### AC-017 — Pricing data and cost computation (2026-07-31, PR #13)
+- `domain/pricing/calculator.py` — pure `calculate(usage, rates) -> Cost | None`, **`Decimal`
+  throughout**; unpriced model → None; cache tokens priced separately (input-rate fallback recorded).
+  `application/ports/pricing_catalog.py` (`PricingCatalog`) + `adapters/driven/pricing/bundled.py`
+  (`BundledPricingCatalog`, **exact match**, user `pricing_file` replaces+merges, `.updated`).
+  `data/pricing.yaml` Anthropic list prices (quoted for exact Decimal), ships in the wheel.
+  `--version` surfaces the pricing date. Only computes — wiring to the trace is AC-015.
 
 ### AC-012 — Concurrent case scheduler (2026-07-31, PR #12)
 - `application/scheduler.py` — `run_suites(suites, provider, *, concurrency=4, fail_fast=False,

@@ -402,6 +402,51 @@ same skill: cache-read 0.1× input, cache-write 1.25× input (5-min TTL). v0.1 i
 only `anthropic:*` keys — and the builtin model `claude-sonnet-4-6` must be present so a bare suite
 prices.
 
+## Terminal reporter (AC-013)
+
+### The §7.2 sample predates the v0.1 assertion convention — reproduce layout, not content
+SPEC §7.2's failing block uses `min_tool_calls` (a **v0.2** assertion) and puts the *count* on the
+`actual:` line with the trajectory as the continuation. AC-011's v0.1 `render_failure` does the
+**reverse**: `actual:` holds the trajectory, the short reason is the continuation. Since the ticket
+says "failure blocks come from `AssertionResult` verbatim; the reporter formats, it does not
+compose," the golden reproduces §7.2's **header, both case lines, and summary byte-for-byte** and
+renders the failure block via the real v0.1 machinery (a failing `calls_tool(count)`). Don't chase
+byte-identity on the failure block — it can't hold with v0.1 assertions.
+
+### Byte-pin the layout by measuring the spec, not guessing
+`sed -n 'l'` + a tiny Python `str.find` pass gave exact columns: the case name is `ljust(36)` after
+a 4-char `  <glyph> ` prefix (so metrics start at column 40), fields are separated by 3 spaces, and
+the failure block is `render_failure` indented 6 spaces (trajectory lands at column 20). Generated
+the report, eyeballed against §7.2, pinned the fixture — same characterize-then-pin flow as AC-004/
+AC-011.
+
+### Keep the renderer pure; make `color` a parameter, not ambient state
+`render_report(run, *, color=False) -> str` emits zero ANSI when `color=False` — so the CI-log path
+and the golden path are the same code, and "no ANSI off a TTY" is testable on the raw bytes
+(`b"\x1b" not in ...`) without faking a terminal. The TTY/`NO_COLOR`/`--no-color` policy lives in a
+separate `resolve_color(stream, *, no_color)` (checks the flag and `NO_COLOR` **before** the rich
+`Console(file=stream).is_terminal` check, so both override a real TTY). That satisfies "uses rich"
+for the policy while the layout stays hand-built for byte control.
+
+### Truncation is display, not message content — truncate fields, keep `render_failure` as layout
+"Long argument dicts truncate but the trajectory line never does." The trajectory is the
+`AssertionResult.actual` field. So the reporter truncates only `expected`/`message` (via
+`result.model_copy(update=...)`) and hands the copy to `render_failure` — layout stays in one place
+(domain), the reporter owns the truncation decision, and `actual` is never touched.
+
+### Mutation magnitude must exceed display resolution
+A `+1 ms` mutation to the duration sum did **not** fail the golden/summary tests — `.1f` rounds it
+away, and a 1 ms discrepancy genuinely doesn't matter at display resolution. Use a `+2000 ms`
+mutation to prove teeth. The lesson: size the mutation to the observable output, not the internal
+value.
+
+### `mypy --strict` on a test file re-enables `disallow_untyped_defs`
+`make typecheck` scopes to `agentcheck/` (and the `tests.*` override relaxes untyped defs). Running
+`mypy --strict tests/...` directly (the port-conformance habit) turns strict back on for that file,
+so `monkeypatch` params need `pytest.MonkeyPatch` annotations and `sum()` over a `Trace | None`
+comprehension needs an explicit `is not None` list first. Worth fixing — it's the same check CI
+would want and it caught a genuinely-loose `sum(... float | None ...)`.
+
 ## Session Notes
 
 ### 2026-07-30 — AC-001 + toolchain
