@@ -98,6 +98,34 @@ test uses the example with its `escalate_to_human` `$ref` expanded to the tool's
 misfires on a legitimate `return: null` (null tool-result content). The aliased field
 `returns` (YAML `return`) still appears under its field name in `model_fields_set`.
 
+## Spec loader (AC-004)
+
+### Pre-passes must run before pydantic
+`$ref` resolution and env interpolation mutate the ruamel node tree *before*
+`Suite.model_validate`, because `extra="forbid"` would otherwise reject a raw `$ref` key
+and mask the real error. Order within pre-pass 1: refs first (so a `${VAR}` inside a
+`$ref` target still gets interpolated), then env.
+
+### Cascade suppression via poisoned loc prefixes
+A failed `$ref` is replaced by an empty placeholder mapping; pydantic then emits
+"missing name/input_schema" under that loc. Collect `{loc[:-1] for $ref errors}` and drop
+any pydantic error whose loc starts with a poisoned prefix — one mistake, one error.
+
+### Missing `${VAR}` substitutes "" but records an error
+"Never an empty string" means never *silently* — so record a positioned `SpecError` and
+substitute `""` only to keep the type valid so the pass can continue collecting.
+
+### ruamel `.lc` gives token positions; missing keys have none
+`locate()` walks the pydantic loc through CommentedMap/CommentedSeq; a `missing` error has
+no token, so it degrades to the deepest resolved ancestor with `exact=False` (rendered
+"(nearest enclosing node)"). ruamel.yaml ships type info — mypy --strict is clean, no stub
+override needed.
+
+### Golden-file test: normalize the path
+`render()` embeds the suite path, which varies by CWD/host (e.g. `/app` in Docker). Replace
+`str(fixture_path)` with the basename before comparing to the golden so the test is
+location-independent.
+
 ## Session Notes
 
 ### 2026-07-30 — AC-001 + toolchain

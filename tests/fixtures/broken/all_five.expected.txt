@@ -1,0 +1,30 @@
+error: unknown field 'modle'
+  --> all_five.eval.yaml:2:1   (modle)
+     |
+   2 | modle: claude-sonnet-4-6
+     | ^
+
+error: expected an integer
+  --> all_five.eval.yaml:3:1   (max_turns)
+     |
+   3 | max_turns: six
+     | ^
+
+error: $ref target not found: ./does_not_exist.json
+  --> all_five.eval.yaml:5:5   (tools[0].$ref)
+     |
+   5 |   - $ref: ./does_not_exist.json
+     |     ^
+
+error: required field 'input' is missing
+  --> all_five.eval.yaml:7:5   (cases[0].input)
+     |
+   7 |   - name: missing_input_case
+     |     ^  (nearest enclosing node)
+
+error: unknown assertion kind: 'calls_tolo'
+  --> all_five.eval.yaml:9:9   (cases[0].expect[0].calls_tolo)
+     |
+   9 |       - calls_tolo: lookup_order
+     |         ^
+   = help: did you mean 'calls_tool'?
