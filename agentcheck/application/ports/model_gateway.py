@@ -18,7 +18,7 @@ class ModelParams(BaseModel):
     """Provider-neutral generation parameters. All optional; defaults are
     resolved from project config at AC-005, not baked in here."""
 
-    model_config = ConfigDict(frozen=True, protected_namespaces=())
+    model_config = ConfigDict(frozen=True)
 
     temperature: float | None = None
     top_p: float | None = None
@@ -30,7 +30,7 @@ class CompletionRequest(BaseModel):
     """Everything one model call needs, provider-neutral. This is the unit the
     v0.2 cassette fingerprint is computed over."""
 
-    model_config = ConfigDict(frozen=True, protected_namespaces=())
+    model_config = ConfigDict(frozen=True)
 
     model: str
     system: str | None

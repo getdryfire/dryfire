@@ -71,10 +71,12 @@ SPEC §3 writes fields as bare `dict`; strict mode needs type args. These hold p
 JSON, so `dict[str, Any]` is the faithful annotation (`arguments`, `input_schema`,
 `raw`, `content`). `Any` is fine under strict when explicit.
 
-### Pydantic protects the `model_` namespace
-`CompletionRequest.model` is a legitimate field but sits next to pydantic's protected
-`model_` namespace. Set `model_config = ConfigDict(protected_namespaces=())` to keep the
-output warning-free (skill requires pristine output).
+### A field named `model` does NOT need `protected_namespaces=()`
+Pydantic's protected-namespace warning fires for fields starting with `model_`, not for a
+field literally named `model`. Verified under pydantic 2.13.4: `class M(BaseModel): model:
+str` emits no warning. AC-002 originally set `protected_namespaces=()` defensively on
+`ModelParams`/`CompletionRequest`; it was a no-op and removed in AC-003. Only add it if a
+field is genuinely named `model_<something>`.
 
 ### ModelGateway, not Provider
 The port follows ARCHITECTURE §5.1 (`ModelGateway.complete(request: CompletionRequest)`,
@@ -82,6 +84,19 @@ no `cost()`), not SPEC §3.1's `Provider`. Cost is a separate `PricingCatalog` p
 AC-017. AC-007 (Anthropic adapter) implements this Gateway shape. Verify a stub conforms
 with `uv run mypy --strict tests/unit/application/test_model_gateway.py` — `make typecheck`
 only scopes to `agentcheck/`, so the stub-vs-protocol check isn't in the standard gate.
+
+## Spec schema (AC-003)
+
+### `$ref` is resolved before pydantic, not by it
+The spec models assume `$ref` tool entries are already inlined (AC-004 resolves them first);
+a raw `$ref` reaching these models is a caller bug. So the "SPEC §4.3 example validates"
+test uses the example with its `escalate_to_human` `$ref` expanded to the tool's JSON.
+
+### `model_fields_set` for "exactly one of X/Y/Z"
+`MockRule` needs exactly one of return/error/sequence. Detect via
+`{"returns","error","sequence"} & self.model_fields_set`, not `is not None` — the latter
+misfires on a legitimate `return: null` (null tool-result content). The aliased field
+`returns` (YAML `return`) still appears under its field name in `model_fields_set`.
 
 ## Session Notes
 
