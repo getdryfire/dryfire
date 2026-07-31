@@ -15,5 +15,10 @@ build/
 # agentcheck run artifacts are gitignored; cassettes (.agentcheck/cassettes/) are committed
 .agentcheck/runs/
 
+# Secrets — never commit API keys
+.env
+.env.*
+!.env.example
+
 # OS
 .DS_Store

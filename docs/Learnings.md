@@ -249,6 +249,33 @@ plain `BaseModel` can't validate them. `RootModel[str | CountSpec]` / `RootModel
 validate the raw scalar/union directly; dict-shaped args (`tool_args`) stay a `BaseModel` with
 `extra="forbid"`.
 
+## Anthropic adapter (AC-007)
+
+### Real payloads differ from the spike's canned — always record live
+The 2026 Anthropic response shape is richer than the spike guessed: `usage.cache_creation`
+nested, `caller` on tool_use blocks, `stop_details`. More importantly the **behavior**
+differs: a real single-tool-call response carries **no** text block (spike assumed one), and
+error-then-retry returns `end_turn` prose rather than a tool retry. Criterion 8 ("fixtures from
+real responses") exists precisely to catch this. Captured via a throwaway script that drives
+the spike adapter's `to_wire` then dumps `client.messages.create(...).model_dump()`.
+
+### Keep the SDK import lazy so the module imports without the extra
+`to_wire`/`from_wire` are module-level functions importing only domain/app types; the
+`anthropic` SDK is imported inside `AnthropicGateway.__init__` (→ actionable install-command
+error if absent). So `import agentcheck` and the offline unit tests need no SDK. Test the
+missing-SDK path with `monkeypatch.setitem(sys.modules, "anthropic", None)`.
+
+### Use AsyncAnthropic, not the sync client
+`complete()` is async and the scheduler (AC-012) runs cases concurrently; a sync
+`client.messages.create` would block the event loop and serialize them. `from_wire` takes
+`latency_ms` as a param (measured around the call in `complete()`) so it stays pure/testable.
+
+### Secrets: gitignore `.env` BEFORE the key is written
+Added `.env` / `.env.*` (keep `.env.example`) to `.gitignore`, verified with
+`git check-ignore .env`, then had the user create `.env`. Load it per-call with
+`set -a; source .env; set +a` (shell state doesn't persist across tool calls) and never echo
+the value.
+
 ## Session Notes
 
 ### 2026-07-30 — AC-001 + toolchain

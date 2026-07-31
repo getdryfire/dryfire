@@ -1,0 +1,53 @@
+{
+  "id": "msg_011CdaGozd3E1v91w8q57D3u",
+  "container": null,
+  "content": [
+    {
+      "citations": null,
+      "text": "Sure! I'll look up order A-991 and check inventory for SKU-7 simultaneously right now!",
+      "type": "text"
+    },
+    {
+      "id": "toolu_018MDShkjbpAk7kav2FKbowV",
+      "caller": {
+        "type": "direct"
+      },
+      "input": {
+        "order_id": "A-991"
+      },
+      "name": "lookup_order",
+      "type": "tool_use"
+    },
+    {
+      "id": "toolu_01MMhj4i7ZLKj1t9NcXnereK",
+      "caller": {
+        "type": "direct"
+      },
+      "input": {
+        "sku": "SKU-7"
+      },
+      "name": "check_inventory",
+      "type": "tool_use"
+    }
+  ],
+  "model": "claude-sonnet-4-6",
+  "role": "assistant",
+  "stop_details": null,
+  "stop_reason": "tool_use",
+  "stop_sequence": null,
+  "type": "message",
+  "usage": {
+    "cache_creation": {
+      "ephemeral_1h_input_tokens": 0,
+      "ephemeral_5m_input_tokens": 0
+    },
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 0,
+    "inference_geo": "global",
+    "input_tokens": 661,
+    "output_tokens": 122,
+    "output_tokens_details": null,
+    "server_tool_use": null,
+    "service_tier": "standard"
+  }
+}
