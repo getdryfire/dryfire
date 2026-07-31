@@ -64,6 +64,25 @@ group — so plain `uv sync` installs no pytest/ruff/mypy. Always `uv sync --all
 
 ---
 
+## Domain modelling (AC-002)
+
+### `mypy --strict` rejects bare `dict`/`list`
+SPEC §3 writes fields as bare `dict`; strict mode needs type args. These hold parsed
+JSON, so `dict[str, Any]` is the faithful annotation (`arguments`, `input_schema`,
+`raw`, `content`). `Any` is fine under strict when explicit.
+
+### Pydantic protects the `model_` namespace
+`CompletionRequest.model` is a legitimate field but sits next to pydantic's protected
+`model_` namespace. Set `model_config = ConfigDict(protected_namespaces=())` to keep the
+output warning-free (skill requires pristine output).
+
+### ModelGateway, not Provider
+The port follows ARCHITECTURE §5.1 (`ModelGateway.complete(request: CompletionRequest)`,
+no `cost()`), not SPEC §3.1's `Provider`. Cost is a separate `PricingCatalog` port at
+AC-017. AC-007 (Anthropic adapter) implements this Gateway shape. Verify a stub conforms
+with `uv run mypy --strict tests/unit/application/test_model_gateway.py` — `make typecheck`
+only scopes to `agentcheck/`, so the stub-vs-protocol check isn't in the standard gate.
+
 ## Session Notes
 
 ### 2026-07-30 — AC-001 + toolchain

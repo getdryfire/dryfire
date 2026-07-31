@@ -22,7 +22,17 @@ Update this file when work ships, phases change, or priorities shift.
 
 > Actively building. Code is being written.
 
-*Nothing in flight.*
+### AC-002 — Provider-neutral domain types (implemented, uncommitted)
+Built TDD; full gate green (34 tests, ruff, mypy --strict, 5/5 import contracts).
+- `domain/model/tooling.py` (ToolDef, ToolCall+`malformed_arguments`, ToolResult),
+  `message.py` (Usage, Message+`raw`, ModelResponse), `stop_reason.py`
+  (StopReason + `map_stop_reason` §3.3 table), `trace.py` (Turn, Trace with
+  `tool_calls()`/`tool_names()` and a finite-cost validator)
+- Port: `application/ports/model_gateway.py` — `ModelGateway` + `CompletionRequest`
+  + `ModelParams`. **Decision:** followed ARCHITECTURE §5.1 (Gateway shape,
+  `complete(request)`, no `cost()`) over SPEC §3.1's `Provider`; cost → PricingCatalog
+  (AC-017). AC-002 acceptance criterion 5 adjusted to the ModelGateway stub accordingly.
+- Files placed per ARCHITECTURE §12, not the ticket's SPEC §8 paths.
 
 ---
 
@@ -30,10 +40,8 @@ Update this file when work ships, phases change, or priorities shift.
 
 > Committed work, ready to start. Ordered by the EPIC-001 dependency graph.
 
-1. **AC-002 — Provider-neutral domain types** (`domain/model/`, incl. the SPIKE-001 amendments:
-   `ToolCall.malformed_arguments`, `Message.raw`, stop-reason table)
-2. **AC-003 → AC-005** — spec models, loader with positioned errors, project config
-3. **AC-006 — FakeProvider**, then the AC-007/008/010 fan-out per the sequencing diagram
+1. **AC-003 → AC-005** — spec models, loader with positioned errors, project config
+2. **AC-006 — FakeProvider**, then the AC-007/008/010 fan-out per the sequencing diagram
 
 ---
 
