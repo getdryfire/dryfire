@@ -22,30 +22,25 @@ Update this file when work ships, phases change, or priorities shift.
 
 > Actively building. Code is being written.
 
-### AC-012 — Concurrent case scheduler (implemented, uncommitted)
-`run_suites` — the concurrent orchestrator over `run_case` (SPEC §5, ARCHITECTURE §6.1); TDD,
-gate green (213 tests + 1 live-skipped, ruff, mypy --strict, 5/5 contracts).
-- `application/scheduler.py` — `run_suites(suites, provider, *, concurrency=4, fail_fast=False,
-  on_progress=None) -> RunResult`. Worker-pool over a shared index iterator: exactly `concurrency`
-  tasks pull cases, so **task creation is bounded to the concurrency, not the case count**. Results
-  assembled by index → **spec order regardless of completion order**. Three-level result:
-  `RunResult(suites, complete) → SuiteResult → CaseResult(trace, assertions, passed, error)`.
-- **Scheduler evaluates assertions** (user-confirmed; ARCHITECTURE §6.1 `CaseCompleted` = Trace +
-  pass/fail). A case is the "run fully" use case: fresh `MockResolver` → `run_case` → build+eval the
-  `expect` entries via the registry → `passed = all(a.passed)`. Termination-driven fail/exit-codes
-  stay AC-013/AC-015's job.
-- **Isolation:** each case wrapped in try/except → an unexpected raise becomes `CaseResult(error=…,
-  trace=None, passed=False)`; the rest of the run continues. **Fail-fast:** first non-passing case
-  cancels sibling worker tasks (`gather(return_exceptions=True)` swallows the `CancelledError`);
-  only completed results reported, `complete=False`. `_process_case` re-raises `CancelledError` so
-  cancellation is never swallowed as a case error.
-- **Fresh `MockResolver` per case** — AC-008 sequence state must not bleed across concurrent cases
-  (mutation-verified). The **spec→domain mock mapper is NOT here**: import layering forbids the
-  application layer from importing adapter spec `MockRule`, so `run_suites` takes pre-planned cases
-  (`PlannedCase` = `ResolvedCase` + domain mocks). Mapper + merge **re-assigned to AC-015
-  composition** (was pencilled into AC-012).
-- Progress via injected `on_progress` callback only (never printed) — the reporter (AC-013) owns
-  output. All 7 acceptance rows are named tests; ahead-of-test branches mutation-checked for teeth.
+### AC-017 — Pricing data and cost computation (implemented, uncommitted)
+Advisory cost math + the bundled pricing table (SPEC §3.2, ARCHITECTURE §12); TDD, gate green
+(225 tests + 1 live-skipped, ruff, mypy --strict, 5/5 contracts).
+- `domain/pricing/calculator.py` — pure `calculate(usage, rates) -> Cost | None`. `Rates`/`Cost`
+  frozen pydantic; **`Decimal` throughout** so summing thousands of case costs never drifts.
+  Unpriced model → None (never a guess). Cache tokens priced separately when defined; a model with
+  **no** cache rate prices cache reads at the input rate and records it (`Cost.cache_priced_as_input`).
+- `adapters/driven/pricing/bundled.py` — `BundledPricingCatalog` implementing the new
+  `application/ports/pricing_catalog.py` (`PricingCatalog.rates(provider, model) -> Rates | None`).
+  **Exact string match** (a near-miss returns None, no fuzzy pricing); user `pricing_file` replaces
+  matching keys + merges the rest; `.updated` exposes `_meta.updated`.
+- `data/pricing.yaml` — Anthropic list prices (Opus 4.8/4.7/4.6, Sonnet 5/4.6, Haiku 4.5), values
+  quoted for exact Decimal parsing; ships in the wheel (verified). Replaced the AC-001 placeholder
+  (`version`/`models`) with the ticket's `provider:model` + `_meta` shape.
+- `--version` now prints `(pricing updated <date>)` — the CLI (a driving adapter) reads the pricing
+  adapter directly, which is contract-legal (composition-isolation forbids domain/application, not
+  the CLI). Per ARCHITECTURE §12 the ticket's flat `pricing.py` split into calculator + bundled.
+- **Not wired end-to-end:** nothing populates `Trace.total_cost_usd` yet — the per-case cost step is
+  composition (AC-015). This ticket "only computes" per the ticket. `cost_under` assertion is v0.2.
 
 ---
 
@@ -53,16 +48,26 @@ gate green (213 tests + 1 live-skipped, ruff, mypy --strict, 5/5 contracts).
 
 > Committed work, ready to start. Ordered by the EPIC-001 dependency graph.
 
-1. **AC-013 / AC-014** — terminal + JSON reporters (event sinks over the Trace / `CaseResult`s).
-2. **AC-015** — CLI: wire composition, incl. the deferred **spec→domain mock mapper + merge** into
-   `PlannedCase`s for `run_suites`.
-3. **AC-016 / AC-017 / AC-018 / AC-019** — init scaffold, cost, dogfood, release.
+1. **AC-013 / AC-014** — terminal + JSON reporters (over the Trace / `CaseResult`s). AC-013's cost
+   column now has real `Rates` to draw on (still `—` until AC-015 attaches cost to the trace).
+2. **AC-015** — CLI: wire composition — the deferred **spec→domain mock mapper + merge** into
+   `PlannedCase`s, and the **per-case cost step** (`calculate` + `PricingCatalog` → `total_cost_usd`).
+3. **AC-016 / AC-018 / AC-019** — init scaffold, dogfood, release.
 
 ---
 
 ## Shipped
 
 > Working in the codebase. Committed and tested.
+
+### AC-012 — Concurrent case scheduler (2026-07-31, PR #12)
+- `application/scheduler.py` — `run_suites(suites, provider, *, concurrency=4, fail_fast=False,
+  on_progress=None) -> RunResult`. Worker-pool over a shared index iterator (task creation bounded to
+  the concurrency); results assembled by index → **spec order regardless of completion order**.
+  Three-level result `RunResult(suites, complete) → SuiteResult → CaseResult(trace, assertions,
+  passed, error)`. **Evaluates assertions** per case (ARCHITECTURE §6.1); per-case isolation;
+  `--fail-fast` cancels in-flight siblings and marks the run incomplete; fresh `MockResolver` per
+  case. Spec→domain mock mapper re-assigned to AC-015. All 7 acceptance rows named tests.
 
 ### AC-009 — The agent loop (2026-07-31, PR #11)
 - `application/loop.py` — `run_case(resolved_case, provider, resolver) -> Trace`. Drives the
