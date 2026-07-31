@@ -22,17 +22,18 @@ Update this file when work ships, phases change, or priorities shift.
 
 > Actively building. Code is being written.
 
-### AC-006 — FakeGateway (implemented, uncommitted)
-Scripted, offline `ModelGateway` for all downstream tests, TDD; gate green
-(110 tests, ruff, mypy --strict, 5/5 contracts).
-- `adapters/driven/providers/fake.py` (shipped in-package) — `FakeGateway.script([...])`
-  with helpers `text()`, `tool_call()`, `parallel()`, `fails()`. Returns scripted responses
-  in order; `.requests` records what the loop sent; deterministic `fake_call_N` ids
-  (unique per run, stable across runs); `ScriptExhausted` names the call count; `fails()`
-  raises to exercise the provider_error path. Imports no provider SDK.
-- `tests/conftest.py` — `make_request` CompletionRequest factory fixture.
-- **Decision:** class is `FakeGateway` satisfying `ModelGateway` (ARCHITECTURE), not the
-  ticket's `FakeProvider`/`Provider` — consistent with the AC-002 port decision.
+### AC-008 — Mock resolver (implemented, uncommitted)
+The mock **domain model** + resolver (SPEC §4.4), TDD; gate green (124 tests,
+ruff, mypy --strict, 5/5 contracts).
+- `domain/mocking/resolver.py` — domain mock types (`MockRule`, `Return`, `Error`,
+  `Sequence`), `UNMOCKED` sentinel, `MockResolver` (first-match-wins; deep-subset `when`
+  with nested recursion and lists-by-equality; catch-all; `sequence` one-per-call with the
+  last step repeating; per-resolver state so concurrent cases don't interfere; unmatched →
+  `UNMOCKED`, never raises; malformed args fall through `when` rules to a catch-all), and
+  `merge_mocks` (case replaces suite per tool).
+- **Closes AC-005's deferred thread:** this is the domain mock model the resolver needs.
+  Because `domain/` can't import the adapter's spec `MockRule`, these are distinct domain
+  value types; the spec→domain mapper is trivial and belongs to AC-009's runner wiring.
 
 ---
 
@@ -41,15 +42,20 @@ Scripted, offline `ModelGateway` for all downstream tests, TDD; gate green
 > Committed work, ready to start. Ordered by the EPIC-001 dependency graph.
 
 1. **AC-007** — Anthropic adapter (lifts `spikes/adapters.py`; live probe still outstanding)
-2. **AC-008** — mock resolver (defines the mock domain model; closes AC-005's deferred
-   tools/mocks wiring) · **AC-010** — assertion framework
-3. **AC-009** — the agent loop (depends on 007/008/010)
+2. **AC-010** — assertion framework (registry + the six structural assertions)
+3. **AC-009** — the agent loop (depends on 007/008/010; wires spec→domain mocks + tools)
 
 ---
 
 ## Shipped
 
 > Working in the codebase. Committed and tested.
+
+### AC-006 — FakeGateway (2026-07-31, PR #5)
+- `adapters/driven/providers/fake.py` (shipped) — `FakeGateway.script([...])` +
+  `text()`/`tool_call()`/`parallel()`/`fails()`; scripted responses in order, `.requests`
+  recording, deterministic `fake_call_N` ids, `ScriptExhausted` on over-run, no provider SDK.
+  Satisfies `ModelGateway`.
 
 ### AC-005 — Configuration resolution (2026-07-31, PR #4)
 - `domain/model/case.py` — frozen `ResolvedCase`; `adapters/driven/spec/config.py` —
