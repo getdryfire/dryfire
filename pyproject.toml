@@ -44,7 +44,7 @@ dev = [
 agentcheck = "agentcheck.adapters.driving.cli.app:app"
 
 [project.urls]
-Repository = "https://github.com/csaldana/agentcheck"
+Repository = "https://github.com/csmatar/agentcheck"
 
 [tool.hatch.version]
 path = "agentcheck/__about__.py"
