@@ -22,22 +22,17 @@ Update this file when work ships, phases change, or priorities shift.
 
 > Actively building. Code is being written.
 
-### AC-005 — Configuration resolution (implemented, uncommitted)
-Discovery + the precedence chain producing a fully-resolved `ResolvedCase`, TDD;
-gate green (100 tests, ruff, mypy --strict, 5/5 contracts).
-- `domain/model/case.py` — frozen `ResolvedCase` (identity + resolved settings +
-  system/input/expect). Domain-pure.
-- `adapters/driven/spec/config.py` — `BUILTIN_*` defaults, pure `resolve()`
-  (override > case > suite > project > built-in), `discover_config` (walks up;
-  none → None, not an error), `load_project_config`, `glob_suites` (relative to
-  the config dir).
-- **Decisions:** extended AC-003's `Case` with case-level `model`/`max_turns`/
-  `temperature`/`on_unmocked` (the ticket's `case > suite` level needs them; AC-003
-  under-modeled `Case`). Built-ins include `provider="anthropic"` + `model=
-  "claude-sonnet-4-6"` (SPEC §4.2 values) so a bare suite leaves no None. `tools`/
-  `mocks` are **not** in `ResolvedCase` — the domain can't hold spec `MockRule`; the
-  mock domain model is AC-008's, attached to the runner then. Concurrency is
-  run-level (`BUILTIN_CONCURRENCY` for AC-012), not per-case.
+### AC-006 — FakeGateway (implemented, uncommitted)
+Scripted, offline `ModelGateway` for all downstream tests, TDD; gate green
+(110 tests, ruff, mypy --strict, 5/5 contracts).
+- `adapters/driven/providers/fake.py` (shipped in-package) — `FakeGateway.script([...])`
+  with helpers `text()`, `tool_call()`, `parallel()`, `fails()`. Returns scripted responses
+  in order; `.requests` records what the loop sent; deterministic `fake_call_N` ids
+  (unique per run, stable across runs); `ScriptExhausted` names the call count; `fails()`
+  raises to exercise the provider_error path. Imports no provider SDK.
+- `tests/conftest.py` — `make_request` CompletionRequest factory fixture.
+- **Decision:** class is `FakeGateway` satisfying `ModelGateway` (ARCHITECTURE), not the
+  ticket's `FakeProvider`/`Provider` — consistent with the AC-002 port decision.
 
 ---
 
@@ -45,15 +40,22 @@ gate green (100 tests, ruff, mypy --strict, 5/5 contracts).
 
 > Committed work, ready to start. Ordered by the EPIC-001 dependency graph.
 
-1. **AC-006 — FakeProvider** (shipped in-package; scripted `ModelResponse` sequence,
-   records requests, deterministic ids)
-2. **AC-007/008/010 fan-out** per the sequencing diagram → AC-009 (loop)
+1. **AC-007** — Anthropic adapter (lifts `spikes/adapters.py`; live probe still outstanding)
+2. **AC-008** — mock resolver (defines the mock domain model; closes AC-005's deferred
+   tools/mocks wiring) · **AC-010** — assertion framework
+3. **AC-009** — the agent loop (depends on 007/008/010)
 
 ---
 
 ## Shipped
 
 > Working in the codebase. Committed and tested.
+
+### AC-005 — Configuration resolution (2026-07-31, PR #4)
+- `domain/model/case.py` — frozen `ResolvedCase`; `adapters/driven/spec/config.py` —
+  `resolve()` precedence chain (override > case > suite > project > built-in),
+  `discover_config`/`load_project_config`/`glob_suites`. Extended `Case` with case-level
+  settings; built-ins cover provider/model; tools/mocks deferred to the runner (AC-008/009).
 
 ### AC-004 — Spec loader with positioned errors (2026-07-31, PR #3)
 - `adapters/driven/spec/`: `positions.py` (Position/load_positioned/locate, lifted),
