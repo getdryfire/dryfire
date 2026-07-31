@@ -124,6 +124,13 @@ The six v0.1 assertions on the AC-010 framework (SPEC §6, §6.1), TDD; gate gre
 
 > Paused or deferred. Not abandoned.
 
+### `COMPARISON.md` — positioning + feature matrix (for AC-019)
+**Why parked:** it's release/README material — feature matrix by version and honest
+Promptfoo/Langfuse comparisons. Supersedes SPEC.md §1.4 (which wrongly claimed trajectory
+assertions as a Promptfoo gap).
+**Reactivate when:** AC-019 (release) — fold into the README; **re-verify every competitor
+row against promptfoo.dev first** (the doc says so, and their feature set moves fast).
+
 ### SPIKE-001 live probe run
 **Why paused:** needs `ANTHROPIC_API_KEY` (and OpenAI key for the v0.2 half).
 **Reactivate when:** before building AC-007 — the recorded shapes in `spikes/probe.py::CANNED`
