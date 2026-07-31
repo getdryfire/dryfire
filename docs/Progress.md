@@ -22,18 +22,22 @@ Update this file when work ships, phases change, or priorities shift.
 
 > Actively building. Code is being written.
 
-### AC-008 — Mock resolver (implemented, uncommitted)
-The mock **domain model** + resolver (SPEC §4.4), TDD; gate green (124 tests,
-ruff, mypy --strict, 5/5 contracts).
-- `domain/mocking/resolver.py` — domain mock types (`MockRule`, `Return`, `Error`,
-  `Sequence`), `UNMOCKED` sentinel, `MockResolver` (first-match-wins; deep-subset `when`
-  with nested recursion and lists-by-equality; catch-all; `sequence` one-per-call with the
-  last step repeating; per-resolver state so concurrent cases don't interfere; unmatched →
-  `UNMOCKED`, never raises; malformed args fall through `when` rules to a catch-all), and
-  `merge_mocks` (case replaces suite per tool).
-- **Closes AC-005's deferred thread:** this is the domain mock model the resolver needs.
-  Because `domain/` can't import the adapter's spec `MockRule`, these are distinct domain
-  value types; the spec→domain mapper is trivial and belongs to AC-009's runner wiring.
+### AC-010 — Assertion framework (implemented, uncommitted)
+Assertion protocol, result, self-registering registry (SPEC §6, §6.3), TDD; gate
+green (135 tests, ruff, mypy --strict, 5/5 contracts).
+- `domain/assertions/base.py` — `Assertion` protocol (`kind` + `evaluate`), `AssertionResult`,
+  `@register` (duplicate raises naming both), `safe_evaluate` (a raising assertion →
+  `passed=False` internal error, run continues), `DuplicateKind`.
+- `domain/assertions/registry.py` — `known_kinds()`/`get()`/`validate_args()`, seeded with the
+  six v0.1 kind names (`_V01_KINDS`) so spec validation recognises them before AC-011.
+- Rewired `spec/loader.py` from its local `KNOWN_ASSERTIONS` to `known_kinds()`, and added
+  arg-validation for *registered* kinds surfacing as positioned spec errors — AC-004's loader
+  tests + golden pass unmodified (six seeded-but-unregistered → arg-check skipped).
+- **Decisions:** `Args` is a class-level registration convention (validated dynamically), kept
+  **out** of the `Assertion` protocol so `safe_evaluate`'s minimal assertions conform and the
+  protocol stays about the runtime interface — structural conformance proven under
+  `mypy --strict` on the tests. `@register` reads `cls.kind`. A `registry_isolation` conftest
+  fixture snapshots/restores the registry so toy registrations don't leak.
 
 ---
 
@@ -41,8 +45,9 @@ ruff, mypy --strict, 5/5 contracts).
 
 > Committed work, ready to start. Ordered by the EPIC-001 dependency graph.
 
-1. **AC-007** — Anthropic adapter (lifts `spikes/adapters.py`; live probe still outstanding)
-2. **AC-010** — assertion framework (registry + the six structural assertions)
+1. **AC-011** — the six structural assertions on top of the framework (six small files + a
+   registry import; may drop the `_V01_KINDS` seed once all six register)
+2. **AC-007** — Anthropic adapter (lifts `spikes/adapters.py`; live probe still outstanding)
 3. **AC-009** — the agent loop (depends on 007/008/010; wires spec→domain mocks + tools)
 
 ---
@@ -50,6 +55,11 @@ ruff, mypy --strict, 5/5 contracts).
 ## Shipped
 
 > Working in the codebase. Committed and tested.
+
+### AC-008 — Mock resolver (2026-07-31, PR #6)
+- `domain/mocking/resolver.py` — domain mock types (MockRule/Return/Error/Sequence),
+  `UNMOCKED`, `MockResolver` (first-match-wins, deep-subset `when`, sequence with per-resolver
+  state, malformed→catch-all), `merge_mocks`. Closed AC-005's deferred mock-model thread.
 
 ### AC-006 — FakeGateway (2026-07-31, PR #5)
 - `adapters/driven/providers/fake.py` (shipped) — `FakeGateway.script([...])` +

@@ -30,12 +30,7 @@ from ruamel.yaml.comments import CommentedMap, CommentedSeq
 from agentcheck.adapters.driven.spec.errors import PYDANTIC_MESSAGES, SpecError
 from agentcheck.adapters.driven.spec.models import Suite
 from agentcheck.adapters.driven.spec.positions import Position, load_positioned, locate
-
-# The v0.1 assertion kinds. AC-010 replaces this with the real self-registering
-# assertion registry (SPEC §6.3); until then it is a static stand-in.
-KNOWN_ASSERTIONS = frozenset(
-    {"calls_tool", "not_calls_tool", "tool_args", "call_order", "max_turns", "final_contains"}
-)
+from agentcheck.domain.assertions.registry import known_kinds, validate_args
 
 _ENV_RE = re.compile(r"\$\{([A-Za-z_][A-Za-z0-9_]*)\}")
 
@@ -149,26 +144,46 @@ def check_assertion_kinds(root: Any, path: Path, errors: list[SpecError]) -> Non
         expect = case.get("expect")
         if not isinstance(expect, CommentedSeq):
             continue
+        known = known_kinds()
         for ei, entry in enumerate(expect):
             if not isinstance(entry, CommentedMap) or len(entry) != 1:
                 continue
             kind = next(iter(entry.keys()))
-            if kind in KNOWN_ASSERTIONS:
-                continue
-            close = difflib.get_close_matches(kind, sorted(KNOWN_ASSERTIONS), n=1, cutoff=0.4)
-            errors.append(
-                SpecError(
-                    path=path,
-                    loc=("cases", ci, "expect", ei, kind),
-                    message=f"unknown assertion kind: {kind!r}",
-                    position=Position.from_lc(entry.lc.key(kind)),
-                    hint=(
-                        f"did you mean {close[0]!r}?"
-                        if close
-                        else f"valid kinds: {', '.join(sorted(KNOWN_ASSERTIONS))}"
-                    ),
+            loc = ("cases", ci, "expect", ei, kind)
+            if kind not in known:
+                close = difflib.get_close_matches(kind, sorted(known), n=1, cutoff=0.4)
+                errors.append(
+                    SpecError(
+                        path=path,
+                        loc=loc,
+                        message=f"unknown assertion kind: {kind!r}",
+                        position=Position.from_lc(entry.lc.key(kind)),
+                        hint=(
+                            f"did you mean {close[0]!r}?"
+                            if close
+                            else f"valid kinds: {', '.join(sorted(known))}"
+                        ),
+                    )
                 )
-            )
+                continue
+            # Known kind: if a real assertion is registered, validate its args so
+            # malformed arguments are a spec error, not a runtime failure (AC-010).
+            try:
+                validate_args(kind, entry[kind])
+            except ValidationError as exc:
+                detail = exc.errors()[0]
+                where = ".".join(str(seg) for seg in detail["loc"]) or "<args>"
+                errors.append(
+                    SpecError(
+                        path=path,
+                        loc=loc,
+                        message=f"invalid arguments for {kind!r}: {where}: {detail['msg']}",
+                        position=(
+                            Position.from_lc(entry.lc.value(kind))
+                            or Position.from_lc(entry.lc.key(kind))
+                        ),
+                    )
+                )
 
 
 # -- Main pass + orchestration ----------------------------------------------

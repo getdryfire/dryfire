@@ -1,11 +1,25 @@
 """Shared test fixtures."""
 
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
 
 import pytest
 
 from agentcheck.application.ports.model_gateway import CompletionRequest, ModelParams
 from agentcheck.domain.model.message import Message
+
+
+@pytest.fixture
+def registry_isolation() -> Iterator[None]:
+    """Snapshot and restore the assertion registry so tests that register toy
+    assertions don't leak kinds into other tests."""
+    from agentcheck.domain.assertions import base
+
+    saved = dict(base._REGISTRY)
+    try:
+        yield
+    finally:
+        base._REGISTRY.clear()
+        base._REGISTRY.update(saved)
 
 
 @pytest.fixture
