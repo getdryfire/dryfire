@@ -184,6 +184,31 @@ class TestCase:
             Case.model_validate({"name": "c", "input": "x", "expect": [], "retries": 3})
         assert exc.value.errors()[0]["type"] == "extra_forbidden"
 
+    def test_case_level_setting_overrides_are_accepted_and_default_none(self) -> None:
+        # AC-005 needs a case > suite precedence level, so cases may override
+        # these settings; they are optional and absent by default.
+        bare = Case.model_validate({"name": "c", "input": "x", "expect": []})
+        assert bare.model is None
+        assert bare.max_turns is None
+        assert bare.temperature is None
+        assert bare.on_unmocked is None
+
+        overridden = Case.model_validate(
+            {
+                "name": "c",
+                "input": "x",
+                "expect": [],
+                "model": "claude-opus-4-8",
+                "max_turns": 3,
+                "temperature": 0.5,
+                "on_unmocked": "null",
+            }
+        )
+        assert overridden.model == "claude-opus-4-8"
+        assert overridden.max_turns == 3
+        assert overridden.temperature == 0.5
+        assert overridden.on_unmocked == "null"
+
 
 class TestSuite:
     def test_full_spec_4_3_example_validates(self) -> None:

@@ -126,6 +126,34 @@ override needed.
 `str(fixture_path)` with the basename before comparing to the golden so the test is
 location-independent.
 
+## Config resolution (AC-005)
+
+### The precedence chain needs case-level settings
+The ticket's chain is override > case > suite > project > built-in, but AC-003's `Case`
+had no settings fields (only `Suite` did) — so "case overrides suite" was untestable.
+Extended `Case` with optional `model`/`max_turns`/`temperature`/`on_unmocked`. Additive and
+safe: `extra="forbid"` still rejects unknown keys and existing valid suites are unaffected.
+
+### Built-ins must cover provider + model, not just the numeric ones
+The ticket enumerates `max_turns`/`temperature`/`on_unmocked`/`concurrency`, but "no None
+fields remaining" + "a bare suite must be runnable" require `provider` and `model` built-ins
+too. Used SPEC §4.2's canonical values (`anthropic`, `claude-sonnet-4-6`).
+
+### ResolvedCase (domain) cannot carry spec MockRule
+`domain/` may import only pydantic + stdlib (contract 3), so `ResolvedCase` can't hold the
+adapter-layer `MockRule`/`ToolSpec`. It carries settings + identity + system/input/expect;
+tools/mocks attach at the runner once AC-008 defines the mock domain model. Concurrency is
+run-level, resolved by the scheduler (AC-012), not a `ResolvedCase` field.
+
+### Pydantic frozen assignment raises `ValidationError` (not a plain exception)
+`ConfigDict(frozen=True)` + attribute set → `pydantic.ValidationError` (`frozen_instance`).
+Assert that specific type; ruff B017 forbids `pytest.raises(Exception)`.
+
+### tmp_path discovery: compare with `.samefile`
+macOS `tmp_path` lives under a `/var → /private/var` symlink, so a `discover_config` that
+`.resolve()`s the start dir returns the `/private/var` form. Assert `found.samefile(expected)`
+rather than `==` to stay symlink-agnostic.
+
 ## Session Notes
 
 ### 2026-07-30 — AC-001 + toolchain

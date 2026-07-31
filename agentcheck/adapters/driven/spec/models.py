@@ -63,12 +63,20 @@ class MockRule(_StrictModel):
 class Case(_StrictModel):
     """One executable scenario. `input` is a single user message (string) or a
     multi-turn setup (list of role/content dicts). Case-level `mocks` merge over
-    the suite's at resolution time (AC-005); the model just carries them."""
+    the suite's at resolution time (AC-005); the model just carries them.
+
+    Overridable settings (`model`, `max_turns`, `temperature`, `on_unmocked`) are
+    the highest-precedence spec source and are ``| None`` until resolved (AC-005).
+    """
 
     name: str
     input: str | list[dict[str, Any]]
     expect: list[dict[str, Any]]
     mocks: dict[str, list[MockRule]] | None = None
+    model: str | None = None
+    max_turns: int | None = None
+    temperature: float | None = None
+    on_unmocked: OnUnmocked | None = None
 
 
 class Suite(_StrictModel):
