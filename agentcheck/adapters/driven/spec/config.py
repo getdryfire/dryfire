@@ -22,6 +22,7 @@ from typing import Any
 from agentcheck.adapters.driven.spec.models import Case, Defaults, ProjectConfig, Suite
 from agentcheck.adapters.driven.spec.positions import load_positioned
 from agentcheck.domain.model.case import ResolvedCase
+from agentcheck.domain.model.tooling import ToolDef
 
 CONFIG_FILENAME = "agentcheck.yaml"
 
@@ -93,6 +94,10 @@ def resolve(
         system=suite.system,
         input=case.input,
         expect=case.expect,
+        tools=[
+            ToolDef(name=t.name, description=t.description, input_schema=t.input_schema)
+            for t in suite.tools
+        ],
     )
 
 

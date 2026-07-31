@@ -26,6 +26,17 @@ def _make(**over: object) -> ResolvedCase:
     return ResolvedCase(**fields)  # type: ignore[arg-type]
 
 
+def test_tools_default_to_empty() -> None:
+    assert _make().tools == []
+
+
+def test_tools_are_carried() -> None:
+    from agentcheck.domain.model.tooling import ToolDef
+
+    tool = ToolDef(name="lookup_order", input_schema={"type": "object"})
+    assert _make(tools=[tool]).tools == [tool]
+
+
 def test_carries_identity_and_resolved_settings() -> None:
     rc = _make()
     assert rc.suite_name == "refund_agent"

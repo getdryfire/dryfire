@@ -276,6 +276,30 @@ Added `.env` / `.env.*` (keep `.env.example`) to `.gitignore`, verified with
 `set -a; source .env; set +a` (shell state doesn't persist across tool calls) and never echo
 the value.
 
+## The agent loop (AC-009)
+
+### Frozen Trace/Turn → build after resolving, not record-then-attach
+SPEC §5's pseudocode records the Turn, then attaches tool results. Our `Turn` is frozen, so
+`run_case` resolves the tool calls first and constructs the Turn once with its results. On an
+unmocked-error break, the Turn carries the results resolved before the offending call.
+Equivalent to the spec; no spec change needed.
+
+### `request_messages` copies are cheap because Messages are frozen
+The v0.2-cassette invariant ("each turn's `request_messages` is a copy taken before mutation")
+is satisfied with a shallow `list(messages)` — the Message values never change, only the list
+grows, so a fresh list per turn is fully isolated.
+
+### The loop imports the port, never a concrete gateway
+`application/loop.py` takes `provider: ModelGateway` and imports only that port (+ domain), so
+import-linter stays green and tests drive `FakeGateway`. `run_case` never raises for a normal
+outcome — provider exceptions are caught into `Trace.error` with `provider_error`.
+
+### `tools` belongs on ResolvedCase; mocks don't
+Closing AC-005's deferred thread: `tools` are domain `ToolDef`, so `ResolvedCase` can carry them
+(populated in `resolve()` via ToolSpec→ToolDef). Mocks stay a passed-in `MockResolver` because
+their rules map from the adapter's spec `MockRule` — that spec→domain mapping is composition/
+AC-012, not the loop.
+
 ## Session Notes
 
 ### 2026-07-30 — AC-001 + toolchain
