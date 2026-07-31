@@ -173,6 +173,30 @@ across runs" — which is what makes golden/cassette tests reproducible.
 ModelGateway)` call site plus `uv run mypy --strict tests/.../test_fake_gateway.py`. Same
 pattern as AC-002's port stub.
 
+## Mock resolver (AC-008)
+
+### Two MockRule types is correct, not duplication
+The spec `MockRule` (`adapters/driven/spec/models.py`) is a *parse model* — YAML `return`
+alias, `extra="forbid"`, one-of validation. The domain `MockRule` (`domain/mocking/`) is a
+*runtime value* — `when` + one concrete `Outcome` (Return/Error/Sequence). The domain
+resolver can't import the adapter model (import contract 2/3), and the two serve different
+jobs, so the split is right. The spec→domain mapper lives at the runner seam (AC-009).
+
+### Sequence state lives in the resolver, not the rule
+Rules are frozen values; the resolver holds `dict[(tool, rule_index) → next_pos]`. A fresh
+resolver per case means concurrent cases (AC-012) never share sequence state. `min(pos, len-1)`
+makes the last step repeat once exhausted.
+
+### malformed_arguments can only match a catch-all
+A `ToolCall` with `malformed_arguments` set skips every `when` rule (it has no parseable args
+to subset-match) but still matches a `when=None` catch-all. Documented in `_matches`.
+
+### When you implement ahead of the test, mutation-check it
+Bundling `Sequence`/`merge_mocks` into the first module write meant those tests passed on
+first run — proving nothing. Temporarily broke the sequence advance (`pos+1` → `pos`),
+confirmed the test failed, restored. Cheap way to prove a test has teeth after an
+out-of-order implementation.
+
 ## Session Notes
 
 ### 2026-07-30 — AC-001 + toolchain
