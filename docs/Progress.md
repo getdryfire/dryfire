@@ -22,21 +22,21 @@ Update this file when work ships, phases change, or priorities shift.
 
 > Actively building. Code is being written.
 
-### AC-011 — Structural assertions (implemented, uncommitted)
-The six v0.1 assertions on the AC-010 framework (SPEC §6, §6.1), TDD; gate green
-(170 tests, ruff, mypy --strict, 5/5 contracts).
-- `domain/assertions/structural.py` — `calls_tool` (bare name or `{tool, count}`),
-  `not_calls_tool` (names turn + args), `tool_args` (deep subset; malformed args named with
-  the raw string), `call_order` (subsequence), `max_turns`, `final_contains`
-  (case-insensitive, list = all present, names which are missing).
-- `domain/assertions/trajectory.py` — `render_trajectory` (`a → b → (termination)`) and
-  `render_failure` (the ✗/expected/actual block). SPEC §6 example pinned byte-for-byte
-  (`tests/fixtures/assertions/spec6_not_calls_tool.txt`).
-- `registry.build(kind, raw)` uniform constructor; `registry` imports `structural` so the six
-  self-register; dropped the `_V01_KINDS` seed (now purely registration-driven).
-- **Reuse:** promoted `resolver._matches_when` → public `matches_subset`, shared by the mock
-  resolver's `when` and `tool_args` so they can't drift. Updated one AC-010 test whose premise
-  (calls_tool unregistered) the six now change.
+### AC-007 — Anthropic adapter (implemented, uncommitted)
+Production Anthropic Messages adapter (SPEC §3.1, §3.3), TDD; gate green
+(185 tests + 1 live-skipped, ruff, mypy --strict, 5/5 contracts).
+- `adapters/driven/providers/anthropic.py` — `to_wire`/`from_wire` (pure module functions, SDK-free)
+  + `AnthropicGateway` (lazy SDK import in `__init__`; missing → actionable install-command error;
+  `AsyncAnthropic` in `complete()`, times the call). Uses AC-002's `map_stop_reason`.
+- **Blocker resolved:** ran `spikes/probe.py --provider anthropic` **live** (with the user's key
+  via a gitignored `.env`) and captured **real** payloads → `tests/fixtures/anthropic/*.json`
+  (single / parallel / text-only / max_tokens). Criterion 8 satisfied; the outstanding SPIKE-001
+  live probe is now done.
+- Offline unit tests for all five payload classes + parallel-order both directions + verbatim
+  `raw` echo (mutation-verified) + `is_error` on the wire + unknown stop_reason→error + missing-SDK
+  error. `@pytest.mark.live` two-turn exchange passed live (4.5s), skips without `ANTHROPIC_API_KEY`.
+- **Reality vs spike:** the real single-call response carries **no** text block (spike assumed one),
+  and error-then-retry returns `end_turn` text, not a tool retry. Real fixtures capture this.
 
 ---
 
@@ -44,15 +44,20 @@ The six v0.1 assertions on the AC-010 framework (SPEC §6, §6.1), TDD; gate gre
 
 > Committed work, ready to start. Ordered by the EPIC-001 dependency graph.
 
-1. **AC-007** — Anthropic adapter (lifts `spikes/adapters.py`; live probe still outstanding)
-2. **AC-009** — the agent loop (last loop prerequisite; wires config→gateway→mocks→assertions
-   via `registry.build`, `merge_mocks`, `MockResolver`, `safe_evaluate`)
+1. **AC-009 — the agent loop** — ALL prerequisites now done (AC-007 ✓, AC-008 ✓, AC-010 ✓).
+   Wires config→gateway→mocks→assertions via `to_wire`/`from_wire`, `merge_mocks`, `MockResolver`,
+   `registry.build`, `safe_evaluate`. The heart of the product.
 
 ---
 
 ## Shipped
 
 > Working in the codebase. Committed and tested.
+
+### AC-011 — Structural assertions (2026-07-31, PR #8)
+- `domain/assertions/structural.py` (the six: calls_tool/not_calls_tool/tool_args/call_order/
+  max_turns/final_contains) + `trajectory.py` (render_trajectory + render_failure). SPEC §6 failure
+  pinned byte-for-byte. `registry.build`; promoted shared `matches_subset`.
 
 ### AC-010 — Assertion framework (2026-07-31, PR #7)
 - `domain/assertions/base.py` (Assertion protocol, AssertionResult, `@register`, `safe_evaluate`,
@@ -131,10 +136,11 @@ assertions as a Promptfoo gap).
 **Reactivate when:** AC-019 (release) — fold into the README; **re-verify every competitor
 row against promptfoo.dev first** (the doc says so, and their feature set moves fast).
 
-### SPIKE-001 live probe run
-**Why paused:** needs `ANTHROPIC_API_KEY` (and OpenAI key for the v0.2 half).
-**Reactivate when:** before building AC-007 — the recorded shapes in `spikes/probe.py::CANNED`
-must be confirmed against reality (`SPIKE-REPORT.md` §"The one thing still open").
+### ~~SPIKE-001 live probe run~~ — DONE (AC-007)
+Ran live against Anthropic; parallel calls confirmed elicited and order-preserved. Real
+payloads captured to `tests/fixtures/anthropic/`. The OpenAI half remains for v0.2 (needs an
+OpenAI key). The spike's `CANNED` dict was left as-is (frozen reference); AC-007's fixtures are
+the source of truth.
 
 ### `make smoke` — clean-machine onboarding test
 **Why paused:** `agentcheck init` doesn't exist yet (AC-016).
