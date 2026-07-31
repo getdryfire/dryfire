@@ -154,6 +154,25 @@ macOS `tmp_path` lives under a `/var → /private/var` symlink, so a `discover_c
 `.resolve()`s the start dir returns the `/private/var` form. Assert `found.samefile(expected)`
 rather than `==` to stay symlink-agnostic.
 
+## FakeGateway (AC-006)
+
+### Terse script API: one helper reused two ways
+`tool_call(name, args)` returns a call spec that works both as a standalone one-call turn in
+`script([...])` and as an argument to `parallel(...)`. `text()`/`fails()` return whole-turn
+entries. `FakeGateway.script([...])` is the classmethod constructor; `complete()` pops the
+next entry per call. Keeps the surface small while covering text / single / parallel / failure.
+
+### Deterministic tool-call ids
+A per-instance counter yields `fake_call_0`, `fake_call_1`, … in call order across the whole
+run. Two gateways with the same script produce identical ids — "unique within a run, stable
+across runs" — which is what makes golden/cassette tests reproducible.
+
+### Verifying protocol conformance under mypy
+`make typecheck` only scopes to `agentcheck/`, and nothing there binds a `FakeGateway` to a
+`ModelGateway`-typed slot, so the conformance check lives in the test: a `_accepts(g:
+ModelGateway)` call site plus `uv run mypy --strict tests/.../test_fake_gateway.py`. Same
+pattern as AC-002's port stub.
+
 ## Session Notes
 
 ### 2026-07-30 — AC-001 + toolchain
