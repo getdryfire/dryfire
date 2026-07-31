@@ -300,6 +300,60 @@ Closing AC-005's deferred thread: `tools` are domain `ToolDef`, so `ResolvedCase
 their rules map from the adapter's spec `MockRule` — that spec→domain mapping is composition/
 AC-012, not the loop.
 
+## Concurrent scheduler (AC-012)
+
+### The scheduler evaluates assertions; it's the "run a case fully" use case
+ARCHITECTURE §6.1 `CaseCompleted` carries `Trace` **and pass/fail**, and AC-013's reporter depends
+on AC-011 assertion results with no ticket between them to run assertions. So `run_suites` builds
+each `expect` entry via `registry.build(kind, entry[kind])` + `safe_evaluate` and sets
+`passed = all(a.passed)`. Termination-driven failure (provider_error, max_turns_exceeded) and exit
+codes are the reporter/CLI's job (AC-013/AC-015), kept out of the scheduler's `passed`.
+
+### The spec→domain mock mapper can't live in the scheduler — layering forbids it
+The scheduler is `application/` (ARCHITECTURE §12), which may import domain + ports only. The
+adapter spec `MockRule` is off-limits, so `run_suites` takes **pre-planned cases** (`PlannedCase`
+= `ResolvedCase` + already-mapped/merged domain mocks). The mapper + `merge_mocks` moved to AC-015
+composition (Progress.md updated). Progress.md had pencilled the mapper into AC-012; the import
+contract is dispositive.
+
+### Worker-pool over a shared iterator bounds *task creation*, not just concurrency
+`gather` over one-task-per-case parks N tasks on a semaphore — bounded by case count. Instead spawn
+exactly `concurrency` worker tasks that pull from a shared `iter(range(n))`. `next()` has no `await`
+between pulls, so in single-threaded asyncio no two workers ever get the same index — no lock
+needed. This is what makes "50 cases at 4 without unbounded task creation" literally true (4 tasks,
+not 50). Results written by index → spec order for free.
+
+### Fail-fast = cancel siblings + `gather(return_exceptions=True)`
+First non-passing case calls `.cancel()` on the other worker tasks (skipping
+`asyncio.current_task()`), then returns. `gather(..., return_exceptions=True)` collects the
+resulting `CancelledError`s instead of propagating. Cancelled workers never write their result →
+`None` → dropped → fewer results than cases → `complete=False`. Critically, `_process_case` must
+`except asyncio.CancelledError: raise` **before** its generic `except Exception`, or cancellation
+gets swallowed into a bogus `CaseResult` and the run hangs. A 30s slow-case delay makes the test
+prove cancellation: it passes in ~0s (cancelled), would hang 30s if fail-fast were a no-op.
+
+### Concurrency-safe fakes are request-driven, not globally scripted
+`FakeGateway.script([...])` pops entries from one shared list — under concurrency, which case gets
+which entry is nondeterministic. For scheduler tests, write gateways that derive their response
+from the *request* (message count → turn index; first user message → case id). Then each case's
+behaviour is independent of interleaving. A `_DelayGateway` that `await asyncio.sleep`s a per-request
+delay + records max in-flight + completion order covers bounded-concurrency and spec-order-vs-
+completion-order in one helper.
+
+### Determinism excludes `duration_ms` (Clock port still deferred)
+`run_case` reads `time.monotonic()` directly (no Clock port yet — ARCHITECTURE lists it as new
+work), so `Trace.duration_ms` is non-deterministic. The "two identical runs are equal" test compares
+an `_essence()` projection (names, order, terminations, tool trajectories, assertion pass/fail),
+not raw traces. The scheduler itself adds no other jitter — results are index-ordered, not
+completion-ordered.
+
+### Testing an "unexpected raise" for the isolation criterion
+`run_case` catches every provider exception into `provider_error`, so a failing gateway does **not**
+exercise scheduler-level isolation. A malformed `expect` entry (`{"__nope__": 1}`) makes
+`registry.build` raise `KeyError` *inside* the scheduler (assertions are built per-case, not
+upfront, precisely so a bad entry isolates rather than aborting the run) — the realistic injectable
+raise for "one case raises, the other 9 complete."
+
 ## Session Notes
 
 ### 2026-07-30 — AC-001 + toolchain
