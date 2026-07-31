@@ -197,6 +197,30 @@ first run — proving nothing. Temporarily broke the sequence advance (`pos+1` �
 confirmed the test failed, restored. Cheap way to prove a test has teeth after an
 out-of-order implementation.
 
+## Assertion framework (AC-010)
+
+### Keep registration conventions OUT of the Protocol
+`Args` (each assertion's pydantic arg model) started in the `Assertion` protocol, which broke
+`safe_evaluate` — its minimal test assertions only implement `evaluate`, so mypy flagged them
+as "missing Args". The protocol should describe the *runtime interface* (`kind` + `evaluate`);
+`Args` is a class-level registration convention accessed dynamically in `validate_args`
+(`getattr(cls, "Args", None)`). After narrowing the protocol, toy classes satisfy it
+structurally (no inheritance) and `mypy --strict` on the tests is clean — the actual proof of
+"structural, not inheritance" (criterion 6). `make typecheck` only covers `agentcheck/`, so
+run mypy on the test files to verify conformance.
+
+### Seed known-kind names to bridge a framework→implementation gap
+AC-010 (framework) must keep AC-004's loader tests green, but the six real assertions are
+AC-011. Fix: `registry._V01_KINDS` seeds the six *names* so `known_kinds()` recognises them
+for spec validation, while `@register` adds real classes for `get`/`validate_args`. The loader
+validates args only for *registered* kinds, so seeded-but-unregistered kinds are accepted
+without arg-checking — AC-004 unaffected. AC-011 can drop the seed once all six register.
+
+### Isolate the global registry in tests
+`@register` mutates a module-global dict. A `registry_isolation` conftest fixture snapshots and
+restores it (`.clear()`/`.update()` in place, since `registry.py` holds a by-reference alias)
+so toy registrations in one test don't leak into another (or collide as duplicates).
+
 ## Session Notes
 
 ### 2026-07-30 — AC-001 + toolchain
