@@ -22,21 +22,23 @@ Update this file when work ships, phases change, or priorities shift.
 
 > Actively building. Code is being written.
 
-### AC-007 — Anthropic adapter (implemented, uncommitted)
-Production Anthropic Messages adapter (SPEC §3.1, §3.3), TDD; gate green
-(185 tests + 1 live-skipped, ruff, mypy --strict, 5/5 contracts).
-- `adapters/driven/providers/anthropic.py` — `to_wire`/`from_wire` (pure module functions, SDK-free)
-  + `AnthropicGateway` (lazy SDK import in `__init__`; missing → actionable install-command error;
-  `AsyncAnthropic` in `complete()`, times the call). Uses AC-002's `map_stop_reason`.
-- **Blocker resolved:** ran `spikes/probe.py --provider anthropic` **live** (with the user's key
-  via a gitignored `.env`) and captured **real** payloads → `tests/fixtures/anthropic/*.json`
-  (single / parallel / text-only / max_tokens). Criterion 8 satisfied; the outstanding SPIKE-001
-  live probe is now done.
-- Offline unit tests for all five payload classes + parallel-order both directions + verbatim
-  `raw` echo (mutation-verified) + `is_error` on the wire + unknown stop_reason→error + missing-SDK
-  error. `@pytest.mark.live` two-turn exchange passed live (4.5s), skips without `ANTHROPIC_API_KEY`.
-- **Reality vs spike:** the real single-call response carries **no** text block (spike assumed one),
-  and error-then-retry returns `end_turn` text, not a tool retry. Real fixtures capture this.
+### AC-009 — The agent loop (implemented, uncommitted)
+`run_case` — the core of the product (SPEC §5), TDD; gate green (201 tests + 1
+live-skipped, ruff, mypy --strict, 5/5 contracts).
+- `application/loop.py` — `run_case(resolved_case, provider, resolver) -> Trace`. Drives the
+  tool-calling loop with deterministic mocks; parallel calls resolved in call order; per-turn
+  `request_messages` copies (load-bearing for v0.2 cassettes); usage summed. **Never raises for
+  a normal outcome** — max_turns_exceeded / provider_error / unmocked_tool are recorded
+  terminations. Application layer: imports domain + the `ModelGateway` port only, never a concrete
+  adapter (tests drive `FakeGateway`).
+- All 12 acceptance rows are individually named tests + N-provider-calls; no row was awkward
+  (the Trace model held). `_StaticGateway` covers the max_tokens/usage-sum scenarios FakeGateway's
+  helpers don't.
+- **Wiring:** added `tools: list[ToolDef]` to `ResolvedCase` and populated it in `resolve()`
+  (ToolSpec→ToolDef) — closes the tools half of AC-005's deferred thread. The mocks half is the
+  passed-in `MockResolver`; the spec→domain mock mapper is composition/AC-012.
+- No SPEC §5 deviation: the ticket's `run_case(resolved_case, …)` signature supersedes §5's
+  `case+suite`; the frozen Turn is built after resolving (vs §5's record-then-attach) — equivalent.
 
 ---
 
@@ -44,15 +46,21 @@ Production Anthropic Messages adapter (SPEC §3.1, §3.3), TDD; gate green
 
 > Committed work, ready to start. Ordered by the EPIC-001 dependency graph.
 
-1. **AC-009 — the agent loop** — ALL prerequisites now done (AC-007 ✓, AC-008 ✓, AC-010 ✓).
-   Wires config→gateway→mocks→assertions via `to_wire`/`from_wire`, `merge_mocks`, `MockResolver`,
-   `registry.build`, `safe_evaluate`. The heart of the product.
+1. **AC-012** — concurrent case scheduler (asyncio + semaphore; spec-order results). Builds the
+   `MockResolver` per case (spec→domain mock mapper) and calls `run_case`.
+2. **AC-013 / AC-014** — terminal + JSON reporters (event sinks over the Trace).
+3. **AC-015 / AC-016 / AC-017 / AC-018 / AC-019** — CLI, init scaffold, cost, dogfood, release.
 
 ---
 
 ## Shipped
 
 > Working in the codebase. Committed and tested.
+
+### AC-007 — Anthropic adapter (2026-07-31, PR #10)
+- `adapters/driven/providers/anthropic.py` — `to_wire`/`from_wire` (pure, SDK-free) +
+  `AnthropicGateway` (lazy SDK import, `AsyncAnthropic`). Fixtures captured from REAL live payloads
+  (criterion 8); live two-turn test passes, skips without a key. Closed the SPIKE-001 live probe.
 
 ### AC-011 — Structural assertions (2026-07-31, PR #8)
 - `domain/assertions/structural.py` (the six: calls_tool/not_calls_tool/tool_args/call_order/

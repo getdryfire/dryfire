@@ -88,6 +88,14 @@ class TestBuiltinDefaults:
         )
         assert rc.temperature == 0.0
 
+    def test_tools_are_converted_from_suite_specs(self) -> None:
+        suite = _suite(
+            tools=[{"name": "lookup_order", "input_schema": {"type": "object"}}]
+        )
+        rc = resolve(suite=suite, case=_case(), suite_path=_PATH)
+        assert [t.name for t in rc.tools] == ["lookup_order"]
+        assert rc.tools[0].input_schema == {"type": "object"}
+
     def test_identity_and_content_are_carried(self) -> None:
         rc = resolve(
             suite=_suite(name="refund", system="be nice"),

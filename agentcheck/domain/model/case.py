@@ -11,6 +11,8 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict
 
+from agentcheck.domain.model.tooling import ToolDef
+
 
 class ResolvedCase(BaseModel):
     model_config = ConfigDict(frozen=True)
@@ -31,3 +33,4 @@ class ResolvedCase(BaseModel):
     system: str | None
     input: str | list[dict[str, Any]]
     expect: list[dict[str, Any]]
+    tools: list[ToolDef] = []
