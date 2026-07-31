@@ -22,17 +22,21 @@ Update this file when work ships, phases change, or priorities shift.
 
 > Actively building. Code is being written.
 
-### AC-002 — Provider-neutral domain types (implemented, uncommitted)
-Built TDD; full gate green (34 tests, ruff, mypy --strict, 5/5 import contracts).
-- `domain/model/tooling.py` (ToolDef, ToolCall+`malformed_arguments`, ToolResult),
-  `message.py` (Usage, Message+`raw`, ModelResponse), `stop_reason.py`
-  (StopReason + `map_stop_reason` §3.3 table), `trace.py` (Turn, Trace with
-  `tool_calls()`/`tool_names()` and a finite-cost validator)
-- Port: `application/ports/model_gateway.py` — `ModelGateway` + `CompletionRequest`
-  + `ModelParams`. **Decision:** followed ARCHITECTURE §5.1 (Gateway shape,
-  `complete(request)`, no `cost()`) over SPEC §3.1's `Provider`; cost → PricingCatalog
-  (AC-017). AC-002 acceptance criterion 5 adjusted to the ModelGateway stub accordingly.
-- Files placed per ARCHITECTURE §12, not the ticket's SPEC §8 paths.
+### AC-003 — Spec models (implemented, uncommitted)
+Pydantic schema for suite + project-config files (SPEC §4), TDD; gate green
+(57 tests, ruff, mypy --strict, 5/5 contracts).
+- `adapters/driven/spec/models.py` — `ProjectConfig`, `Defaults`, `CassetteConfig`,
+  `Suite`, `Case`, `MockRule`, `ToolSpec`. All `extra="forbid"`; overridable
+  defaults are `| None` (resolution deferred to AC-005); `expect` entries stay
+  `list[dict]` (assertion-kind check is AC-004's pre-pass).
+- `MockRule`: `return`→`.returns` alias (`populate_by_name`); exactly-one of
+  return/error/sequence via `model_fields_set` (correct even for `return: null`).
+- **Interpretation:** criterion 1 ("§4.3 example validates") is tested with the
+  `$ref` tool resolved inline, since the ticket says a raw `$ref` reaching these
+  models is a caller bug (AC-004 resolves refs first).
+- Drive-by: removed dead `protected_namespaces=()` from AC-002's ModelParams/
+  CompletionRequest (verified no-op under pydantic 2.13; a field named `model`
+  does not trigger the `model_` namespace warning).
 
 ---
 
@@ -40,14 +44,24 @@ Built TDD; full gate green (34 tests, ruff, mypy --strict, 5/5 import contracts)
 
 > Committed work, ready to start. Ordered by the EPIC-001 dependency graph.
 
-1. **AC-003 → AC-005** — spec models, loader with positioned errors, project config
-2. **AC-006 — FakeProvider**, then the AC-007/008/010 fan-out per the sequencing diagram
+1. **AC-004** — spec loader with positioned errors (three-stage pipeline, lifts
+   `spikes/locate.py`)
+2. **AC-005** — project config + default resolution
+3. **AC-006 — FakeProvider**, then the AC-007/008/010 fan-out per the sequencing diagram
 
 ---
 
 ## Shipped
 
 > Working in the codebase. Committed and tested.
+
+### AC-002 — Provider-neutral domain types (2026-07-31, PR #1)
+- `domain/model/`: tooling (ToolDef, ToolCall+`malformed_arguments`, ToolResult),
+  message (Usage, Message+`raw`, ModelResponse), stop_reason (`map_stop_reason` §3.3),
+  trace (Turn, Trace with `tool_calls()`/`tool_names()` + finite-cost validator)
+- Port `application/ports/model_gateway.py` — `ModelGateway` + `CompletionRequest` +
+  `ModelParams`, following ARCHITECTURE §5.1 over SPEC §3.1 (no `cost()`; pricing is
+  AC-017). Files per ARCHITECTURE §12.
 
 ### Makefile + Docker toolchain (2026-07-30)
 - Self-documenting `Makefile` (`make help`) with categorized targets; `make check` is the
