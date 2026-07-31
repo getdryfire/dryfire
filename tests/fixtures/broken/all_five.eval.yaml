@@ -1,0 +1,9 @@
+name: broken_suite
+modle: claude-sonnet-4-6
+max_turns: six
+tools:
+  - $ref: ./does_not_exist.json
+cases:
+  - name: missing_input_case
+    expect:
+      - calls_tolo: lookup_order
