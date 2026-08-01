@@ -20,9 +20,10 @@ from agentcheck.domain.model.tooling import ToolCall, ToolResult
 
 @dataclass(frozen=True)
 class Return:
-    """Deliver a value as (successful) tool-result content."""
+    """Deliver a value as (successful) tool-result content. `None` is a legitimate
+    null result (`return: null` in a suite), distinct from an absent outcome."""
 
-    value: str | dict[str, Any]
+    value: str | dict[str, Any] | None
 
 
 @dataclass(frozen=True)

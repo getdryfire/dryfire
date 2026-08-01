@@ -478,6 +478,46 @@ conformance check clean add `[[tool.mypy.overrides]] module = "jsonschema.*"` wi
 `monkeypatch.setattr(mod.os, ...)` trips mypy's `attr-defined` (not an explicit export) — use the
 string-target form `monkeypatch.setattr("pkg.mod.os.replace", boom)` instead.
 
+## CLI + composition (AC-015)
+
+### composition.py is above the layers — it may import everything
+The import-linter `layers` contract orders `adapters > application > domain`; `agentcheck.composition`
+is **not in any of the three layers**, so it's unconstrained and can import driven adapters + app +
+domain (contract 5 only forbids `domain`/`application` sources). This is the intended composition root
+(ARCHITECTURE §7). `cli.py` (a driving adapter) imports `composition`; no cycle, contracts stay 5/5.
+
+### Config is checked before the network — that's what makes "spec error → 2" hold
+The exit-code precedence (`2` spec/config before `3` provider) falls out of *ordering*: `_load` runs
+first and returns exit 2 on any `SpecError` **before** `make_gateway`/the scheduler ever run. So a
+broken suite with an unreachable provider is `2`, not `3` — and the mutation that disables the early
+`if loaded.errors: return 2` is caught by two tests. Provider failures aren't raised; the scheduler
+records them as `provider_error` terminations, which `_exit_code` maps to `3`.
+
+### Inject the gateway *factory*, not a gateway, for CLI tests
+The CLI can't take a gateway through argv, so `composition.make_gateway(provider)` is the single seam;
+tests `monkeypatch.setattr(composition, "make_gateway", lambda p: fake)`. `validate` asserts zero
+network by patching `make_gateway` to **raise if called** — it never builds one. Request-driven fakes
+(response derived from `request`, not a global script) stay deterministic under the scheduler.
+
+### `typer.Exit(code)` surfaces as `SystemExit`, not `None`
+Under `typer.testing.CliRunner`, a handled command still sets `result.exception = SystemExit(code)`.
+To assert an internal error was *handled* (not surfaced), check `not isinstance(result.exception,
+RuntimeError)` — not `result.exception is None`. With `--debug`, the real exception (`RuntimeError`)
+propagates and *is* `result.exception`.
+
+### Typer needs calls in parameter defaults — mark them immutable for ruff
+`def run(paths=typer.Argument(...), flag=typer.Option(...))` trips ruff B008 (function call in a
+default). Typer's API requires exactly this, so add
+`[tool.ruff.lint.flake8-bugbear] extend-immutable-calls = ["typer.Argument", "typer.Option"]` rather
+than restructuring every command.
+
+### Wiring surfaces domain-modelling gaps — widen honestly
+Mapping real mocks exposed that `Return.value` / `ToolResult.content` were typed `str | dict` but a
+`return: null` mock (AC-003 calls it "legitimate null tool-result content") needs `None`. Widened
+both to `... | None` — a one-line correctness fix per model, backward-compatible, that also keeps
+`_to_result` type-clean. The lesson: composition is where "each piece type-checks alone" meets "do
+they fit together" — expect to true up a domain type or two, and do it in the model, not with a cast.
+
 ## Session Notes
 
 ### 2026-07-30 — AC-001 + toolchain

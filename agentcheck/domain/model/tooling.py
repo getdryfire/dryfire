@@ -43,5 +43,5 @@ class ToolResult(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     call_id: str
-    content: str | dict[str, Any]
+    content: str | dict[str, Any] | None  # None = a null tool result (`return: null`)
     is_error: bool = False

@@ -1,0 +1,224 @@
+"""AC-015 — the CLI surface and contractual exit codes (SPEC §7, §7.1).
+
+Driven through `typer.testing.CliRunner`. Exit codes are the public interface, so
+there is one test per code. The gateway factory is monkeypatched so nothing here
+touches the network — and `validate` is asserted to never build one at all.
+"""
+
+from pathlib import Path
+from typing import Any
+
+import pytest
+from typer.testing import CliRunner
+
+from agentcheck import composition
+from agentcheck.adapters.driving.cli.app import app
+from agentcheck.domain.model.message import ModelResponse, Usage
+from agentcheck.domain.model.tooling import ToolCall
+
+runner = CliRunner()
+
+_BROKEN = Path(__file__).parent.parent / "fixtures" / "broken" / "all_five.eval.yaml"
+
+_PASS = (
+    "name: passing\ncases:\n  - name: greets\n    input: hi\n"
+    "    expect:\n      - final_contains: done\n"
+)
+_FAIL = (
+    "name: failing\ncases:\n  - name: needs_tool\n    input: hi\n"
+    "    expect:\n      - calls_tool: issue_refund\n"
+)
+_TAGGED = (
+    "name: tagged\ntags: [smoke]\ncases:\n  - name: greets\n    input: hi\n    expect: []\n"
+)
+_TOOL_SUITE = (
+    "name: traced\n"
+    "tools:\n  - name: lookup\n    input_schema: {type: object}\n"
+    "mocks:\n  lookup:\n    - return: {found: true}\n"
+    "cases:\n  - name: does_lookup\n    input: find it\n    expect: []\n"
+)
+
+
+def _response(text: str | None = None, calls: list[ToolCall] | None = None) -> ModelResponse:
+    tool_calls = calls or []
+    return ModelResponse(
+        text=text,
+        tool_calls=tool_calls,
+        stop_reason="tool_use" if tool_calls else "end_turn",
+        usage=Usage(input_tokens=1, output_tokens=1),
+        latency_ms=0,
+        raw={},
+    )
+
+
+class _TextGateway:
+    """Always answers with the same text turn."""
+
+    name = "fake"
+
+    def __init__(self, text: str = "done") -> None:
+        self._text = text
+        self.models: list[str] = []
+
+    async def complete(self, request: Any) -> ModelResponse:
+        self.models.append(request.model)
+        return _response(text=self._text)
+
+
+class _RaisingGateway:
+    name = "fake"
+
+    async def complete(self, request: Any) -> ModelResponse:
+        raise ConnectionError("provider unreachable")
+
+
+class _TurnGateway:
+    """One tool call, then a text turn — for the trace command."""
+
+    name = "fake"
+
+    async def complete(self, request: Any) -> ModelResponse:
+        if (len(request.messages) - 1) // 2 == 0:
+            return _response(calls=[ToolCall(id="c0", name="lookup", arguments={})])
+        return _response(text="done")
+
+
+def _use_gateway(monkeypatch: pytest.MonkeyPatch, gateway: object) -> None:
+    monkeypatch.setattr(composition, "make_gateway", lambda provider: gateway)
+
+
+def _write(tmp_path: Path, body: str, name: str = "s.eval.yaml") -> str:
+    path = tmp_path / name
+    path.write_text(body, encoding="utf-8")
+    return str(path)
+
+
+# -- One test per exit code -------------------------------------------------
+
+
+def test_exit_0_when_all_cases_pass(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    _use_gateway(monkeypatch, _TextGateway("done"))
+    result = runner.invoke(app, ["run", _write(tmp_path, _PASS)])
+    assert result.exit_code == 0
+
+
+def test_exit_1_on_assertion_failure(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    _use_gateway(monkeypatch, _TextGateway("done"))  # never calls issue_refund
+    result = runner.invoke(app, ["run", _write(tmp_path, _FAIL)])
+    assert result.exit_code == 1
+
+
+def test_exit_2_on_spec_error() -> None:
+    result = runner.invoke(app, ["run", str(_BROKEN)])
+    assert result.exit_code == 2
+
+
+def test_exit_3_on_provider_error(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    _use_gateway(monkeypatch, _RaisingGateway())
+    result = runner.invoke(app, ["run", _write(tmp_path, _PASS)])
+    assert result.exit_code == 3
+
+
+def test_spec_error_beats_an_unreachable_provider(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # The provider would raise (→ 3), but config is checked first → 2.
+    _use_gateway(monkeypatch, _RaisingGateway())
+    result = runner.invoke(app, ["run", str(_BROKEN)])
+    assert result.exit_code == 2
+
+
+# -- validate ---------------------------------------------------------------
+
+
+def test_validate_ok_makes_zero_network_calls(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def explode(provider: str) -> object:
+        raise AssertionError("validate must not build a gateway")
+
+    monkeypatch.setattr(composition, "make_gateway", explode)
+    result = runner.invoke(app, ["validate", _write(tmp_path, _PASS)])
+    assert result.exit_code == 0
+    assert "ok" in result.output
+
+
+def test_validate_broken_fixture_prints_positioned_errors() -> None:
+    result = runner.invoke(app, ["validate", str(_BROKEN)])
+    assert result.exit_code == 2
+    assert "error:" in result.output
+    assert "-->" in result.output  # positioned caret output
+
+
+# -- trace ------------------------------------------------------------------
+
+
+def test_trace_prints_every_turn_including_tool_results(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _use_gateway(monkeypatch, _TurnGateway())
+    result = runner.invoke(app, ["trace", "traced::does_lookup", _write(tmp_path, _TOOL_SUITE)])
+    assert result.exit_code == 0
+    assert "lookup" in result.output
+    assert "tool_result" in result.output
+    assert "found" in result.output  # the mock's return value
+
+
+# -- filtering, overrides, errors, help -------------------------------------
+
+
+def test_filter_and_tag_compose_zero_match_is_exit_0(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _use_gateway(monkeypatch, _TextGateway())
+    # Right tag, but a filter that matches no case name → 0 with a clear message.
+    result = runner.invoke(
+        app, ["run", _write(tmp_path, _TAGGED), "--tag", "smoke", "--filter", "nonexistent"]
+    )
+    assert result.exit_code == 0
+    assert "no cases matched" in result.output
+
+
+def test_model_flag_overrides_project_and_suite(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    gateway = _TextGateway("done")
+    _use_gateway(monkeypatch, gateway)
+    suite = (
+        "name: passing\nmodel: suite-model\ncases:\n"
+        "  - name: greets\n    input: hi\n    expect: []\n"
+    )
+    result = runner.invoke(app, ["run", _write(tmp_path, suite), "--model", "cli-model"])
+    assert result.exit_code == 0
+    assert gateway.models == ["cli-model"]  # the override reached the wire, not "suite-model"
+
+
+def test_internal_error_is_clean_and_exit_2(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def boom(provider: str) -> object:
+        raise RuntimeError("unexpected")
+
+    monkeypatch.setattr(composition, "make_gateway", boom)
+    result = runner.invoke(app, ["run", _write(tmp_path, _PASS)])
+    assert result.exit_code == 2
+    assert "please report" in result.output.lower()
+    # The RuntimeError was handled into a clean exit, not surfaced as a traceback.
+    assert not isinstance(result.exception, RuntimeError)
+
+
+def test_debug_flag_surfaces_the_traceback(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def boom(provider: str) -> object:
+        raise RuntimeError("unexpected")
+
+    monkeypatch.setattr(composition, "make_gateway", boom)
+    result = runner.invoke(app, ["run", _write(tmp_path, _PASS), "--debug"])
+    assert isinstance(result.exception, RuntimeError)
+
+
+@pytest.mark.parametrize("argv", [[], ["run"], ["validate"], ["trace"]])
+def test_help_exits_zero_for_every_command(argv: list[str]) -> None:
+    result = runner.invoke(app, [*argv, "--help"])
+    assert result.exit_code == 0

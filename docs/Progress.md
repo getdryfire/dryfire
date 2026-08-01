@@ -22,23 +22,29 @@ Update this file when work ships, phases change, or priorities shift.
 
 > Actively building. Code is being written.
 
-### AC-014 — JSON reporter and trace serialization (implemented, uncommitted)
-`--json-out` — the public run artifact (SPEC §7, ARCHITECTURE §12); TDD, gate green (249 tests + 1
-live-skipped, ruff, mypy --strict, 5/5 contracts).
-- `adapters/driven/reporting/json_sink.py` — `render_run(run, *, generated_at) -> str`,
-  `write_run(run, path, *, generated_at)`, `deserialize_run(doc) -> RunResult`, `build_document`,
-  `SCHEMA_VERSION = 1`. Emits the **complete** Trace per case (every turn, `request_messages`,
-  `Message.raw`, `malformed_arguments`, usage, assertions) so the file re-renders the terminal
-  report offline (`deserialize_run` → `render_report`).
-- **Guarantees:** `sort_keys=True` (diffable), `allow_nan=False` (no `NaN`/`Infinity`), ISO-8601 UTC
-  `...Z` timestamp (**injected** `generated_at` — no Clock port yet, so the reporter stays pure/
-  deterministic), **atomic** write (serialize fully in memory → temp file + `os.replace`; a killed
-  run never leaves a partial file — mutation-verified against a direct-write impl).
-- `tests/fixtures/run_schema.json` — committed JSON Schema (draft 2020-12); output validated with
-  `jsonschema` (added to the `dev` extra; test-only, offline). Added a `jsonschema.*` mypy override
-  (no stubs shipped).
-- `--json-out` (compose with terminal) vs `--reporter json` (stdout, suppress terminal) is the CLI's
-  job (AC-015); this ticket delivers the pure render + atomic file write + deserializer.
+### AC-015 — CLI surface and exit codes (implemented, uncommitted)
+`run` / `validate` / `trace` with contractual exit codes (SPEC §7, §7.1) — the composition root that
+exposes every library built so far. TDD, gate green (270 tests + 1 live-skipped, ruff, mypy --strict,
+5/5 contracts).
+- `composition.py` — the ONE module wiring concretes to the app (ARCHITECTURE §7): loader → resolve →
+  **spec→domain mock map + merge** → scheduler → **price** → report → exit code. `cli.py` (typer)
+  stays logic-free (parse flags → call composition → `typer.Exit(code)`).
+- **Exit codes** (`0` pass · `1` assertion failure · `2` spec/config · `3` provider) — one test each.
+  **Config is checked before anything network-touching**, so a spec error is `2` even when the
+  provider is also unreachable. An unhandled internal exception → clean message + "please report" +
+  exit `2`; `--debug` re-raises the traceback. (Provider errors surface as `provider_error`
+  terminations from the scheduler → exit `3`.)
+- `adapters/driven/spec/mocks.py` — **closes the deferred spec→domain mock mapper thread**
+  (AC-005/009/012). `return: null` is mapped via `model_fields_set`; this surfaced that the domain
+  `Return.value` / `ToolResult.content` were too narrow — widened both to `... | None` (a documented
+  legitimate null tool result).
+- **Cost is now wired end-to-end** (closes AC-017's thread): a `_price` post-pass computes
+  `calculate(usage, catalog.rates(provider, model))` per case and attaches `total_cost_usd` — the
+  reporter's cost column now shows real `$` values.
+- Reporter selection: default terminal (+ `--json-out PATH` writes JSON too); `--reporter json` sends
+  JSON to stdout and suppresses the terminal. `--filter`/`--tag` compose (AND); zero match → exit `0`
+  with "no cases matched". `--model` overrides project+suite (highest-precedence override). `-v` dumps
+  failing-case traces. Ruff: `typer.Option`/`Argument` added to bugbear `extend-immutable-calls`.
 
 ---
 
@@ -46,18 +52,23 @@ live-skipped, ruff, mypy --strict, 5/5 contracts).
 
 > Committed work, ready to start. Ordered by the EPIC-001 dependency graph.
 
-1. **AC-015** — CLI surface + contractual exit codes (`run`/`validate`/`trace`, all flags). Wires
-   **composition**: the deferred **spec→domain mock mapper + merge** into `PlannedCase`s, the
-   **per-case cost step** (`calculate` + `PricingCatalog` → `total_cost_usd`, which lights up the
-   reporter's cost column), and reporter selection (`--json-out` composes; `--reporter json` → stdout).
-2. **AC-016** — `init` scaffold + keyless example (60-second target).
-3. **AC-018 / AC-019** — dogfood suite in CI, release.
+1. **AC-016** — `init` scaffold + a bundled keyless example that goes green in <60s (uses
+   `FakeGateway`); the `make smoke` clean-machine test reactivates here.
+2. **AC-018** — dogfood: agentcheck's own eval suite running against `FakeProvider` in CI.
+3. **AC-019** — release (PyPI, README, fold in `COMPARISON.md`).
 
 ---
 
 ## Shipped
 
 > Working in the codebase. Committed and tested.
+
+### AC-014 — JSON reporter and trace serialization (2026-08-01, PR #15)
+- `adapters/driven/reporting/json_sink.py` — `render_run` / `write_run` / `deserialize_run`,
+  `schema_version: 1`, complete Trace per case (incl. `Message.raw` + `malformed_arguments`), sorted
+  keys, `allow_nan=False`, ISO-8601 `...Z` (injected timestamp), atomic temp-file+`os.replace` write.
+  Round-trips to a `RunResult` that re-renders the terminal report. `tests/fixtures/run_schema.json`
+  validated with `jsonschema` (dev-only). Atomicity mutation-verified.
 
 ### AC-013 — Terminal reporter (2026-07-31, PR #14)
 - `adapters/driven/reporting/terminal.py` — pure `render_report(run, *, color=False) -> str`

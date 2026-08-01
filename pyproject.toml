@@ -62,6 +62,10 @@ extend-exclude = ["spikes"]
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "UP", "B", "TID"]
 
+[tool.ruff.lint.flake8-bugbear]
+# Typer's API requires Option/Argument calls in parameter defaults (AC-015 CLI).
+extend-immutable-calls = ["typer.Argument", "typer.Option"]
+
 [tool.ruff.lint.flake8-tidy-imports.banned-api]
 "unittest.mock".msg = "Test doubles only at port boundaries (ADR-006). unittest.mock is allowed only in tests/contracts/."
 
