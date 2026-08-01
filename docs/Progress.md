@@ -22,24 +22,23 @@ Update this file when work ships, phases change, or priorities shift.
 
 > Actively building. Code is being written.
 
-### AC-013 — Terminal reporter (implemented, uncommitted)
-The `rich`-policy terminal reporter matching SPEC §7.2 (ARCHITECTURE §12); TDD, gate green
-(238 tests + 1 live-skipped, ruff, mypy --strict, 5/5 contracts).
-- `adapters/driven/reporting/terminal.py` — **pure** `render_report(run, *, color=False) -> str`
-  (byte-pinned by a golden fixture) + `TerminalReporter.report(run, stream)` + `resolve_color`.
-  `color=False` emits **zero ANSI** (CI logs / non-TTY / `NO_COLOR` / `--no-color`); `color=True`
-  wraps only the pass/fail glyphs. Case line `  <glyph> <name:<36><turns> turns   <tok:,> tok
-  <cost>   <dur>s`; summary `<n> cases   <p> passed   <f> failed   <cost>   <dur>s`.
-- **Unknown cost → `—`, never `$0.0000`.** Non-`end_turn` termination surfaced on the case line
-  (e.g. `max_turns_exceeded`). Failure blocks are AC-011's `render_failure` indented 6 spaces —
-  the reporter **formats, does not compose**; it truncates long argument values (`expected`/
-  `message`) but **never the trajectory line** (`actual`). Zero-case run → "no cases matched".
-- **§7.2 deviation (noted):** the SPEC sample uses the v0.2 `min_tool_calls` and puts the count on
-  `actual:` / the trajectory as the continuation. AC-011's v0.1 convention is the reverse
-  (trajectory on `actual:`, reason as continuation). The golden reproduces §7.2's header, both case
-  lines, and the summary **byte-for-byte**, and renders the failure block via the real v0.1
-  machinery. Cost/duration golden tests have teeth at display resolution (mutation-verified).
-- Per-case cost is still `None` (→ `—`) until AC-015 attaches `total_cost_usd` to the trace.
+### AC-014 — JSON reporter and trace serialization (implemented, uncommitted)
+`--json-out` — the public run artifact (SPEC §7, ARCHITECTURE §12); TDD, gate green (249 tests + 1
+live-skipped, ruff, mypy --strict, 5/5 contracts).
+- `adapters/driven/reporting/json_sink.py` — `render_run(run, *, generated_at) -> str`,
+  `write_run(run, path, *, generated_at)`, `deserialize_run(doc) -> RunResult`, `build_document`,
+  `SCHEMA_VERSION = 1`. Emits the **complete** Trace per case (every turn, `request_messages`,
+  `Message.raw`, `malformed_arguments`, usage, assertions) so the file re-renders the terminal
+  report offline (`deserialize_run` → `render_report`).
+- **Guarantees:** `sort_keys=True` (diffable), `allow_nan=False` (no `NaN`/`Infinity`), ISO-8601 UTC
+  `...Z` timestamp (**injected** `generated_at` — no Clock port yet, so the reporter stays pure/
+  deterministic), **atomic** write (serialize fully in memory → temp file + `os.replace`; a killed
+  run never leaves a partial file — mutation-verified against a direct-write impl).
+- `tests/fixtures/run_schema.json` — committed JSON Schema (draft 2020-12); output validated with
+  `jsonschema` (added to the `dev` extra; test-only, offline). Added a `jsonschema.*` mypy override
+  (no stubs shipped).
+- `--json-out` (compose with terminal) vs `--reporter json` (stdout, suppress terminal) is the CLI's
+  job (AC-015); this ticket delivers the pure render + atomic file write + deserializer.
 
 ---
 
@@ -47,18 +46,26 @@ The `rich`-policy terminal reporter matching SPEC §7.2 (ARCHITECTURE §12); TDD
 
 > Committed work, ready to start. Ordered by the EPIC-001 dependency graph.
 
-1. **AC-014** — JSON reporter + full trace serialization (`--json-out`, `schema_version: 1`,
-   sorted keys for diffable output). Depends on AC-013.
-2. **AC-015** — CLI: wire composition — the deferred **spec→domain mock mapper + merge** into
-   `PlannedCase`s, and the **per-case cost step** (`calculate` + `PricingCatalog` → `total_cost_usd`,
-   which lights up the reporter's cost column).
-3. **AC-016 / AC-018 / AC-019** — init scaffold, dogfood, release.
+1. **AC-015** — CLI surface + contractual exit codes (`run`/`validate`/`trace`, all flags). Wires
+   **composition**: the deferred **spec→domain mock mapper + merge** into `PlannedCase`s, the
+   **per-case cost step** (`calculate` + `PricingCatalog` → `total_cost_usd`, which lights up the
+   reporter's cost column), and reporter selection (`--json-out` composes; `--reporter json` → stdout).
+2. **AC-016** — `init` scaffold + keyless example (60-second target).
+3. **AC-018 / AC-019** — dogfood suite in CI, release.
 
 ---
 
 ## Shipped
 
 > Working in the codebase. Committed and tested.
+
+### AC-013 — Terminal reporter (2026-07-31, PR #14)
+- `adapters/driven/reporting/terminal.py` — pure `render_report(run, *, color=False) -> str`
+  (byte-pinned golden) + `TerminalReporter` + `resolve_color`. Zero ANSI off a TTY / under
+  `NO_COLOR` / `--no-color`; unknown cost → `—`; non-`end_turn` termination on the case line;
+  failure blocks are AC-011's `render_failure` indented 6 spaces (truncates long args, never the
+  trajectory). Golden matches SPEC §7.2's header/case-lines/summary byte-for-byte; the failure block
+  uses the real v0.1 machinery (§7.2's sample was v0.2 `min_tool_calls`).
 
 ### AC-017 — Pricing data and cost computation (2026-07-31, PR #13)
 - `domain/pricing/calculator.py` — pure `calculate(usage, rates) -> Cost | None`, **`Decimal`

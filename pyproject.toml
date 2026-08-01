@@ -38,6 +38,7 @@ dev = [
     "ruff>=0.8",
     "mypy>=1.13",
     "import-linter>=2.1",
+    "jsonschema>=4.26.0",
 ]
 
 [project.scripts]
@@ -76,6 +77,11 @@ packages = ["agentcheck"]
 module = "tests.*"
 disallow_untyped_defs = false
 disallow_incomplete_defs = false
+
+# jsonschema (test-only, AC-014 schema validation) ships no type stubs.
+[[tool.mypy.overrides]]
+module = "jsonschema.*"
+ignore_missing_imports = true
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

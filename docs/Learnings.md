@@ -447,6 +447,37 @@ so `monkeypatch` params need `pytest.MonkeyPatch` annotations and `sum()` over a
 comprehension needs an explicit `is not None` list first. Worth fixing — it's the same check CI
 would want and it caught a genuinely-loose `sum(... float | None ...)`.
 
+## JSON reporter (AC-014)
+
+### Inject the timestamp; don't reach for a clock
+The JSON needs an ISO-8601 `...Z` timestamp, and "two runs byte-identical except timestamps" is a
+criterion — so the timestamp is the *only* non-determinism. With no Clock port yet, `render_run(run,
+*, generated_at: datetime)` takes the time as a parameter: tests pass a fixed `datetime`, composition
+(AC-015) passes `datetime.now(UTC)`. Keeps the reporter pure and the determinism test trivial. Format
+with `.isoformat(timespec="seconds").replace("+00:00", "Z")` — `isoformat()` emits `+00:00`, not `Z`.
+
+### Serialize before you touch the target — that's the atomicity guarantee
+`write_run` renders the whole string first (so a serialization failure never touches the file), then
+writes a temp file in the target's dir and `os.replace`s it (atomic rename). The load-bearing test
+monkeypatches `os.replace` to raise and asserts the target is **absent** and the temp is cleaned up —
+a naive `target.write_text(...)` fails it (mutation-verified). `allow_nan=False` on `json.dumps` is
+the guard that turns any future non-finite float into a loud error instead of `NaN` in the artifact.
+
+### The JSON must round-trip to a RunResult, not just parse
+"Serialize → deserialize → re-render terminal identical" needs a real `deserialize_run(doc) ->
+RunResult` (also the seam v0.3 `compare`/HTML will use). Domain models rebuild via
+`Trace.model_validate` / `AssertionResult.model_validate`; the frozen `CaseResult`/`SuiteResult`/
+`RunResult` dataclasses are reconstructed by hand. `model_dump(mode="json")` already carries
+`Message.raw` and `malformed_arguments` (they're model fields) — no special handling needed.
+
+### `mypy --strict` on a test with a stub-less dep needs a module override
+`jsonschema` ships no type stubs, so `mypy --strict tests/...test_json_reporter.py` errors on the
+import. `make typecheck` is scoped to `agentcheck/` so it's unaffected, but to keep the test-file
+conformance check clean add `[[tool.mypy.overrides]] module = "jsonschema.*"` with
+`ignore_missing_imports = true`. Also: monkeypatching a module's imported `os`/`json` via
+`monkeypatch.setattr(mod.os, ...)` trips mypy's `attr-defined` (not an explicit export) — use the
+string-target form `monkeypatch.setattr("pkg.mod.os.replace", boom)` instead.
+
 ## Session Notes
 
 ### 2026-07-30 — AC-001 + toolchain
