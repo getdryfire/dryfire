@@ -9,16 +9,26 @@ agent suites, executes the full tool-calling loop with deterministic mocked tool
 asserts on the **trajectory** (ordered tool calls), not the final text. Local-first: no
 server, no database, no account; exit codes are the API.
 
-## Current state: scaffold complete (AC-001), domain not yet implemented
+## Current state: v0.1 shipped (EPIC-001 complete); EPIC-002 (v0.2) in progress
 
-The `dryfire/` package exists as a layered skeleton (uv-managed, hatchling, flat layout)
-with toolchain gates wired; no domain logic yet. Next ticket: AC-002. The repo contains:
+v0.1 is **code-complete on `main` at version `0.1.0`** — provider (Anthropic + a scriptable
+fake), YAML spec + positioned-error loader, the tool-calling loop, deterministic mocks
+(subset/errors/sequences), the six structural assertions, terminal + JSON reporters, advisory
+cost, the full `init`/`validate`/`run`/`trace` CLI, and a dogfood suite in CI. The PyPI
+**publish is deliberately deferred** (owner's call); the release scaffolding (README, changelog,
+Trusted-Publishing workflow) is in place.
+
+**Now building EPIC-002 (v0.2, "CI-grade"):** OpenAI adapter, cassette record/replay, retries,
+budget + extra assertions, JUnit reporter, a GitHub Action, passthrough mocks. The one
+architectural rule of this epic: **caching and retrying are decorators over `ModelGateway`;
+`application/loop.py` does not change.** EPIC-001 tickets use the `AC-` prefix; EPIC-002 uses
+`DF-`.
 
 - **Authoritative docs** — read in this order when context is needed:
   1. `SPEC.md` — product spec: domain model, YAML spec format, agent loop, assertions, CLI, exit codes
   2. `ARCHITECTURE.md` — how code must be shaped (supersedes SPEC §8's package layout; migration table in its §12)
-  3. `EPIC-001.md` — v0.1 goal, success criteria, ticket sequencing
-  4. `TICKETS-AC-001-009.md`, `TICKETS-AC-010-019.md` — implementation tickets, written as test tables
+  3. `EPIC-001.md` (v0.1, shipped) and `EPIC-002.md` (v0.2, active — DF-201…DF-212 written inline as test tables)
+  4. `TICKETS-AC-001-009.md`, `TICKETS-AC-010-019.md` — v0.1 implementation tickets (historical), written as test tables
   5. `SPIKE-REPORT.md` + `FINDINGS_*.md` — spike results and amendments (note: `FINDINGS_2.md` is SPIKE-003 and `FINDINGS_3.md` is SPIKE-002)
 - **Living docs** (keep these current):
   - `docs/Progress.md` — what's in flight / up next / shipped / on ice. Update when work ships or priorities shift.
