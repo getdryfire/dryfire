@@ -1,0 +1,66 @@
+name: Release
+
+# Publishes to PyPI when a v* tag is pushed, using PyPI Trusted Publishing
+# (OIDC) — no API token or secret is stored anywhere.
+#
+# One-time setup on PyPI (Publishing → Add a pending publisher):
+#   PyPI project name : dryfire
+#   Owner             : csmatar
+#   Repository        : dryfire
+#   Workflow name     : release.yml
+#   Environment name  : pypi
+#
+# Then cut a release:  git tag v0.1.0 && git push origin v0.1.0
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+
+      - name: Sync dependencies
+        run: uv sync --all-extras
+
+      - name: Tag must match the package version
+        run: |
+          tag="${GITHUB_REF_NAME#v}"
+          ver="$(uv run python -c 'from dryfire.__about__ import __version__; print(__version__)')"
+          echo "tag=$tag package=$ver"
+          test "$tag" = "$ver" || { echo "::error::tag v$tag does not match version $ver"; exit 1; }
+
+      - name: Gate (never ship a red build)
+        run: |
+          make check
+          make dogfood
+
+      - name: Build sdist + wheel
+        run: uv build
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      id-token: write        # required for Trusted Publishing (OIDC)
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1

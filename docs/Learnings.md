@@ -561,6 +561,22 @@ format-fragile, so parse `trace.termination` (and nested `tool_results[].is_erro
 recovery) from `--reporter json`. Provider_error lives in its own suite because exit 3 outranks
 exit 1, and the harness runs `set -uo pipefail` (not `-e`) because it *expects* non-zero exits.
 
+### Release: verify competitor claims on the live web, and mind uvx's ephemerality (AC-019)
+A public README's comparison table is a factual claim about other projects — verify it against the
+source before shipping, especially anything past the training cutoff. `COMPARISON.md`'s load-bearing
+claims all checked out against promptfoo.dev / web search (Promptfoo does ship `trajectory:*`
+assertions, but on *instrumented/traced* runs; OpenAI acquired Promptfoo March 2026; it has
+red-teaming) — so the honest differentiator is "deterministic mocking + owns the loop + nothing to
+instrument," not "we assert on trajectories." Two packaging gotchas: (1) `uvx dryfire init && dryfire
+run` is wrong — `uvx` runs a tool ephemerally and does NOT put `dryfire` on PATH, so the second
+command needs `uvx` too (or a real `pip install`); README/GIF use `uvx` throughout. (2) Verify the
+built *wheel*, not just that `uv build` succeeded: `unzip -l` it to confirm package data ships
+(`data/pricing.yaml`, `scaffold/template/**`) and install it into a fresh venv to run `init → run` —
+the real proxy for "works from PyPI on a clean machine." Trusted Publishing (OIDC) needs
+`id-token: write` + an `environment:` and no token, but the maintainer must register the pending
+publisher on PyPI first. Also: `f"...into {Path('.')}. "` renders as "into .." — special-case the
+current directory in user-facing paths.
+
 ## Session Notes
 
 ### 2026-07-30 — AC-001 + toolchain

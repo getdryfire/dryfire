@@ -9,7 +9,7 @@ description = "Git-native regression testing for LLM agent tool loops. Assert on
 readme = "README.md"
 license = "MIT"
 requires-python = ">=3.12"
-authors = [{ name = "Carlos Saldana" }]
+authors = [{ name = "Carlos Saldana", email = "csalda3a@gmail.com" }]
 keywords = ["llm", "agents", "evals", "testing", "tool-use"]
 classifiers = [
     "Development Status :: 3 - Alpha",
