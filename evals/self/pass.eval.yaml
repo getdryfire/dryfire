@@ -1,0 +1,116 @@
+# pass.eval.yaml — agentcheck testing agentcheck (AC-018 dogfood).
+#
+# Every case here is EXPECTED TO PASS. The dogfood CI job runs this suite and
+# fails if any case does not pass. It is scripted (`provider: fake`), so it runs
+# offline with no API key. It also doubles as a worked reference for all six
+# structural assertions — read it alongside fail.eval.yaml, which shows each of
+# the same assertions failing on purpose.
+name: dogfood_pass
+provider: fake
+
+# Every tool the cases below call. Results come from `mocks`, never a real call.
+tools:
+  - name: get_weather
+    description: Look up the weather for a city.
+    input_schema:
+      type: object
+      properties: {city: {type: string}}
+      required: [city]
+  - name: notify_user
+    description: Send the user a notification.
+    input_schema: {type: object}
+  - name: retry_flush
+    description: A flaky operation that fails once, then succeeds.
+    input_schema: {type: object}
+  - name: spin
+    description: A no-op the max-turns case calls every turn.
+    input_schema: {type: object}
+
+# Deterministic tool results shared by the cases below.
+mocks:
+  get_weather:
+    - return: {temp_f: 65, conditions: sunny}
+  notify_user:
+    - return: {sent: true}
+  # `sequence` delivers one entry per call, in order — the differentiating
+  # feature. Here the first call errors and the retry succeeds.
+  retry_flush:
+    - sequence:
+        - error: "flush timed out"
+        - return: {flushed: true}
+  spin:
+    - return: {tick: true}
+
+cases:
+  # --- one passing case per structural assertion --------------------------
+  - name: calls_tool_passes                 # calls_tool: the tool WAS called
+    input: "what's the weather?"
+    script:
+      - tool_call: {name: get_weather, arguments: {city: "San Francisco"}}
+      - text: "It's sunny."
+    expect:
+      - calls_tool: get_weather
+
+  - name: not_calls_tool_passes             # not_calls_tool: a tool was NOT called
+    input: "just say hi"
+    script:
+      - tool_call: {name: get_weather, arguments: {city: "San Francisco"}}
+      - text: "Hi."
+    expect:
+      - not_calls_tool: notify_user
+
+  - name: tool_args_passes                  # tool_args: the call arguments match
+    input: "weather in SF"
+    script:
+      - tool_call: {name: get_weather, arguments: {city: "San Francisco"}}
+      - text: "Sunny."
+    expect:
+      - tool_args:
+          tool: get_weather
+          match: {city: "San Francisco"}
+
+  - name: call_order_passes                 # call_order: tools called in this order
+    input: "check then tell me"
+    script:
+      - tool_call: {name: get_weather, arguments: {city: "San Francisco"}}
+      - tool_call: {name: notify_user, arguments: {}}
+      - text: "Done."
+    expect:
+      - call_order: [get_weather, notify_user]
+
+  - name: max_turns_assertion_passes        # max_turns: finished within the budget
+    input: "quick one"
+    script:
+      - tool_call: {name: get_weather, arguments: {city: "San Francisco"}}
+      - text: "Sunny."
+    expect:
+      - max_turns: 5
+
+  - name: final_contains_passes             # final_contains: final text has the substring
+    input: "weather please"
+    script:
+      - tool_call: {name: get_weather, arguments: {city: "San Francisco"}}
+      - text: "It's sunny in San Francisco."
+    expect:
+      - final_contains: "sunny"
+
+  # --- the sequence (error-then-success) recovery case --------------------
+  - name: sequence_recovers                 # first retry_flush errors, the second succeeds
+    input: "flush it"
+    script:
+      - tool_call: {name: retry_flush, arguments: {}}
+      - tool_call: {name: retry_flush, arguments: {}}
+      - text: "Flushed after one retry."
+    expect:
+      - calls_tool: retry_flush
+      - final_contains: "retry"
+
+  # --- exercises the max_turns_exceeded termination (still a pass) --------
+  - name: max_turns_exceeded_terminates     # loops until the 2-turn budget is spent
+    input: "keep going"
+    max_turns: 2                            # case-level override; script keeps calling `spin`
+    script:
+      - tool_call: {name: spin, arguments: {}}
+      - tool_call: {name: spin, arguments: {}}
+    expect:
+      - calls_tool: spin

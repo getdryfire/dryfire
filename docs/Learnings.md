@@ -549,6 +549,18 @@ so it works from a wheel too. Recurse a `Traversable` with `.iterdir()`/`.is_dir
 suite's `-W error` turns into a failure. Detect all conflicts before writing so a refused `init` never
 leaves a half-written project.
 
+### Dogfood: a failing case is the success — verify per-case, not the aggregate exit code (AC-018)
+The dogfood suites include cases that must FAIL; the harness is green when they fail *correctly*. The
+non-obvious trap: asserting the fail-suite's **aggregate exit code is 1** does NOT catch a single
+expected-fail case that quietly starts passing — the run still exits 1 as long as *any* case fails.
+The mutation check caught exactly this (flip one fail-case to pass → harness stayed green). Fix: parse
+the JSON report and assert **each** case's polarity (every pass-case `passed:true`, every fail-case
+`passed:false`). Lesson for any "expected failure" harness: check the granular outcome you care about,
+never a coarser signal that happens to correlate. Terminations are verified the same way — grep is
+format-fragile, so parse `trace.termination` (and nested `tool_results[].is_error` for the `sequence`
+recovery) from `--reporter json`. Provider_error lives in its own suite because exit 3 outranks
+exit 1, and the harness runs `set -uo pipefail` (not `-e`) because it *expects* non-zero exits.
+
 ## Session Notes
 
 ### 2026-07-30 — AC-001 + toolchain

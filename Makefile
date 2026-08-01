@@ -113,6 +113,10 @@ docker-shell: ## Open a bash shell inside the container
 docker-check-313: ## Full gate on Python 3.13 (run the CI matrix locally)
 	$(COMPOSE) --profile matrix run --rm dev-313 make check
 
+.PHONY: dogfood
+dogfood: ## AC-018: agentcheck runs its own eval suite (offline, no API key)
+	./scripts/run_dogfood.sh
+
 .PHONY: smoke
 smoke: ## AC-016: time install -> init -> run, assert under the 60s target
 	./scripts/measure_cold_start.sh

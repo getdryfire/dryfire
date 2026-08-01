@@ -28,3 +28,18 @@ jobs:
         run: uv run lint-imports
       - name: Tests (offline, no API key)
         run: uv run pytest
+
+  # A separate job so a dogfood regression is distinguishable at a glance from a
+  # unit-test failure (AC-018). agentcheck runs its own eval suite against the
+  # fake provider — offline, no API key.
+  dogfood:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+      - name: Sync dependencies
+        run: uv sync --all-extras
+      - name: Dogfood (agentcheck runs its own eval suite)
+        run: ./scripts/run_dogfood.sh

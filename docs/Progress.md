@@ -22,32 +22,23 @@ Update this file when work ships, phases change, or priorities shift.
 
 > Actively building. Code is being written.
 
-### AC-016 — `init` scaffold and the 60-second target (implemented, PR open)
-`agentcheck init` scaffolds a runnable example project that goes green in **<60s with no API key and
-no network** (SPEC §1.6 hard criterion). Measured cold start: **3s** in a clean Linux container
-(`make docker-smoke`), 4s locally. TDD, gate green (311 tests + 1 live-skipped, ruff, mypy --strict,
-5/5 contracts).
-- **New spec surface (public):** `provider` is now suite-level (a `fake` suite and an `anthropic` suite
-  coexist); `script:` is a case-level field (tool_call / text / parallel / fails) that drives a
-  `provider: fake` case straight from YAML. `adapters/driven/spec/scripts.py` maps it 1:1 to the
-  `FakeGateway` helpers. New models `ScriptStep` / `ScriptToolCall` (exactly-one-of via
-  `model_fields_set`, like `MockRule`).
-- **Per-case gateways:** a scripted `FakeGateway` is stateful, so it can't be the scheduler's one
-  shared gateway. Added optional `PlannedCase.gateway` overriding a run-level default `provider`
-  (mirrors case-over-suite mocks) — cheaper than a factory param, no churn to AC-012's tests.
-  Composition builds a fresh fake per fake-case in `_plan`.
-- **Skip-on-missing-key:** real `make_gateway("anthropic")` raises `MissingCredentials` when the key is
-  absent; `run` drops those cases with a visible note (exit stays 0), `trace` surfaces it as an error.
-  The check lives in the `make_gateway` seam tests already replace, so keyless CLI tests still run.
-- **`init`:** `adapters/driven/scaffold/writer.py` copies `agentcheck/scaffold/template/**` (ships in
-  the wheel; read via `importlib.resources`), refuses to clobber without `--force` (lists conflicts,
-  writes nothing partial), prints one copy-pasteable next command. `composition.init()` orchestrates;
-  the `init` command in `cli/app.py`. Template: `agentcheck.yaml`, `evals/hello.eval.yaml` (keyless
-  fake), `evals/refund_agent.eval.yaml` (real, `$ref` schema, v0.1 assertions only — SPEC §4.3's
-  `min_tool_calls` is v0.2), `evals/schemas/escalate_to_human.json`, `evals/README.md`. Every
-  top-level key is commented (asserted by a test).
-- **`scripts/measure_cold_start.sh`** + `make smoke` / `make docker-smoke` reactivate the clean-machine
-  harness (Docker is the fair number).
+### AC-018 — Dogfood suite in CI (implemented, PR open)
+agentcheck runs its own eval suite against the fake provider — proving the tool works by using it,
+offline, as a separate CI job (SPEC §8.2). TDD-for-a-harness: mutation-checked (break a pass-case →
+red; flip a fail-case to pass → red). Runtime ~2s (<30s target). `make check` green (312 tests + 1
+live-skipped).
+- `evals/self/pass.eval.yaml` — every one of the six assertions in a **passing** case, plus the
+  `end_turn` and `max_turns_exceeded` terminations and a `sequence` error-then-success recovery. Whole
+  suite exits 0.
+- `evals/self/fail.eval.yaml` — the same six assertions in a **deliberately-failing** case, plus an
+  `unmocked_tool` termination case. Whole suite exits 1 (the green outcome for CI).
+- `evals/self/provider_error.eval.yaml` — a `fails:` script → `provider_error` termination → exit 3
+  (own file: exit 3 outranks the assertion-failure exit 1).
+- `scripts/run_dogfood.sh` — runs each bucket, asserts its exit code, then parses the JSON reports to
+  check **per-case** polarity (every pass-case passes, every fail-case fails — the aggregate exit code
+  alone is blind to one fail-case quietly passing), all four terminations, and the sequence
+  error-recovery. `make dogfood` + a separate `dogfood` CI job (distinguishable from the pytest job).
+- Suites double as documentation: every case is commented and mirrors a pass/fail pair.
 
 ---
 
@@ -55,16 +46,34 @@ no network** (SPEC §1.6 hard criterion). Measured cold start: **3s** in a clean
 
 > Committed work, ready to start. Ordered by the EPIC-001 dependency graph.
 
-1. **AC-018** — dogfood: agentcheck's own eval suite running against `FakeProvider` in CI. AC-016
-   shipped the enabling mechanism (`provider: fake` + `script:`); this ticket points a suite at
-   agentcheck's own behaviour and wires it into CI.
-2. **AC-019** — release (PyPI, README, fold in `COMPARISON.md`).
+1. **AC-019** — release: README with an above-the-fold runnable example, asciinema GIF, PyPI publish,
+   fold in the parked `COMPARISON.md` (re-verify every competitor row against promptfoo.dev first).
 
 ---
 
 ## Shipped
 
 > Working in the codebase. Committed and tested.
+
+### AC-016 — `init` scaffold and the 60-second target (2026-08-01, PR #17)
+`agentcheck init` scaffolds a runnable example that goes green in **<60s with no API key and no
+network** (SPEC §1.6). Measured cold start: **3s** in a clean Linux container (`make docker-smoke`),
+4s locally.
+- **New public spec surface (SPEC §4.4 amended):** `provider` is suite-level (a `fake` and an
+  `anthropic` suite coexist); `script:` is a case-level field (tool_call / text / parallel / fails)
+  driving a `provider: fake` case from YAML, mapped 1:1 to the `FakeGateway` helpers by
+  `adapters/driven/spec/scripts.py`. New `ScriptStep` / `ScriptToolCall` models.
+- **Per-case gateways:** a scripted `FakeGateway` is stateful, so `PlannedCase.gateway` overrides a
+  run-level default `provider` (mirrors case-over-suite mocks); composition builds a fresh fake per
+  fake-case in `_plan`. No churn to AC-012's tests.
+- **Skip-on-missing-key:** `make_gateway("anthropic")` raises `MissingCredentials` with no key; `run`
+  drops those cases with a visible note (exit 0), `trace` errors. The check lives in the seam tests
+  already replace.
+- **`init`:** `adapters/driven/scaffold/writer.py` copies `agentcheck/scaffold/template/**` (ships in
+  the wheel, read via `importlib.resources`), refuses to clobber without `--force`, prints one next
+  command. Template: `agentcheck.yaml`, keyless `hello.eval.yaml`, real `refund_agent.eval.yaml`
+  (`$ref` schema, v0.1 assertions), `evals/README.md` — every top-level key commented (asserted).
+- `scripts/measure_cold_start.sh` + `make smoke` / `make docker-smoke`.
 
 ### AC-015 — CLI surface and exit codes (2026-08-01, PR #16)
 `run` / `validate` / `trace` with contractual exit codes (SPEC §7, §7.1) — the composition root that

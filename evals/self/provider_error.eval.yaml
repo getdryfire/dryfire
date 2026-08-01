@@ -1,0 +1,18 @@
+# provider_error.eval.yaml — the provider_error termination (AC-018 dogfood).
+#
+# The scripted `fails:` entry makes the fake gateway raise, which the loop records
+# as a `provider_error` termination — never an unhandled exception. A run with a
+# provider_error case exits 3 (the contractual provider/network exit code), which
+# is what the dogfood harness asserts for this suite. Kept in its own file because
+# exit 3 takes precedence over the assertion-failure exit 1.
+name: dogfood_provider_error
+provider: fake
+
+cases:
+  - name: provider_failure_is_a_clean_termination
+    input: "trigger an outage"
+    script:
+      - fails: "simulated gateway outage"
+    # No assertions: this case exists only to exercise the provider_error
+    # termination and the exit-3 path, not to check a trajectory.
+    expect: []
