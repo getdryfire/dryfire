@@ -22,23 +22,22 @@ Update this file when work ships, phases change, or priorities shift.
 
 > Actively building. Code is being written.
 
-### AC-018 — Dogfood suite in CI (implemented, PR open)
-dryfire runs its own eval suite against the fake provider — proving the tool works by using it,
-offline, as a separate CI job (SPEC §8.2). TDD-for-a-harness: mutation-checked (break a pass-case →
-red; flip a fail-case to pass → red). Runtime ~2s (<30s target). `make check` green (312 tests + 1
-live-skipped).
-- `evals/self/pass.eval.yaml` — every one of the six assertions in a **passing** case, plus the
-  `end_turn` and `max_turns_exceeded` terminations and a `sequence` error-then-success recovery. Whole
-  suite exits 0.
-- `evals/self/fail.eval.yaml` — the same six assertions in a **deliberately-failing** case, plus an
-  `unmocked_tool` termination case. Whole suite exits 1 (the green outcome for CI).
-- `evals/self/provider_error.eval.yaml` — a `fails:` script → `provider_error` termination → exit 3
-  (own file: exit 3 outranks the assertion-failure exit 1).
-- `scripts/run_dogfood.sh` — runs each bucket, asserts its exit code, then parses the JSON reports to
-  check **per-case** polarity (every pass-case passes, every fail-case fails — the aggregate exit code
-  alone is blind to one fail-case quietly passing), all four terminations, and the sequence
-  error-recovery. `make dogfood` + a separate `dogfood` CI job (distinguishable from the pytest job).
-- Suites double as documentation: every case is commented and mirrors a pass/fail pair.
+### AC-019 — README, demo, and PyPI release (implemented, PR open)
+The final EPIC-001 ticket. Version bumped `0.1.0.dev0 → 0.1.0`. **PyPI name `dryfire` confirmed
+available** (HTTP 404) before other work. Gate green (312 tests + 1 live-skipped); wheel builds,
+`twine check` passes, and a clean-venv install of the wheel runs `init → run` green offline.
+- **README** — leads with the differentiator and a runnable suite + an **authentic** failure block
+  (the `not_calls_tool` safety-regression hook) above the fold, before install. Non-goals cite SPEC
+  §1.5. Fair Promptfoo/Langfuse comparison folded from `COMPARISON.md`, **re-verified against
+  promptfoo.dev** (Promptfoo does have trajectory assertions, but on instrumented traces; OpenAI
+  acquired it March 2026; it has red-teaming — all named as things it does better).
+- `CHANGELOG.md` (v0.1.0), `CONTRIBUTING.md` (the gate + TDD + arch rules), `docs/demo.tape` (a
+  committed vhs script: init → run → break → fix → green, portable `perl -i`, verified green→red→green).
+- `.github/workflows/release.yml` — publishes on a `v*` tag via **PyPI Trusted Publishing** (OIDC, no
+  token), gated on tag==version + `make check` + `make dogfood`.
+- Cosmetic: `init` now says "into the current directory" instead of a confusing "into ..".
+- **Human-gated (flagged in the PR, not done by the agent):** record the GIF (`vhs docs/demo.tape` —
+  vhs not installed locally), configure the PyPI trusted publisher, and push the `v0.1.0` tag.
 
 ---
 
@@ -46,14 +45,32 @@ live-skipped).
 
 > Committed work, ready to start. Ordered by the EPIC-001 dependency graph.
 
-1. **AC-019** — release: README with an above-the-fold runnable example, asciinema GIF, PyPI publish,
-   fold in the parked `COMPARISON.md` (re-verify every competitor row against promptfoo.dev first).
+_EPIC-001 is complete once AC-019 merges and v0.1.0 is tagged. Next is v0.2 (EPIC-002): OpenAI
+adapter, cassette record/replay, JUnit + JSON reporters, GitHub Action, cost/latency assertions,
+retry/backoff._
 
 ---
 
 ## Shipped
 
 > Working in the codebase. Committed and tested.
+
+### Rename: agentcheck → dryfire (2026-08-01, PR #19)
+The name `agentcheck` was taken, so the project is now `dryfire`. Package dir, CLI command, dist
+name, config file (`dryfire.yaml`), `CONFIG_DIR` (`.dryfire`), and every doc swept in one pass; GitHub
+repo renamed to `csmatar/dryfire`; local folder + `.claude/settings.local.json` updated. Pure rename,
+no behaviour change.
+
+### AC-018 — Dogfood suite in CI (2026-08-01, PR #18)
+dryfire runs its own eval suite against the fake provider — proving the tool works by using it,
+offline, as a separate CI job (SPEC §8.2). Mutation-checked (break a pass-case → red; flip a fail-case
+to pass → red). Runtime ~2s.
+- `evals/self/{pass,fail,provider_error}.eval.yaml` — the six assertions passing and deliberately
+  failing, all four terminations, and a `sequence` error-then-success recovery. Exit 0 / 1 / 3
+  respectively.
+- `scripts/run_dogfood.sh` — asserts each bucket's exit code, then parses the JSON to check **per-case**
+  polarity (the aggregate exit code alone is blind to one fail-case quietly passing) + termination and
+  sequence coverage. `make dogfood` + a separate `dogfood` CI job.
 
 ### AC-016 — `init` scaffold and the 60-second target (2026-08-01, PR #17)
 `dryfire init` scaffolds a runnable example that goes green in **<60s with no API key and no

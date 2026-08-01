@@ -323,8 +323,9 @@ def init(target: str = ".", *, force: bool = False, out: TextIO, err: TextIO) ->
 
     for rel in written:
         out.write(f"  created {rel}\n")
+    where = "the current directory" if dst == Path(".") else str(dst)
     out.write(
-        f"\nScaffolded {len(written)} files into {dst}. "
+        f"\nScaffolded {len(written)} files into {where}. "
         f"No API key needed for the example. Next:\n\n    {_next_command(dst)}\n"
     )
     return EXIT_OK
