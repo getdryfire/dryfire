@@ -70,6 +70,38 @@ class TestPrecedence:
         assert rc.max_turns == 2
 
 
+class TestProviderPrecedence:
+    """provider is suite-level (AC-016): a `fake` suite and an `anthropic` suite
+    coexist in one project; suite beats the project default."""
+
+    def test_suite_provider_overrides_project_default(self) -> None:
+        rc = resolve(
+            suite=_suite(provider="fake"),
+            case=_case(),
+            suite_path=_PATH,
+            project_defaults=Defaults(provider="anthropic"),
+        )
+        assert rc.provider == "fake"
+
+    def test_project_provider_used_when_suite_is_silent(self) -> None:
+        rc = resolve(
+            suite=_suite(),
+            case=_case(),
+            suite_path=_PATH,
+            project_defaults=Defaults(provider="openai"),
+        )
+        assert rc.provider == "openai"
+
+    def test_run_override_beats_suite_provider(self) -> None:
+        rc = resolve(
+            suite=_suite(provider="fake"),
+            case=_case(),
+            suite_path=_PATH,
+            overrides={"provider": "anthropic"},
+        )
+        assert rc.provider == "anthropic"
+
+
 class TestBuiltinDefaults:
     def test_case_inheriting_nothing_gets_every_builtin(self) -> None:
         rc = resolve(suite=_suite(), case=_case(), suite_path=_PATH)

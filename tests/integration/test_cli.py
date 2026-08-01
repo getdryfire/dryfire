@@ -218,7 +218,67 @@ def test_debug_flag_surfaces_the_traceback(
     assert isinstance(result.exception, RuntimeError)
 
 
-@pytest.mark.parametrize("argv", [[], ["run"], ["validate"], ["trace"]])
+@pytest.mark.parametrize("argv", [[], ["init"], ["run"], ["validate"], ["trace"]])
 def test_help_exits_zero_for_every_command(argv: list[str]) -> None:
     result = runner.invoke(app, [*argv, "--help"])
     assert result.exit_code == 0
+
+
+# -- AC-016: scripted fake provider + skip-on-missing-key -------------------
+
+_FAKE_SUITE = (
+    "name: hello\n"
+    "provider: fake\n"
+    "tools:\n  - name: get_weather\n    input_schema: {type: object}\n"
+    "mocks:\n  get_weather:\n    - return: {temp_f: 65}\n"
+    "cases:\n  - name: reports_weather\n    input: weather in SF?\n"
+    "    script:\n"
+    "      - tool_call: {name: get_weather, arguments: {city: SF}}\n"
+    '      - text: "It is 65F in SF."\n'
+    "    expect:\n"
+    "      - calls_tool: get_weather\n"
+    "      - tool_args: {tool: get_weather, match: {city: SF}}\n"
+    '      - final_contains: "65"\n'
+)
+
+_ANTHROPIC_SUITE = (
+    "name: needs_key\nprovider: anthropic\n"
+    "cases:\n  - name: c\n    input: hi\n    expect: []\n"
+)
+
+
+def test_fake_scripted_suite_runs_green_with_no_key_and_no_network(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # No monkeypatch of make_gateway: the fake gateway is built from the script,
+    # so this is a genuinely offline run. Prove no key is needed.
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    result = runner.invoke(app, ["run", _write(tmp_path, _FAKE_SUITE)])
+    assert result.exit_code == 0, result.output
+
+
+def test_missing_key_skips_the_case_with_a_note_not_a_failure(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    result = runner.invoke(app, ["run", _write(tmp_path, _ANTHROPIC_SUITE)])
+    assert result.exit_code == 0, result.output
+    assert "skip" in result.output.lower()
+    assert "ANTHROPIC_API_KEY" in result.output
+
+
+def test_mixed_run_fake_passes_while_keyless_anthropic_is_skipped(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    result = runner.invoke(
+        app,
+        [
+            "run",
+            _write(tmp_path, _FAKE_SUITE, "hello.eval.yaml"),
+            _write(tmp_path, _ANTHROPIC_SUITE, "needs_key.eval.yaml"),
+        ],
+    )
+    assert result.exit_code == 0, result.output
+    assert "skip" in result.output.lower()
+    assert "needs_key" in result.output

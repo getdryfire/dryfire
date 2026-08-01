@@ -31,6 +31,16 @@ def main(
 
 
 @app.command()
+def init(
+    dir_: str = typer.Option(".", "--dir", help="Directory to scaffold into."),
+    force: bool = typer.Option(False, "--force", help="Overwrite existing files."),
+) -> None:
+    """Scaffold a runnable example project (no API key needed to run it)."""
+    code = composition.init(dir_, force=force, out=sys.stdout, err=sys.stderr)
+    raise typer.Exit(code)
+
+
+@app.command()
 def run(
     paths: list[str] = typer.Argument(None, help="Suite files to run."),
     filter_: str = typer.Option(None, "--filter", help="Substring match on case name."),

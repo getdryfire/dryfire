@@ -518,6 +518,37 @@ both to `... | None` — a one-line correctness fix per model, backward-compatib
 `_to_result` type-clean. The lesson: composition is where "each piece type-checks alone" meets "do
 they fit together" — expect to true up a domain type or two, and do it in the model, not with a cast.
 
+### Driving a fake provider from YAML needs a spec `script` + per-case gateways (AC-016)
+The keyless example is a real `.eval.yaml` run through the CLI, but a suite only declares tools,
+mocks, and expectations — nothing scripts the *model's* turns. So `provider: fake` gained a case-level
+`script:` (tool_call / text / parallel / fails, mapped 1:1 to the existing `FakeGateway` helpers in
+`adapters/driven/spec/scripts.py`). A scripted `FakeGateway` is **stateful** (script cursor + id
+counter advance per `complete()`), so it can't be the scheduler's one shared gateway. Fix: an optional
+`PlannedCase.gateway` that overrides a run-level default `provider` — mirrors how case mocks layer over
+suite mocks. Composition builds a fresh fake per fake-case in `_plan`; real cases fall back to the
+shared default. Cheaper than a `gateway_for` factory param (which would have churned ~16 scheduler test
+call sites) and semantically the same. `provider` also became **suite-level** so a `fake` suite and an
+`anthropic` suite coexist in one project.
+
+### Put "skip on missing key" *inside* `make_gateway`, the seam tests already replace
+The keyed example must be *skipped* (not failed) with no `ANTHROPIC_API_KEY`, but the existing CLI
+tests run with no key and expect their anthropic cases to *run* (against an injected fake). Reconciled
+by making real `make_gateway("anthropic")` raise `MissingCredentials` when the key is absent;
+composition catches that and drops those cases with a note (exit stays 0). Tests that
+`monkeypatch.setattr(composition, "make_gateway", …)` bypass the check entirely, so their cases still
+run — the skip logic lives exactly where the test seam already is. `trace` (an explicit request)
+surfaces the same condition as an error, not a silent skip. A non-`MissingCredentials` build failure
+still propagates to `_internal_error` → exit 2, so the "internal error" test is unaffected.
+
+### Ship package data via `importlib.resources`, and mind the `-W error` gate
+The scaffold template (`agentcheck/scaffold/template/**`) ships in the wheel the same way
+`data/pricing.yaml` does — files under the package dir are included by hatchling with no extra config —
+and is read with `files("agentcheck").joinpath("scaffold/template")`, never a `__file__`-relative path,
+so it works from a wheel too. Recurse a `Traversable` with `.iterdir()`/`.is_dir()`. Import it from
+**`importlib.resources.abc`**, not `importlib.abc` — the latter emits a `DeprecationWarning` that the
+suite's `-W error` turns into a failure. Detect all conflicts before writing so a refused `init` never
+leaves a half-written project.
+
 ## Session Notes
 
 ### 2026-07-30 — AC-001 + toolchain

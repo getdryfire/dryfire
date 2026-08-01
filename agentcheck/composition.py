@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import os
 from collections.abc import Sequence
 from dataclasses import replace
 from datetime import UTC, datetime
@@ -20,8 +21,10 @@ from pathlib import Path
 from typing import Any, TextIO
 
 from agentcheck.adapters.driven.pricing.bundled import BundledPricingCatalog
+from agentcheck.adapters.driven.providers.fake import FakeGateway
 from agentcheck.adapters.driven.reporting.json_sink import render_run, write_run
 from agentcheck.adapters.driven.reporting.terminal import render_report, resolve_color
+from agentcheck.adapters.driven.scaffold.writer import ScaffoldConflict, scaffold
 from agentcheck.adapters.driven.spec.config import (
     BUILTIN_CONCURRENCY,
     discover_config,
@@ -33,7 +36,8 @@ from agentcheck.adapters.driven.spec.errors import SpecError
 from agentcheck.adapters.driven.spec.errors import render as render_spec_errors
 from agentcheck.adapters.driven.spec.loader import load_suite
 from agentcheck.adapters.driven.spec.mocks import map_mocks
-from agentcheck.adapters.driven.spec.models import Defaults, Suite
+from agentcheck.adapters.driven.spec.models import Case, Defaults, Suite
+from agentcheck.adapters.driven.spec.scripts import map_script
 from agentcheck.application.ports.model_gateway import ModelGateway
 from agentcheck.application.scheduler import (
     CaseResult,
@@ -59,13 +63,31 @@ class ConfigError(Exception):
     user-facing (no traceback)."""
 
 
+class MissingCredentials(Exception):
+    """A real provider has no API key in the environment. `run` treats this as a
+    *skip* (the case is not run, not failed — AC-016); `trace` surfaces it as an
+    error. Raised inside `make_gateway` so the test seam that replaces
+    `make_gateway` bypasses the check entirely."""
+
+    def __init__(self, provider: str, env_var: str) -> None:
+        super().__init__(f"{provider} needs an API key in {env_var}")
+        self.provider = provider
+        self.env_var = env_var
+
+
 # -- Gateway selection (monkeypatched in tests to avoid the network) --------
 
 
 def make_gateway(provider: str) -> ModelGateway:
-    """The one place a concrete provider is chosen. v0.1 is Anthropic-only; the
-    SDK import is lazy so `validate` (which never calls this) needs no SDK."""
+    """The one place a concrete real provider is chosen. v0.1 is Anthropic-only;
+    the SDK import is lazy so `validate` (which never calls this) needs no SDK.
+    Fake gateways are scripted per case and built in `_plan`, never here.
+
+    Raises `MissingCredentials` when the provider's key is absent, so composition
+    can skip those cases rather than fail them."""
     if provider == "anthropic":
+        if not os.environ.get("ANTHROPIC_API_KEY"):
+            raise MissingCredentials("anthropic", "ANTHROPIC_API_KEY")
         from agentcheck.adapters.driven.providers.anthropic import AnthropicGateway
 
         return AnthropicGateway()
@@ -126,6 +148,17 @@ def _render_errors(errors: list[SpecError]) -> str:
 # -- Planning: filter, resolve, map mocks -----------------------------------
 
 
+def _fake_gateway_for(provider: str, case: Case) -> FakeGateway | None:
+    """A `provider: fake` case carries a scripted gateway built from its `script`;
+    every other provider defers to the shared run default (returns None). A fake
+    case with no script can't answer, so that's a config error (AC-016)."""
+    if provider != "fake":
+        return None
+    if not case.script:
+        raise ConfigError(f"case {case.name!r} uses provider 'fake' but has no 'script'")
+    return FakeGateway.script(map_script(case.script))
+
+
 def _plan(
     loaded: _Loaded,
     *,
@@ -147,18 +180,48 @@ def _plan(
                 project_defaults=loaded.defaults, overrides=overrides,
             )
             mocks = merge_mocks(map_mocks(suite.mocks or {}), map_mocks(case.mocks or {}))
-            cases.append(PlannedCase(case=resolved, mocks=mocks))
+            gateway = _fake_gateway_for(resolved.provider, case)
+            cases.append(PlannedCase(case=resolved, mocks=mocks, gateway=gateway))
             resolved_by[(suite.name, case.name)] = resolved
         if cases:  # a filtered-away suite is dropped, not shown empty
             planned.append(PlannedSuite(name=suite.name, path=path, cases=cases))
     return planned, resolved_by
 
 
-def _provider_of(planned: list[PlannedSuite]) -> str:
+def _partition_by_availability(
+    planned: list[PlannedSuite], *, out: TextIO
+) -> tuple[list[PlannedSuite], ModelGateway | None]:
+    """Drop cases whose real provider has no credentials, printing a skip note for
+    each (skipped ≠ failed, AC-016). Returns the runnable suites and the shared
+    run-default gateway for the real provider — v0.1 has at most one (Anthropic);
+    every fake case carries its own, so the default may be None."""
+    real_providers = {c.case.provider for s in planned for c in s.cases if c.gateway is None}
+    gateways: dict[str, ModelGateway] = {}
+    skip_env: dict[str, str] = {}  # provider → env var, for the unavailable ones
+    for provider in real_providers:
+        try:
+            gateways[provider] = make_gateway(provider)
+        except MissingCredentials as exc:
+            skip_env[provider] = exc.env_var
+
+    runnable: list[PlannedSuite] = []
+    default_gateway: ModelGateway | None = None
     for suite in planned:
+        keep: list[PlannedCase] = []
         for case in suite.cases:
-            return case.case.provider
-    return "anthropic"
+            provider = case.case.provider
+            if case.gateway is None and provider in skip_env:
+                out.write(
+                    f"skipped {suite.name}::{case.case.case_name} "
+                    f"(needs {skip_env[provider]})\n"
+                )
+                continue
+            keep.append(case)
+            if case.gateway is None:
+                default_gateway = gateways[provider]
+        if keep:
+            runnable.append(replace(suite, cases=keep))
+    return runnable, default_gateway
 
 
 # -- Cost attachment + exit code --------------------------------------------
@@ -236,6 +299,37 @@ def _render_trace(case: CaseResult) -> str:
 # -- Commands (return exit codes; the CLI maps them to typer.Exit) ----------
 
 
+def _next_command(dst: Path) -> str:
+    """The single copy-pasteable command to run right after `init`."""
+    if dst.resolve() == Path.cwd().resolve():
+        return "agentcheck run"
+    return f"cd {dst} && agentcheck run"
+
+
+def init(target: str = ".", *, force: bool = False, out: TextIO, err: TextIO) -> int:
+    """Scaffold a runnable example project into `target` (SPEC §1.6, AC-016).
+
+    Refuses to overwrite existing files without `force`, listing the conflicts.
+    On success, prints what it created and the one command to run next."""
+    dst = Path(target)
+    try:
+        written = scaffold(dst, force=force)
+    except ScaffoldConflict as exc:
+        err.write(f"error: {exc}\n")
+        err.write("re-run `agentcheck init --force` to overwrite them.\n")
+        return EXIT_CONFIG
+    except Exception as exc:  # noqa: BLE001 - unhandled → clean message, exit 2 (SPEC §7.1)
+        return _internal_error(exc, err=err, debug=False)
+
+    for rel in written:
+        out.write(f"  created {rel}\n")
+    out.write(
+        f"\nScaffolded {len(written)} files into {dst}. "
+        f"No API key needed for the example. Next:\n\n    {_next_command(dst)}\n"
+    )
+    return EXIT_OK
+
+
 def validate(paths: Sequence[str], *, debug: bool = False, out: TextIO, err: TextIO) -> int:
     """Parse and validate specs. **Zero network calls, ever.**"""
     try:
@@ -284,10 +378,13 @@ def run(
             out.write("no cases matched\n")
             return EXIT_OK
 
-        gateway = make_gateway(_provider_of(planned))
+        runnable, default_gateway = _partition_by_availability(planned, out=out)
+        if not runnable:  # every case was skipped for want of credentials
+            return EXIT_OK
+
         result = asyncio.run(
-            run_suites(planned, gateway, concurrency=concurrency or BUILTIN_CONCURRENCY,
-                       fail_fast=fail_fast)
+            run_suites(runnable, default_gateway,
+                       concurrency=concurrency or BUILTIN_CONCURRENCY, fail_fast=fail_fast)
         )
         result = _price(result, resolved_by)
         _report(result, reporter=reporter, json_out=json_out, verbose=verbose,
@@ -326,8 +423,16 @@ def trace(
         if target is None:
             raise ConfigError(f"no case {address!r} found")
 
-        gateway = make_gateway(target.case.provider)
-        result = asyncio.run(run_suites([target_suite(target)], gateway))
+        # A fake target carries its own scripted gateway; a real one needs a key
+        # now — trace is an explicit request, so a missing key is an error, not a
+        # silent skip.
+        default_gateway: ModelGateway | None = None
+        if target.gateway is None:
+            try:
+                default_gateway = make_gateway(target.case.provider)
+            except MissingCredentials as exc:
+                raise ConfigError(str(exc)) from exc
+        result = asyncio.run(run_suites([target_suite(target)], default_gateway))
         case_result = result.suites[0].cases[0]
         out.write(_render_trace(case_result))
         return _exit_code(result)

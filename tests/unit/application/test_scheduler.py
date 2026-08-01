@@ -309,3 +309,44 @@ async def test_fail_fast_without_a_failure_completes_normally() -> None:
 
     assert _names(result) == ["a", "b", "c"]
     assert result.complete is True
+
+
+class _FixedGateway:
+    """Always answers with the same text — a distinct instance per case lets a
+    test prove the scheduler ran each case against its OWN gateway (AC-016)."""
+
+    name = "fake"
+
+    def __init__(self, reply: str) -> None:
+        self._reply = reply
+
+    async def complete(self, request: CompletionRequest) -> ModelResponse:
+        return _text(self._reply)
+
+
+async def test_per_case_gateway_overrides_the_run_default() -> None:
+    # Each case carries its own gateway; no run-level default is supplied.
+    suite = _suite(
+        "s",
+        [
+            PlannedCase(case=_rc("a", expect=[{"final_contains": "from-A"}]),
+                        gateway=_FixedGateway("from-A")),
+            PlannedCase(case=_rc("b", expect=[{"final_contains": "from-B"}]),
+                        gateway=_FixedGateway("from-B")),
+        ],
+    )
+
+    result = await run_suites([suite])  # no shared provider — per-case gateways only
+
+    cases = {c.case_name: c for c in result.suites[0].cases}
+    assert cases["a"].trace is not None and cases["a"].trace.turns[-1].response.text == "from-A"
+    assert cases["b"].trace is not None and cases["b"].trace.turns[-1].response.text == "from-B"
+    assert all(c.passed for c in cases.values())
+
+
+async def test_missing_gateway_is_an_isolated_case_error() -> None:
+    # No per-case gateway and no run default → that case errors, not the whole run.
+    result = await run_suites([_suite("s", [_pc("a")])])
+
+    case = result.suites[0].cases[0]
+    assert case.passed is False and case.trace is None and case.error is not None

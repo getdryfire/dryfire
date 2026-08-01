@@ -41,10 +41,17 @@ ProgressCallback = Callable[["CaseResult"], None]
 @dataclass(frozen=True)
 class PlannedCase:
     """One runnable case: a resolved case plus its already-merged domain mocks.
-    The scheduler builds a fresh `MockResolver(mocks)` per case at execution time."""
+    The scheduler builds a fresh `MockResolver(mocks)` per case at execution time.
+
+    `gateway` overrides the run-level default for this one case (AC-016): a
+    `provider: fake` case carries its own freshly-scripted `FakeGateway` — stateful,
+    so it must not be shared — while real-provider cases fall back to the shared
+    run default. Composition (which may import concretes) assigns it; the type here
+    is the `ModelGateway` port, so the application stays adapter-free."""
 
     case: ResolvedCase
     mocks: dict[str, list[MockRule]] = field(default_factory=dict)
+    gateway: ModelGateway | None = None
 
 
 @dataclass(frozen=True)
@@ -101,13 +108,18 @@ def _evaluate(expect: list[dict[str, Any]], trace: Trace) -> list[AssertionResul
     return results
 
 
-async def _process_case(planned: PlannedCase, provider: ModelGateway) -> CaseResult:
+async def _process_case(planned: PlannedCase, provider: ModelGateway | None) -> CaseResult:
     case = planned.case
     try:
+        # Per-case gateway wins over the run default; a case with neither is a
+        # planning bug, surfaced as an isolated case error (never a crashed run).
+        gateway = planned.gateway if planned.gateway is not None else provider
+        if gateway is None:
+            raise RuntimeError(f"no gateway for case {case.suite_name}::{case.case_name}")
         # A fresh resolver per case: AC-008 sequence state must not bleed across
         # concurrently-running cases.
         resolver = MockResolver(dict(planned.mocks))
-        trace = await run_case(case, provider, resolver)
+        trace = await run_case(case, gateway, resolver)
         assertions = _evaluate(case.expect, trace)
         passed = all(a.passed for a in assertions)
         return CaseResult(case.suite_name, case.case_name, trace, assertions, passed)
@@ -135,7 +147,7 @@ def _group(
 
 async def run_suites(
     suites: list[PlannedSuite],
-    provider: ModelGateway,
+    provider: ModelGateway | None = None,
     *,
     concurrency: int = DEFAULT_CONCURRENCY,
     fail_fast: bool = False,
@@ -143,6 +155,10 @@ async def run_suites(
 ) -> RunResult:
     """Run every case concurrently (bounded to `concurrency`) and return results in
     spec order regardless of completion order.
+
+    `provider` is the run-level default gateway; a case that carries its own
+    `PlannedCase.gateway` uses that instead (AC-016). A case with neither errors in
+    isolation.
 
     `fail_fast`: on the first case that does not pass, cancel every in-flight case
     and return only the results that already completed, with `complete=False`. A
