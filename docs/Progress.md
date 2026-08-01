@@ -23,25 +23,18 @@ Update this file when work ships, phases change, or priorities shift.
 
 > Actively building. Code is being written.
 
-### DF-204 — CachingGateway decorator + four modes (implemented, PR open)
-The ticket that proves the architecture: cassette record/replay lands as a **decorator over
-`ModelGateway`** with **`application/loop.py` byte-for-byte unchanged** (verified). Gate green (358
-tests + 1 live-skipped), dogfood green, loop unchanged.
-- `adapters/driven/providers/caching.py` — `CachingGateway` wraps any `ModelGateway`. Modes: `off`
-  (bypass), `auto` (miss→live+record), `record` (always live, overwrite), `replay` (hit→serve,
-  **miss→`CassetteMiss`, never a live call**). Request reduced to the fingerprint form (`raw` stripped);
-  provider from `inner.name`; `recorded_at` injected.
-- **Event-model decision (was deferred to here):** cache-hit rides on **`ModelResponse.cache_hit`**
-  (default `False`), set by the gateway. The loop only *stores* the response, so it never learns caching
-  exists — no `EventSink` build, no loop change. Additive trace-JSON field (round-trip + schema
-  unaffected). Terminal reporter shows `⚡N cached` **only when present** (existing goldens stay green).
-- **Replay bypasses the credential check entirely** — no key needed. A `replay` miss raises
-  `CassetteMiss`, which the loop already turns into `provider_error` → **exit 3** (no loop change). A
-  `_NoLiveGateway` inner raises if a live call is ever attempted → airgap.
-- Wired in `composition.py` (`--cassette-mode` flag > project `cassettes.mode` > `off`; store rooted at
-  `cassettes.dir`). Acceptance test records a 2-turn suite then replays it with `make_gateway` patched
-  to raise — green, proving a fully offline run incl. turn 2+ (the SPIKE-002 failure mode). Airgap +
-  replay-miss both mutation-checked.
+### DF-205 — `prune` command (implemented, PR open)
+Closes the cassette workstream (DF-202→205): `dryfire prune` deletes orphaned or stale cassettes.
+Dry-run by default, `--yes` to delete; exits 0 whether or not anything was pruned. Gate green (365
+tests + 1 live-skipped), loop unchanged.
+- `adapters/driven/cache/prune.py` — scans `.dryfire/cassettes/<suite>/<case>/…` against the sanitised
+  set of suites/cases that currently parse; classifies each as **orphaned suite**, **orphaned case**,
+  or **stale schema_version**. `remove_empty_dirs` cleans emptied dirs after `--yes`.
+- **Safety rule (mutation-checked):** a cassette whose suite failed to parse is **never** pruned —
+  parsing is what yields a suite's name, so when any suite fails to load, every cassette dir that
+  doesn't match a *successfully parsed* suite is protected. A broken spec must not cause data loss.
+- `_sanitise` promoted to public `sanitise` in `file_store.py` so prune matches on-disk dir names by
+  the same rule the store wrote them with. `composition.prune` + a thin `prune` CLI command.
 
 ---
 
@@ -49,11 +42,11 @@ tests + 1 live-skipped), dogfood green, loop unchanged.
 
 > Committed work, ready to start. Ordered by the EPIC-002 dependency graph (`EPIC-002.md`).
 
-1. **DF-205** — `prune` command (delete orphaned/stale cassettes; dry-run by default). Needs DF-204.
-2. **DF-201** — OpenAI gateway (independent; lifts SPIKE-001; `git diff application/` must be empty).
-3. **DF-206** retries — needs a new **Clock port** (surfaced in review) so backoff tests don't wait.
+1. **DF-201** — OpenAI gateway (independent; lifts SPIKE-001; `git diff application/` must be empty).
+   The second-provider proof of the port.
+2. **DF-206** retries — needs a new **Clock port** (surfaced in review) so backoff tests don't wait.
    When it lands, composition wiring becomes `Caching(Retrying(Real))` (order is load-bearing).
-4. Remaining: DF-207/208 assertions · DF-209 JUnit · DF-210 Action · DF-211 passthrough · DF-212
+3. Remaining: DF-207/208 assertions · DF-209 JUnit · DF-210 Action · DF-211 passthrough · DF-212
    release. Two half-day spikes first: SPIKE-004 (passthrough), SPIKE-005 (JUnit).
 
 ---
@@ -61,6 +54,14 @@ tests + 1 live-skipped), dogfood green, loop unchanged.
 ## Shipped
 
 > Working in the codebase. Committed and tested.
+
+### DF-204 — CachingGateway decorator + four modes (2026-08-01, PR #23)
+Cassette record/replay as a **decorator over `ModelGateway`** with **`application/loop.py` byte-for-byte
+unchanged** — the architecture proof. Modes off/auto/record/replay (miss→`CassetteMiss`→exit 3, never a
+live call). Cache-hit rides on `ModelResponse.cache_hit` (loop just stores the response; no `EventSink`
+build); terminal shows `⚡N cached` only when present. Replay is keyless + airgapped (`_NoLiveGateway`
+raises if a live call is attempted). `--cassette-mode` flag > project `cassettes.mode` > `off`. Acceptance
+test replays a 2-turn suite fully offline; airgap + replay-miss mutation-checked.
 
 ### DF-203 — File cassette store (2026-08-01, PR #22)
 The file-backed `ResponseCache`: declared the port + `FileCassetteStore`. Layout

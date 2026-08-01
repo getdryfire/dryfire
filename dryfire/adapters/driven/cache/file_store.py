@@ -32,7 +32,7 @@ _UNSAFE = re.compile(r"[^A-Za-z0-9._-]")
 _RESERVED = frozenset({"", ".", ".."})
 
 
-def _sanitise(name: str) -> str:
+def sanitise(name: str) -> str:
     """A filesystem-safe directory name that never collapses two distinct names
     into one. Already-safe names pass through verbatim (the common case, keeping
     paths readable); any name that must be rewritten gets a short hash of the
@@ -70,7 +70,7 @@ class FileCassetteStore:
         return None
 
     def put(self, record: CassetteRecord, *, recorded_at: datetime) -> None:
-        directory = self._root / _sanitise(record.suite) / _sanitise(record.case)
+        directory = self._root / sanitise(record.suite) / sanitise(record.case)
         directory.mkdir(parents=True, exist_ok=True)
         target = directory / f"{record.turn:02d}-{record.fingerprint}.json"
         payload = self._serialise(record, recorded_at)

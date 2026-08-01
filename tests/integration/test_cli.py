@@ -218,7 +218,7 @@ def test_debug_flag_surfaces_the_traceback(
     assert isinstance(result.exception, RuntimeError)
 
 
-@pytest.mark.parametrize("argv", [[], ["init"], ["run"], ["validate"], ["trace"]])
+@pytest.mark.parametrize("argv", [[], ["init"], ["run"], ["validate"], ["trace"], ["prune"]])
 def test_help_exits_zero_for_every_command(argv: list[str]) -> None:
     result = runner.invoke(app, [*argv, "--help"])
     assert result.exit_code == 0
