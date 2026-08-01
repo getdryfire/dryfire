@@ -67,8 +67,8 @@ Design commitments that follow from this positioning and must not be traded away
 ### 1.6 Adoption target
 
 `uvx agentcheck init` → passing green test in **under 60 seconds**, no API key required for
-the scaffolded example (it ships with a pre-recorded cassette). This number is a hard
-acceptance criterion on the v0.1 release, not an aspiration.
+the scaffolded example (its model turns are scripted via `provider: fake` — §4.4; cassettes
+are v0.2). This number is a hard acceptance criterion on the v0.1 release, not an aspiration.
 
 ---
 
@@ -424,6 +424,30 @@ is replaced, not appended).
 
 **Env interpolation** — `${VAR}` anywhere in a string value resolves from the environment
 at load time. Missing var is a spec error, not an empty string.
+
+**`provider`** — settable at the project default, suite, or run (`--model` is model-only)
+level. v0.1 recognises `anthropic` (needs `ANTHROPIC_API_KEY`) and `fake`. Suite-level
+provider is what lets a keyless `fake` suite and a real `anthropic` suite live in one
+project. A case whose real provider has no key in the environment is **skipped** by `run`
+(a visible note, not a failure); `trace` surfaces it as an error.
+
+**`script`** — case-level, and only for `provider: fake`. It scripts the model's side of the
+conversation, one entry per turn, so a suite runs deterministically with no API key. This is
+what makes the `init` example green in seconds (§1.6) and what the dogfood suite runs on.
+Each entry is exactly one of:
+
+```yaml
+script:
+  - tool_call: {name: get_weather, arguments: {city: "SF"}}   # one tool call this turn
+  - parallel:                                                 # several calls in one turn
+      - {name: a, arguments: {}}
+      - {name: b, arguments: {}}
+  - text: "It's 65F in SF."                                   # a final text turn (end_turn)
+  - fails: "provider exploded"                                # simulate a provider error
+```
+
+A `fake` case must have a `script`; a `script` on a real-provider case is meaningless. Tool
+*results* still come from `mocks` — `script` only drives what the model asks for.
 
 ---
 

@@ -113,6 +113,14 @@ docker-shell: ## Open a bash shell inside the container
 docker-check-313: ## Full gate on Python 3.13 (run the CI matrix locally)
 	$(COMPOSE) --profile matrix run --rm dev-313 make check
 
+.PHONY: smoke
+smoke: ## AC-016: time install -> init -> run, assert under the 60s target
+	./scripts/measure_cold_start.sh
+
+.PHONY: docker-smoke
+docker-smoke: ## Measure cold start in a clean Linux container (the fair number)
+	$(COMPOSE) run --rm $(DEV_SERVICE) ./scripts/measure_cold_start.sh
+
 .PHONY: docker-clean
 docker-clean: ## Remove this project's containers and images
 	$(COMPOSE) --profile matrix down --rmi local --remove-orphans

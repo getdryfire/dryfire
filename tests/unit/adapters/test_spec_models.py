@@ -13,6 +13,8 @@ from agentcheck.adapters.driven.spec.models import (
     Defaults,
     MockRule,
     ProjectConfig,
+    ScriptStep,
+    ScriptToolCall,
     Suite,
     ToolSpec,
 )
@@ -146,6 +148,58 @@ class TestMockRule:
         assert exc.value.errors()[0]["type"] == "extra_forbidden"
 
 
+class TestScriptStep:
+    """A scripted model turn for `provider: fake` (AC-016). Exactly one of
+    text / tool_call / parallel / fails, mirroring the FakeGateway helpers."""
+
+    def test_text_turn(self) -> None:
+        step = ScriptStep.model_validate({"text": "It's 65F in San Francisco."})
+        assert step.text == "It's 65F in San Francisco."
+        assert step.tool_call is None
+
+    def test_tool_call_turn(self) -> None:
+        step = ScriptStep.model_validate(
+            {"tool_call": {"name": "get_weather", "arguments": {"city": "SF"}}}
+        )
+        assert isinstance(step.tool_call, ScriptToolCall)
+        assert step.tool_call.name == "get_weather"
+        assert step.tool_call.arguments == {"city": "SF"}
+
+    def test_tool_call_arguments_default_to_empty(self) -> None:
+        step = ScriptStep.model_validate({"tool_call": {"name": "ping"}})
+        assert step.tool_call is not None
+        assert step.tool_call.arguments == {}
+
+    def test_parallel_turn(self) -> None:
+        step = ScriptStep.model_validate(
+            {"parallel": [{"name": "a", "arguments": {"x": 1}}, {"name": "b"}]}
+        )
+        assert step.parallel is not None
+        assert [c.name for c in step.parallel] == ["a", "b"]
+
+    def test_fails_turn(self) -> None:
+        step = ScriptStep.model_validate({"fails": "provider exploded"})
+        assert step.fails == "provider exploded"
+
+    def test_zero_outcomes_fails(self) -> None:
+        with pytest.raises(ValidationError):
+            ScriptStep.model_validate({})
+
+    def test_two_outcomes_fails(self) -> None:
+        with pytest.raises(ValidationError):
+            ScriptStep.model_validate({"text": "hi", "fails": "boom"})
+
+    def test_unknown_key_is_forbidden(self) -> None:
+        with pytest.raises(ValidationError) as exc:
+            ScriptStep.model_validate({"text": "hi", "delay": 5})
+        assert exc.value.errors()[0]["type"] == "extra_forbidden"
+
+    def test_tool_call_unknown_key_is_forbidden(self) -> None:
+        with pytest.raises(ValidationError) as exc:
+            ScriptStep.model_validate({"tool_call": {"name": "x", "id": "call_0"}})
+        assert exc.value.errors()[0]["type"] == "extra_forbidden"
+
+
 class TestCase:
     def test_input_accepts_a_bare_string(self) -> None:
         c = Case.model_validate({"name": "c", "input": "refund order A-991", "expect": []})
@@ -178,6 +232,28 @@ class TestCase:
     def test_case_level_mocks_are_optional(self) -> None:
         c = Case.model_validate({"name": "c", "input": "x", "expect": []})
         assert c.mocks is None
+
+    def test_script_is_optional_and_absent_by_default(self) -> None:
+        c = Case.model_validate({"name": "c", "input": "x", "expect": []})
+        assert c.script is None
+
+    def test_script_parses_to_script_steps(self) -> None:
+        c = Case.model_validate(
+            {
+                "name": "c",
+                "input": "x",
+                "expect": [],
+                "script": [
+                    {"tool_call": {"name": "get_weather", "arguments": {"city": "SF"}}},
+                    {"text": "Done."},
+                ],
+            }
+        )
+        assert c.script is not None
+        assert isinstance(c.script[0], ScriptStep)
+        assert c.script[0].tool_call is not None
+        assert c.script[0].tool_call.name == "get_weather"
+        assert c.script[1].text == "Done."
 
     def test_unknown_key_is_forbidden(self) -> None:
         with pytest.raises(ValidationError) as exc:
@@ -228,11 +304,24 @@ class TestSuite:
         suite = Suite.model_validate(
             {"name": "minimal", "cases": [{"name": "c", "input": "x", "expect": []}]}
         )
+        assert suite.provider is None
         assert suite.model is None
         assert suite.max_turns is None
         assert suite.temperature is None
         assert suite.system is None
         assert suite.tags == []
+
+    def test_suite_level_provider_is_accepted(self) -> None:
+        # AC-016 needs a suite > project precedence level for provider so a
+        # `fake` suite and an `anthropic` suite can coexist in one project.
+        suite = Suite.model_validate(
+            {
+                "name": "hello",
+                "provider": "fake",
+                "cases": [{"name": "c", "input": "x", "expect": []}],
+            }
+        )
+        assert suite.provider == "fake"
 
     def test_suite_and_case_mocks_use_the_same_model(self) -> None:
         suite = Suite.model_validate(SUITE_EXAMPLE)

@@ -70,7 +70,7 @@ def resolve(
         suite_name=suite.name,
         case_name=case.name,
         suite_path=suite_path,
-        provider=_pick(ov, "provider", None, None, project_defaults, BUILTIN_PROVIDER),
+        provider=_pick(ov, "provider", suite.provider, None, project_defaults, BUILTIN_PROVIDER),
         model=_pick(ov, "model", suite.model, case.model, project_defaults, BUILTIN_MODEL),
         max_turns=_pick(
             ov, "max_turns", suite.max_turns, case.max_turns, project_defaults, BUILTIN_MAX_TURNS

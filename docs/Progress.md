@@ -1,6 +1,6 @@
 # Progress
 
-**Last Updated:** 2026-07-31
+**Last Updated:** 2026-08-01
 
 ---
 
@@ -22,7 +22,51 @@ Update this file when work ships, phases change, or priorities shift.
 
 > Actively building. Code is being written.
 
-### AC-015 — CLI surface and exit codes (implemented, uncommitted)
+### AC-016 — `init` scaffold and the 60-second target (implemented, PR open)
+`agentcheck init` scaffolds a runnable example project that goes green in **<60s with no API key and
+no network** (SPEC §1.6 hard criterion). Measured cold start: **3s** in a clean Linux container
+(`make docker-smoke`), 4s locally. TDD, gate green (311 tests + 1 live-skipped, ruff, mypy --strict,
+5/5 contracts).
+- **New spec surface (public):** `provider` is now suite-level (a `fake` suite and an `anthropic` suite
+  coexist); `script:` is a case-level field (tool_call / text / parallel / fails) that drives a
+  `provider: fake` case straight from YAML. `adapters/driven/spec/scripts.py` maps it 1:1 to the
+  `FakeGateway` helpers. New models `ScriptStep` / `ScriptToolCall` (exactly-one-of via
+  `model_fields_set`, like `MockRule`).
+- **Per-case gateways:** a scripted `FakeGateway` is stateful, so it can't be the scheduler's one
+  shared gateway. Added optional `PlannedCase.gateway` overriding a run-level default `provider`
+  (mirrors case-over-suite mocks) — cheaper than a factory param, no churn to AC-012's tests.
+  Composition builds a fresh fake per fake-case in `_plan`.
+- **Skip-on-missing-key:** real `make_gateway("anthropic")` raises `MissingCredentials` when the key is
+  absent; `run` drops those cases with a visible note (exit stays 0), `trace` surfaces it as an error.
+  The check lives in the `make_gateway` seam tests already replace, so keyless CLI tests still run.
+- **`init`:** `adapters/driven/scaffold/writer.py` copies `agentcheck/scaffold/template/**` (ships in
+  the wheel; read via `importlib.resources`), refuses to clobber without `--force` (lists conflicts,
+  writes nothing partial), prints one copy-pasteable next command. `composition.init()` orchestrates;
+  the `init` command in `cli/app.py`. Template: `agentcheck.yaml`, `evals/hello.eval.yaml` (keyless
+  fake), `evals/refund_agent.eval.yaml` (real, `$ref` schema, v0.1 assertions only — SPEC §4.3's
+  `min_tool_calls` is v0.2), `evals/schemas/escalate_to_human.json`, `evals/README.md`. Every
+  top-level key is commented (asserted by a test).
+- **`scripts/measure_cold_start.sh`** + `make smoke` / `make docker-smoke` reactivate the clean-machine
+  harness (Docker is the fair number).
+
+---
+
+## Up Next
+
+> Committed work, ready to start. Ordered by the EPIC-001 dependency graph.
+
+1. **AC-018** — dogfood: agentcheck's own eval suite running against `FakeProvider` in CI. AC-016
+   shipped the enabling mechanism (`provider: fake` + `script:`); this ticket points a suite at
+   agentcheck's own behaviour and wires it into CI.
+2. **AC-019** — release (PyPI, README, fold in `COMPARISON.md`).
+
+---
+
+## Shipped
+
+> Working in the codebase. Committed and tested.
+
+### AC-015 — CLI surface and exit codes (2026-08-01, PR #16)
 `run` / `validate` / `trace` with contractual exit codes (SPEC §7, §7.1) — the composition root that
 exposes every library built so far. TDD, gate green (270 tests + 1 live-skipped, ruff, mypy --strict,
 5/5 contracts).
@@ -45,23 +89,6 @@ exposes every library built so far. TDD, gate green (270 tests + 1 live-skipped,
   JSON to stdout and suppresses the terminal. `--filter`/`--tag` compose (AND); zero match → exit `0`
   with "no cases matched". `--model` overrides project+suite (highest-precedence override). `-v` dumps
   failing-case traces. Ruff: `typer.Option`/`Argument` added to bugbear `extend-immutable-calls`.
-
----
-
-## Up Next
-
-> Committed work, ready to start. Ordered by the EPIC-001 dependency graph.
-
-1. **AC-016** — `init` scaffold + a bundled keyless example that goes green in <60s (uses
-   `FakeGateway`); the `make smoke` clean-machine test reactivates here.
-2. **AC-018** — dogfood: agentcheck's own eval suite running against `FakeProvider` in CI.
-3. **AC-019** — release (PyPI, README, fold in `COMPARISON.md`).
-
----
-
-## Shipped
-
-> Working in the codebase. Committed and tested.
 
 ### AC-014 — JSON reporter and trace serialization (2026-08-01, PR #15)
 - `adapters/driven/reporting/json_sink.py` — `render_run` / `write_run` / `deserialize_run`,
@@ -197,10 +224,10 @@ payloads captured to `tests/fixtures/anthropic/`. The OpenAI half remains for v0
 OpenAI key). The spike's `CANNED` dict was left as-is (frozen reference); AC-007's fixtures are
 the source of truth.
 
-### `make smoke` — clean-machine onboarding test
-**Why paused:** `agentcheck init` doesn't exist yet (AC-016).
-**Reactivate when:** AC-016 lands. Docker is the natural harness for EPIC-001 success
-criterion 1 (`uvx agentcheck init` → green in <60s on a clean machine, no API key).
+### ~~`make smoke` — clean-machine onboarding test~~ — DONE (AC-016)
+`scripts/measure_cold_start.sh` + `make smoke` / `make docker-smoke` measure install → `init` → `run`
+and assert the total is under the 60s target (EPIC-001 success criterion 1). Docker is the fair
+harness: **3s** measured in a clean Linux container.
 
 ### docs/how-to-add-an-assertion.md
 **Why paused:** the assertion framework (AC-010) doesn't exist yet; a walkthrough now would
