@@ -20,7 +20,8 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, TextIO, cast
 
-from dryfire.adapters.driven.cache.file_store import FileCassetteStore
+from dryfire.adapters.driven.cache.file_store import FileCassetteStore, sanitise
+from dryfire.adapters.driven.cache.prune import find_prunable, remove_empty_dirs
 from dryfire.adapters.driven.pricing.bundled import BundledPricingCatalog
 from dryfire.adapters.driven.providers.caching import CachingGateway
 from dryfire.adapters.driven.providers.fake import FakeGateway
@@ -396,6 +397,55 @@ def init(target: str = ".", *, force: bool = False, out: TextIO, err: TextIO) ->
         f"No API key needed for the example. Next:\n\n    {_next_command(dst)}\n"
     )
     return EXIT_OK
+
+
+def prune(*, yes: bool = False, debug: bool = False, out: TextIO, err: TextIO) -> int:
+    """Delete orphaned or stale cassettes (DF-205). Dry-run unless `yes`. Exits 0
+    whether or not anything was pruned; a cassette belonging to a suite that failed
+    to parse is never touched."""
+    try:
+        cwd = Path.cwd()
+        config_path = discover_config(cwd)
+        if config_path is None:
+            raise ConfigError("no dryfire.yaml found — run `dryfire init` first")
+        project = load_project_config(config_path)
+        config_dir = config_path.parent
+
+        valid: dict[str, set[str]] = {}
+        had_parse_failure = False
+        for path in glob_suites(config_path, project.suites):
+            suite, errs = load_suite(path)
+            if suite is None or errs:
+                had_parse_failure = True  # unknown name → protect its cassettes
+                continue
+            valid[sanitise(suite.name)] = {sanitise(c.name) for c in suite.cases}
+
+        dirname = (project.cassettes.dir if project.cassettes else None) or ".dryfire/cassettes"
+        root = config_dir / dirname
+        candidates = find_prunable(root, valid, had_parse_failure=had_parse_failure)
+
+        if not candidates:
+            out.write("nothing to prune\n")
+            return EXIT_OK
+
+        verb = "removed" if yes else "would remove"
+        for candidate in candidates:
+            out.write(f"{verb} {candidate.path.relative_to(config_dir)} ({candidate.reason})\n")
+        if yes:
+            for candidate in candidates:
+                candidate.path.unlink(missing_ok=True)
+            remove_empty_dirs(root)
+        else:
+            out.write(
+                f"\n{len(candidates)} cassette(s) would be removed. "
+                "Re-run with --yes to delete.\n"
+            )
+        return EXIT_OK
+    except ConfigError as exc:
+        err.write(f"error: {exc}\n")
+        return EXIT_CONFIG
+    except Exception as exc:  # noqa: BLE001 - unhandled → clean message, exit 2 (SPEC §7.1)
+        return _internal_error(exc, err=err, debug=debug)
 
 
 def validate(paths: Sequence[str], *, debug: bool = False, out: TextIO, err: TextIO) -> int:

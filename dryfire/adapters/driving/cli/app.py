@@ -76,6 +76,16 @@ def run(
 
 
 @app.command()
+def prune(
+    yes: bool = typer.Option(False, "--yes", help="Actually delete (default: dry run)."),
+    debug: bool = typer.Option(False, "--debug", help="Show tracebacks on internal errors."),
+) -> None:
+    """Delete orphaned or stale cassettes (dry run unless --yes)."""
+    code = composition.prune(yes=yes, debug=debug, out=sys.stdout, err=sys.stderr)
+    raise typer.Exit(code)
+
+
+@app.command()
 def validate(
     paths: list[str] = typer.Argument(None, help="Suite files to validate."),
     debug: bool = typer.Option(False, "--debug", help="Show tracebacks on internal errors."),
