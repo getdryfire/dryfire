@@ -5,9 +5,9 @@ this mapping lives in the adapter and composition merges the result per case."""
 
 from typing import Any
 
-from agentcheck.adapters.driven.spec.mocks import map_mock_rule, map_mocks
-from agentcheck.adapters.driven.spec.models import MockRule as SpecRule
-from agentcheck.domain.mocking import resolver as dom
+from dryfire.adapters.driven.spec.mocks import map_mock_rule, map_mocks
+from dryfire.adapters.driven.spec.models import MockRule as SpecRule
+from dryfire.domain.mocking import resolver as dom
 
 
 def _spec(**kw: Any) -> SpecRule:

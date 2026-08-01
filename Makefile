@@ -12,7 +12,7 @@ DEV_SERVICE := dev
 # ────────────────────────────────────────────────────────────────────────────
 .PHONY: help
 help: ## Show this help
-	@awk 'BEGIN {FS = ":.*?## "; printf "\nagentcheck — available targets\n\n"} \
+	@awk 'BEGIN {FS = ":.*?## "; printf "\ndryfire — available targets\n\n"} \
 		/^## / {section = substr($$0, 4); printf "\n\033[1m%s\033[0m\n", section; next} \
 		/^[a-zA-Z0-9_-]+:.*?## / {printf "  \033[36m%-20s\033[0m %s\n", $$1, $$2}' $(MAKEFILE_LIST)
 	@echo
@@ -48,7 +48,7 @@ format: ## Ruff format
 	uv run ruff format .
 
 .PHONY: typecheck
-typecheck: ## Mypy --strict on agentcheck/ (config in pyproject.toml)
+typecheck: ## Mypy --strict on dryfire/ (config in pyproject.toml)
 	uv run mypy
 
 .PHONY: arch
@@ -114,7 +114,7 @@ docker-check-313: ## Full gate on Python 3.13 (run the CI matrix locally)
 	$(COMPOSE) --profile matrix run --rm dev-313 make check
 
 .PHONY: dogfood
-dogfood: ## AC-018: agentcheck runs its own eval suite (offline, no API key)
+dogfood: ## AC-018: dryfire runs its own eval suite (offline, no API key)
 	./scripts/run_dogfood.sh
 
 .PHONY: smoke

@@ -2,7 +2,7 @@
 
 from pathlib import Path
 
-from agentcheck.adapters.driven.spec.positions import (
+from dryfire.adapters.driven.spec.positions import (
     Position,
     load_positioned,
     locate,

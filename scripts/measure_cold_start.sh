@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # AC-016 — measure the cold-start adoption target (SPEC §1.6).
 #
-# Times a from-scratch install → `agentcheck init` → `agentcheck run` in an
+# Times a from-scratch install → `dryfire init` → `dryfire run` in an
 # isolated venv, with NO API key, and asserts the total wall-clock is under the
 # budget (default 60s). This is a measurement, not a judgement — the number it
 # prints goes in the PR. Run it in a clean container for a fair number:
@@ -33,8 +33,8 @@ uv pip install --quiet --python "$VENV_BIN/python" "$REPO"
 # 2. scaffold + 3. run, from an empty project directory
 mkdir "$WORK/proj"
 cd "$WORK/proj"
-"$VENV_BIN/agentcheck" init
-"$VENV_BIN/agentcheck" run
+"$VENV_BIN/dryfire" init
+"$VENV_BIN/dryfire" run
 
 end=$(date +%s)
 elapsed=$((end - start))

@@ -1,4 +1,4 @@
-# agentcheck — Architecture
+# dryfire — Architecture
 
 **Companion to:** `SPEC.md` (what it does) · `EPIC-001.md` + `TICKETS-*.md` (how it gets built)
 **This document:** how the code is shaped, and what the compiler and CI enforce.
@@ -76,7 +76,7 @@ concrete adapter. Only the composition root (§8) knows both sides. This is enfo
 This **supersedes SPEC §8**. Migration table in §12.
 
 ```
-agentcheck/
+dryfire/
   __about__.py              APP_NAME, __version__, CONFIG_DIR
 
   domain/                   ── pure. no I/O, no SDKs, no filesystem, no clock
@@ -350,7 +350,7 @@ fake is trivial to write; if a fake is tedious, the port is too fat.
 
 **DIP** — `loop.py` imports `ports.model_gateway`, never `adapters.driven.providers.anthropic`.
 Enforced mechanically (§10), not by discipline.
-*Violation smell:* any `from agentcheck.adapters` line inside `domain/` or `application/`.
+*Violation smell:* any `from dryfire.adapters` line inside `domain/` or `application/`.
 
 ### 7.5 On OOP
 
@@ -460,7 +460,7 @@ Architecture that is only documented is aspiration. These run in CI and fail the
 
 **Other gates:**
 
-- `mypy --strict` on `agentcheck/`.
+- `mypy --strict` on `dryfire/`.
 - `ruff` with a custom rule banning `unittest.mock` outside `tests/contracts/`.
 - Banned-synonym check over source and docs (§3).
 - Dogfood suite (AC-018) as a separate CI job.

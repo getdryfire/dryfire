@@ -18,7 +18,7 @@ Contract 3 (domain may import only pydantic + stdlib) needs
 silently ignore non-project modules like `httpx` or `ruamel`.
 
 ### uv self-referential extras
-`all = ["agentcheck[anthropic,openai]"]` composes extras without duplicating version pins.
+`all = ["dryfire[anthropic,openai]"]` composes extras without duplicating version pins.
 uv resolves it fine.
 
 ### Docker venv outside the bind mount
@@ -42,7 +42,7 @@ tests is acceptable" — it isn't, mechanically. Keep at least one smoke test.
 
 ### Typer `--version` without `invoke_without_command=True`
 A callback-only Typer app with `invoke_without_command=False` rejects
-`agentcheck --version` with "Missing command" (exit 2). Eager options on the callback need
+`dryfire --version` with "Missing command" (exit 2). Eager options on the callback need
 `invoke_without_command=True`.
 
 ### Plain `uv sync` for development
@@ -83,7 +83,7 @@ The port follows ARCHITECTURE §5.1 (`ModelGateway.complete(request: CompletionR
 no `cost()`), not SPEC §3.1's `Provider`. Cost is a separate `PricingCatalog` port at
 AC-017. AC-007 (Anthropic adapter) implements this Gateway shape. Verify a stub conforms
 with `uv run mypy --strict tests/unit/application/test_model_gateway.py` — `make typecheck`
-only scopes to `agentcheck/`, so the stub-vs-protocol check isn't in the standard gate.
+only scopes to `dryfire/`, so the stub-vs-protocol check isn't in the standard gate.
 
 ## Spec schema (AC-003)
 
@@ -168,7 +168,7 @@ run. Two gateways with the same script produce identical ids — "unique within 
 across runs" — which is what makes golden/cassette tests reproducible.
 
 ### Verifying protocol conformance under mypy
-`make typecheck` only scopes to `agentcheck/`, and nothing there binds a `FakeGateway` to a
+`make typecheck` only scopes to `dryfire/`, and nothing there binds a `FakeGateway` to a
 `ModelGateway`-typed slot, so the conformance check lives in the test: a `_accepts(g:
 ModelGateway)` call site plus `uv run mypy --strict tests/.../test_fake_gateway.py`. Same
 pattern as AC-002's port stub.
@@ -206,7 +206,7 @@ as "missing Args". The protocol should describe the *runtime interface* (`kind` 
 `Args` is a class-level registration convention accessed dynamically in `validate_args`
 (`getattr(cls, "Args", None)`). After narrowing the protocol, toy classes satisfy it
 structurally (no inheritance) and `mypy --strict` on the tests is clean — the actual proof of
-"structural, not inheritance" (criterion 6). `make typecheck` only covers `agentcheck/`, so
+"structural, not inheritance" (criterion 6). `make typecheck` only covers `dryfire/`, so
 run mypy on the test files to verify conformance.
 
 ### Seed known-kind names to bridge a framework→implementation gap
@@ -262,7 +262,7 @@ the spike adapter's `to_wire` then dumps `client.messages.create(...).model_dump
 ### Keep the SDK import lazy so the module imports without the extra
 `to_wire`/`from_wire` are module-level functions importing only domain/app types; the
 `anthropic` SDK is imported inside `AnthropicGateway.__init__` (→ actionable install-command
-error if absent). So `import agentcheck` and the offline unit tests need no SDK. Test the
+error if absent). So `import dryfire` and the offline unit tests need no SDK. Test the
 missing-SDK path with `monkeypatch.setitem(sys.modules, "anthropic", None)`.
 
 ### Use AsyncAnthropic, not the sync client
@@ -383,16 +383,16 @@ not the closest real model. A silent wrong price is worse than an honest `—`. 
 
 ### The CLI may import a driven adapter; domain/application may not
 `--version` reads `BundledPricingCatalog().updated`. Contract 5 (composition-isolation) forbids
-`agentcheck.domain` and `agentcheck.application` from importing `agentcheck.adapters.driven` — the
+`dryfire.domain` and `dryfire.application` from importing `dryfire.adapters.driven` — the
 **CLI (`adapters.driving`) is not in that source list**, so the import is legal (the contract note
 even says "only composition.py and the CLI may import concrete driven adapters"). Keep the SDK-free
-bundled loader's file read lazy (in `__init__`, not at import) so `import agentcheck` stays cheap.
+bundled loader's file read lazy (in `__init__`, not at import) so `import dryfire` stays cheap.
 
 ### Package data ships by default under hatchling
 `data/pricing.yaml` is included in the wheel with no extra `force-include`/`artifacts` config —
-`[tool.hatch.build.targets.wheel] packages = ["agentcheck"]` pulls in non-`.py` files under the
+`[tool.hatch.build.targets.wheel] packages = ["dryfire"]` pulls in non-`.py` files under the
 package. Verified with `uv build --wheel` + `unzip -l`. Access it via
-`importlib.resources.files("agentcheck").joinpath("data/pricing.yaml")` (robust for editable *and*
+`importlib.resources.files("dryfire").joinpath("data/pricing.yaml")` (robust for editable *and*
 wheel), not a `__file__`-relative path.
 
 ### Consult the claude-api skill for model prices — don't guess
@@ -441,7 +441,7 @@ mutation to prove teeth. The lesson: size the mutation to the observable output,
 value.
 
 ### `mypy --strict` on a test file re-enables `disallow_untyped_defs`
-`make typecheck` scopes to `agentcheck/` (and the `tests.*` override relaxes untyped defs). Running
+`make typecheck` scopes to `dryfire/` (and the `tests.*` override relaxes untyped defs). Running
 `mypy --strict tests/...` directly (the port-conformance habit) turns strict back on for that file,
 so `monkeypatch` params need `pytest.MonkeyPatch` annotations and `sum()` over a `Trace | None`
 comprehension needs an explicit `is not None` list first. Worth fixing — it's the same check CI
@@ -472,7 +472,7 @@ RunResult` (also the seam v0.3 `compare`/HTML will use). Domain models rebuild v
 
 ### `mypy --strict` on a test with a stub-less dep needs a module override
 `jsonschema` ships no type stubs, so `mypy --strict tests/...test_json_reporter.py` errors on the
-import. `make typecheck` is scoped to `agentcheck/` so it's unaffected, but to keep the test-file
+import. `make typecheck` is scoped to `dryfire/` so it's unaffected, but to keep the test-file
 conformance check clean add `[[tool.mypy.overrides]] module = "jsonschema.*"` with
 `ignore_missing_imports = true`. Also: monkeypatching a module's imported `os`/`json` via
 `monkeypatch.setattr(mod.os, ...)` trips mypy's `attr-defined` (not an explicit export) — use the
@@ -481,7 +481,7 @@ string-target form `monkeypatch.setattr("pkg.mod.os.replace", boom)` instead.
 ## CLI + composition (AC-015)
 
 ### composition.py is above the layers — it may import everything
-The import-linter `layers` contract orders `adapters > application > domain`; `agentcheck.composition`
+The import-linter `layers` contract orders `adapters > application > domain`; `dryfire.composition`
 is **not in any of the three layers**, so it's unconstrained and can import driven adapters + app +
 domain (contract 5 only forbids `domain`/`application` sources). This is the intended composition root
 (ARCHITECTURE §7). `cli.py` (a driving adapter) imports `composition`; no cycle, contracts stay 5/5.
@@ -541,9 +541,9 @@ surfaces the same condition as an error, not a silent skip. A non-`MissingCreden
 still propagates to `_internal_error` → exit 2, so the "internal error" test is unaffected.
 
 ### Ship package data via `importlib.resources`, and mind the `-W error` gate
-The scaffold template (`agentcheck/scaffold/template/**`) ships in the wheel the same way
+The scaffold template (`dryfire/scaffold/template/**`) ships in the wheel the same way
 `data/pricing.yaml` does — files under the package dir are included by hatchling with no extra config —
-and is read with `files("agentcheck").joinpath("scaffold/template")`, never a `__file__`-relative path,
+and is read with `files("dryfire").joinpath("scaffold/template")`, never a `__file__`-relative path,
 so it works from a wheel too. Recurse a `Traversable` with `.iterdir()`/`.is_dir()`. Import it from
 **`importlib.resources.abc`**, not `importlib.abc` — the latter emits a `DeprecationWarning` that the
 suite's `-W error` turns into a failure. Detect all conflicts before writing so a refused `init` never
@@ -566,6 +566,6 @@ exit 1, and the harness runs `set -uo pipefail` (not `-e`) because it *expects* 
 ### 2026-07-30 — AC-001 + toolchain
 - Scaffolded the project (see `docs/Progress.md`), adopted Makefile/docs practices from
   `terms-pilot`, added Docker as a reproducible toolchain + local CI matrix only.
-- Rejected for agentcheck: service containers, SOPS/age secrets (no team, no server, the
+- Rejected for dryfire: service containers, SOPS/age secrets (no team, no server, the
   only secret is `ANTHROPIC_API_KEY` for live tests), production Dockerfile (ships to
   PyPI), migrations/alembic (no database — tripwire in ARCHITECTURE §11).

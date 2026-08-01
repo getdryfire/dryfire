@@ -11,10 +11,10 @@ from typing import Any
 
 import pytest
 
-from agentcheck.adapters.driven.providers.fake import FakeGateway, FakeProviderError
-from agentcheck.adapters.driven.spec.models import ScriptStep
-from agentcheck.adapters.driven.spec.scripts import map_script
-from agentcheck.application.ports.model_gateway import CompletionRequest
+from dryfire.adapters.driven.providers.fake import FakeGateway, FakeProviderError
+from dryfire.adapters.driven.spec.models import ScriptStep
+from dryfire.adapters.driven.spec.scripts import map_script
+from dryfire.application.ports.model_gateway import CompletionRequest
 
 _Req = Callable[..., CompletionRequest]
 

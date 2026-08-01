@@ -11,10 +11,10 @@ from typing import Any
 import pytest
 from typer.testing import CliRunner
 
-from agentcheck import composition
-from agentcheck.adapters.driving.cli.app import app
-from agentcheck.domain.model.message import ModelResponse, Usage
-from agentcheck.domain.model.tooling import ToolCall
+from dryfire import composition
+from dryfire.adapters.driving.cli.app import app
+from dryfire.domain.model.message import ModelResponse, Usage
+from dryfire.domain.model.tooling import ToolCall
 
 runner = CliRunner()
 

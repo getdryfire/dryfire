@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "agentcheck run artifact (schema_version 1)",
+  "title": "dryfire run artifact (schema_version 1)",
   "type": "object",
   "required": ["schema_version", "generated_at", "complete", "suites"],
   "additionalProperties": false,

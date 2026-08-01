@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 from pydantic import ValidationError
 
-from agentcheck.domain.model.case import ResolvedCase
+from dryfire.domain.model.case import ResolvedCase
 
 
 def _make(**over: object) -> ResolvedCase:
@@ -31,7 +31,7 @@ def test_tools_default_to_empty() -> None:
 
 
 def test_tools_are_carried() -> None:
-    from agentcheck.domain.model.tooling import ToolDef
+    from dryfire.domain.model.tooling import ToolDef
 
     tool = ToolDef(name="lookup_order", input_schema={"type": "object"})
     assert _make(tools=[tool]).tools == [tool]

@@ -5,9 +5,9 @@ keys and merges the rest. A near-miss returns None, never a fuzzy price."""
 from decimal import Decimal
 from pathlib import Path
 
-from agentcheck.adapters.driven.pricing.bundled import BundledPricingCatalog
-from agentcheck.application.ports.pricing_catalog import PricingCatalog
-from agentcheck.domain.pricing.calculator import Rates
+from dryfire.adapters.driven.pricing.bundled import BundledPricingCatalog
+from dryfire.application.ports.pricing_catalog import PricingCatalog
+from dryfire.domain.pricing.calculator import Rates
 
 
 def _accepts(catalog: PricingCatalog) -> PricingCatalog:

@@ -8,10 +8,10 @@ import json
 
 import pytest
 
-from agentcheck.domain.model.message import Message, ModelResponse, Usage
-from agentcheck.domain.model.stop_reason import map_stop_reason
-from agentcheck.domain.model.tooling import ToolCall, ToolDef, ToolResult
-from agentcheck.domain.model.trace import Trace, Turn
+from dryfire.domain.model.message import Message, ModelResponse, Usage
+from dryfire.domain.model.stop_reason import map_stop_reason
+from dryfire.domain.model.tooling import ToolCall, ToolDef, ToolResult
+from dryfire.domain.model.trace import Trace, Turn
 
 
 def _response(*names: str, stop: str = "tool_use", text: str | None = None) -> ModelResponse:

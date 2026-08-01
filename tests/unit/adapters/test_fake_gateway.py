@@ -5,8 +5,8 @@ from collections.abc import Callable
 
 import pytest
 
-from agentcheck.adapters.driven.providers import fake as fake_module
-from agentcheck.adapters.driven.providers.fake import (
+from dryfire.adapters.driven.providers import fake as fake_module
+from dryfire.adapters.driven.providers.fake import (
     FakeGateway,
     ScriptExhausted,
     fails,
@@ -14,7 +14,7 @@ from agentcheck.adapters.driven.providers.fake import (
     text,
     tool_call,
 )
-from agentcheck.application.ports.model_gateway import CompletionRequest, ModelGateway
+from dryfire.application.ports.model_gateway import CompletionRequest, ModelGateway
 
 _Req = Callable[..., CompletionRequest]
 

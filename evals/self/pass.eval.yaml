@@ -1,4 +1,4 @@
-# pass.eval.yaml — agentcheck testing agentcheck (AC-018 dogfood).
+# pass.eval.yaml — dryfire testing dryfire (AC-018 dogfood).
 #
 # Every case here is EXPECTED TO PASS. The dogfood CI job runs this suite and
 # fails if any case does not pass. It is scripted (`provider: fake`), so it runs

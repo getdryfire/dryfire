@@ -5,20 +5,20 @@ from typing import Any, ClassVar
 import pytest
 from pydantic import BaseModel
 
-from agentcheck.domain.assertions.base import (
+from dryfire.domain.assertions.base import (
     AssertionResult,
     DuplicateKind,
     register,
     safe_evaluate,
 )
-from agentcheck.domain.assertions.registry import build, get, known_kinds, validate_args
-from agentcheck.domain.model.trace import Trace
+from dryfire.domain.assertions.registry import build, get, known_kinds, validate_args
+from dryfire.domain.model.trace import Trace
 
 pytestmark = pytest.mark.usefixtures("registry_isolation")
 
 
 def _trace() -> Trace:
-    from agentcheck.domain.model.message import Usage
+    from dryfire.domain.model.message import Usage
 
     return Trace(
         case_name="c",

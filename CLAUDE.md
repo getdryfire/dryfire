@@ -4,14 +4,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-`agentcheck` — git-native regression testing for LLM agent tool loops. It runs YAML-defined
+`dryfire` — git-native regression testing for LLM agent tool loops. It runs YAML-defined
 agent suites, executes the full tool-calling loop with deterministic mocked tools, and
 asserts on the **trajectory** (ordered tool calls), not the final text. Local-first: no
 server, no database, no account; exit codes are the API.
 
 ## Current state: scaffold complete (AC-001), domain not yet implemented
 
-The `agentcheck/` package exists as a layered skeleton (uv-managed, hatchling, flat layout)
+The `dryfire/` package exists as a layered skeleton (uv-managed, hatchling, flat layout)
 with toolchain gates wired; no domain logic yet. Next ticket: AC-002. The repo contains:
 
 - **Authoritative docs** — read in this order when context is needed:
@@ -43,10 +43,10 @@ make add pkg=X / add-dev pkg=X / remove pkg=X / lock / sync
 make spike-tests / spike-probe / spike-errors
 ```
 
-Single test: `uv run pytest tests/unit/test_about.py -k <name>`. CLI: `uv run agentcheck --help`.
+Single test: `uv run pytest tests/unit/test_about.py -k <name>`. CLI: `uv run dryfire --help`.
 
 Docker is a reproducible Linux toolchain + local CI matrix — deliberately NO service
-containers, no production image (agentcheck is a zero-infra CLI shipped to PyPI):
+containers, no production image (dryfire is a zero-infra CLI shipped to PyPI):
 
 ```bash
 make docker-check     # full gate in a clean Linux container (Python 3.12)

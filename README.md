@@ -1,4 +1,4 @@
-# agentcheck
+# dryfire
 
 Git-native regression testing for LLM agent tool loops. Assert on the
 **trajectory** — the ordered sequence of tool calls — not the final text.
@@ -10,7 +10,7 @@ Git-native regression testing for LLM agent tool loops. Assert on the
 
 Agents don't fail by producing the wrong string. They fail by calling the wrong
 tool, with the wrong arguments, in the wrong order, skipping an escalation, or
-looping forever. agentcheck runs YAML-defined agent suites through the full
+looping forever. dryfire runs YAML-defined agent suites through the full
 tool-calling loop with deterministic mocked tools and asserts on the trace.
 
 Design commitments (see `SPEC.md` §1.4 — these are binding):
@@ -52,7 +52,7 @@ cases:
 ```
 
 ```bash
-agentcheck run          # exit 0 = pass, 1 = assertion failure, 2 = spec error, 3 = provider error
+dryfire run          # exit 0 = pass, 1 = assertion failure, 2 = spec error, 3 = provider error
 ```
 
 ---
@@ -74,7 +74,7 @@ by design (EPIC-001 success criterion 2).
 ### Option A — on the host (recommended for daily work)
 
 ```bash
-git clone <repo-url> agentcheck && cd agentcheck
+git clone <repo-url> dryfire && cd dryfire
 
 make setup     # uv sync --all-extras: creates .venv/, installs runtime + dev deps
 make check     # full quality gate: lint + typecheck + architecture + tests
@@ -86,14 +86,14 @@ make check     # full quality gate: lint + typecheck + architecture + tests
 Verify the CLI entry point:
 
 ```bash
-uv run agentcheck --help
-uv run agentcheck --version
+uv run dryfire --help
+uv run dryfire --version
 ```
 
 ### Option B — in Docker (clean Linux environment, no host Python needed)
 
 ```bash
-git clone <repo-url> agentcheck && cd agentcheck
+git clone <repo-url> dryfire && cd dryfire
 
 make docker-build       # build the dev image (Python 3.12 + uv, deps layer-cached)
 make docker-check       # run the full quality gate inside the container
@@ -103,7 +103,7 @@ make docker-check-313   # run the gate on Python 3.13 — the CI matrix, locally
 
 The source tree is bind-mounted into the container, so edits on the host are
 visible immediately. There are deliberately **no service containers** (no
-postgres/redis) and no production image — agentcheck is a zero-infra CLI that
+postgres/redis) and no production image — dryfire is a zero-infra CLI that
 ships to PyPI.
 
 > The container's virtualenv lives at `/opt/venv` (`UV_PROJECT_ENVIRONMENT`),
@@ -121,7 +121,7 @@ ships to PyPI.
 | `make test` | Offline test suite (`tests/`) |
 | `uv run pytest tests/unit/test_about.py -k name` | Single test |
 | `make lint` / `make lint-fix` / `make format` | Ruff |
-| `make typecheck` | mypy `--strict` on `agentcheck/` |
+| `make typecheck` | mypy `--strict` on `dryfire/` |
 | `make arch` | import-linter — the five architecture contracts in `.importlinter` |
 | `make test-live` | `@pytest.mark.live` tests; needs `ANTHROPIC_API_KEY` (pre-release only) |
 | `make add pkg=X` / `make add-dev pkg=X` | Add a runtime / dev dependency via uv |
@@ -167,7 +167,7 @@ assertions, `init`/`validate`/`run`/`trace`, PyPI).
 | `SPIKE-REPORT.md`, `FINDINGS_*.md` | Spike results and post-spike amendments |
 | `docs/Progress.md` | Living tracker: in flight / up next / shipped / on ice |
 | `docs/Learnings.md` | Accumulated pitfalls and patterns — read before contributing |
-| `agentcheck/` | The package: `domain/` (pure), `application/` (ports + use cases), `adapters/` |
+| `dryfire/` | The package: `domain/` (pure), `application/` (ports + use cases), `adapters/` |
 | `spikes/` | Frozen spike reference implementations |
 | `CLAUDE.md` | Working agreement for AI-assisted sessions |
 

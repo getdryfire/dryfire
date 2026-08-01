@@ -6,7 +6,7 @@
 
 ## How This Works
 
-Global tracker for agentcheck. Answers three questions without digging through the codebase:
+Global tracker for dryfire. Answers three questions without digging through the codebase:
 1. What's actively being built?
 2. What's shipped and working?
 3. What's next?
@@ -23,7 +23,7 @@ Update this file when work ships, phases change, or priorities shift.
 > Actively building. Code is being written.
 
 ### AC-018 — Dogfood suite in CI (implemented, PR open)
-agentcheck runs its own eval suite against the fake provider — proving the tool works by using it,
+dryfire runs its own eval suite against the fake provider — proving the tool works by using it,
 offline, as a separate CI job (SPEC §8.2). TDD-for-a-harness: mutation-checked (break a pass-case →
 red; flip a fail-case to pass → red). Runtime ~2s (<30s target). `make check` green (312 tests + 1
 live-skipped).
@@ -56,7 +56,7 @@ live-skipped).
 > Working in the codebase. Committed and tested.
 
 ### AC-016 — `init` scaffold and the 60-second target (2026-08-01, PR #17)
-`agentcheck init` scaffolds a runnable example that goes green in **<60s with no API key and no
+`dryfire init` scaffolds a runnable example that goes green in **<60s with no API key and no
 network** (SPEC §1.6). Measured cold start: **3s** in a clean Linux container (`make docker-smoke`),
 4s locally.
 - **New public spec surface (SPEC §4.4 amended):** `provider` is suite-level (a `fake` and an
@@ -69,9 +69,9 @@ network** (SPEC §1.6). Measured cold start: **3s** in a clean Linux container (
 - **Skip-on-missing-key:** `make_gateway("anthropic")` raises `MissingCredentials` with no key; `run`
   drops those cases with a visible note (exit 0), `trace` errors. The check lives in the seam tests
   already replace.
-- **`init`:** `adapters/driven/scaffold/writer.py` copies `agentcheck/scaffold/template/**` (ships in
+- **`init`:** `adapters/driven/scaffold/writer.py` copies `dryfire/scaffold/template/**` (ships in
   the wheel, read via `importlib.resources`), refuses to clobber without `--force`, prints one next
-  command. Template: `agentcheck.yaml`, keyless `hello.eval.yaml`, real `refund_agent.eval.yaml`
+  command. Template: `dryfire.yaml`, keyless `hello.eval.yaml`, real `refund_agent.eval.yaml`
   (`$ref` schema, v0.1 assertions), `evals/README.md` — every top-level key commented (asserted).
 - `scripts/measure_cold_start.sh` + `make smoke` / `make docker-smoke`.
 
@@ -199,16 +199,16 @@ exposes every library built so far. TDD, gate green (270 tests + 1 live-skipped,
   `docker-compose.yml` with one-shot `dev` (3.12) and `dev-313` (3.13, `matrix` profile)
   services — a local CI matrix, no long-running services
 - Deliberately NOT adopted from terms-pilot: postgres/redis/worker services, SOPS secrets,
-  production image, migrations — agentcheck is zero-infra by design (SPEC §1.4)
+  production image, migrations — dryfire is zero-infra by design (SPEC §1.4)
 
 ### AC-001 — Project scaffold and toolchain (2026-07-30)
-- uv-managed project, hatchling, flat `agentcheck/` layout; version single-sourced from `__about__.py`
+- uv-managed project, hatchling, flat `dryfire/` layout; version single-sourced from `__about__.py`
 - Layered skeleton per ARCHITECTURE §2 (domain / application / adapters + composition seam)
 - `.importlinter` with all five contracts, all KEPT; `mypy --strict`; ruff bans
   `unittest.mock` outside `tests/contracts/` (ADR-006)
 - Typer CLI stub (`--help`, `--version`), name read from `APP_NAME`
 - CI workflow: 3.12/3.13 matrix, no secrets — proves the suite is offline
-- All six ticket acceptance criteria verified, incl. `import agentcheck` with no provider SDK
+- All six ticket acceptance criteria verified, incl. `import dryfire` with no provider SDK
 
 ### Spikes 001–003 (pre-scaffold)
 - SPIKE-001 provider normalization, SPIKE-002 cassette fingerprint (19 tests),

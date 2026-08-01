@@ -3,7 +3,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "agentcheck"
+name = "dryfire"
 dynamic = ["version"]
 description = "Git-native regression testing for LLM agent tool loops. Assert on the trajectory, not the output."
 readme = "README.md"
@@ -31,7 +31,7 @@ dependencies = [
 [project.optional-dependencies]
 anthropic = ["anthropic>=0.40"]
 openai = ["openai>=1.50"]
-all = ["agentcheck[anthropic,openai]"]
+all = ["dryfire[anthropic,openai]"]
 dev = [
     "pytest>=8.3",
     "pytest-asyncio>=0.24",
@@ -42,16 +42,16 @@ dev = [
 ]
 
 [project.scripts]
-agentcheck = "agentcheck.adapters.driving.cli.app:app"
+dryfire = "dryfire.adapters.driving.cli.app:app"
 
 [project.urls]
-Repository = "https://github.com/csmatar/agentcheck"
+Repository = "https://github.com/csmatar/dryfire"
 
 [tool.hatch.version]
-path = "agentcheck/__about__.py"
+path = "dryfire/__about__.py"
 
 [tool.hatch.build.targets.wheel]
-packages = ["agentcheck"]
+packages = ["dryfire"]
 
 [tool.ruff]
 line-length = 100
@@ -75,7 +75,7 @@ extend-immutable-calls = ["typer.Argument", "typer.Option"]
 [tool.mypy]
 python_version = "3.12"
 strict = true
-packages = ["agentcheck"]
+packages = ["dryfire"]
 
 [[tool.mypy.overrides]]
 module = "tests.*"

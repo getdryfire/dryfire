@@ -2,8 +2,8 @@
 
 from pathlib import Path
 
-from agentcheck.adapters.driven.spec.errors import SpecError, render
-from agentcheck.adapters.driven.spec.positions import Position
+from dryfire.adapters.driven.spec.errors import SpecError, render
+from dryfire.adapters.driven.spec.positions import Position
 
 
 class TestLocStr:

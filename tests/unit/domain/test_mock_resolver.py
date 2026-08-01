@@ -1,6 +1,6 @@
 """AC-008 — MockResolver: deterministic fake tool implementations (SPEC §4.4)."""
 
-from agentcheck.domain.mocking.resolver import (
+from dryfire.domain.mocking.resolver import (
     UNMOCKED,
     Error,
     MockResolver,
@@ -9,7 +9,7 @@ from agentcheck.domain.mocking.resolver import (
     Sequence,
     merge_mocks,
 )
-from agentcheck.domain.model.tooling import ToolCall, ToolResult
+from dryfire.domain.model.tooling import ToolCall, ToolResult
 
 
 def _call(

@@ -21,7 +21,7 @@ amendments. Reference implementations live in `spikes/`.
 **Depends on:** spikes complete   **Spec:** §8, §8.1
 
 **Prompt:**
-> **Context.** Greenfield repository for `agentcheck`, a CLI that runs LLM agent
+> **Context.** Greenfield repository for `dryfire`, a CLI that runs LLM agent
 > tool-calling test suites and asserts on the trajectory. `SPEC.md` §8 defines the target
 > package layout; §8.1 defines dependencies. Nothing exists yet.
 >
@@ -31,32 +31,32 @@ amendments. Reference implementations live in `spikes/`.
 > **Constraints.**
 > - `ruamel.yaml` is a **required core** dependency. Do not add `pyyaml` — it is banned
 >   from the spec-loading path (SPEC §8.1).
-> - Provider SDKs (`anthropic`, `openai`) are **optional extras**. `import agentcheck` must
+> - Provider SDKs (`anthropic`, `openai`) are **optional extras**. `import dryfire` must
 >   succeed with neither installed.
 > - The app name must be read from a single constant, not hardcoded in user-facing strings.
-> - `mypy --strict` on `agentcheck/`. Tests may be looser.
+> - `mypy --strict` on `dryfire/`. Tests may be looser.
 >
 > **Files.**
 > - `pyproject.toml` — `[project]` with core deps; `[project.optional-dependencies]` for
->   `anthropic`, `openai`, `all`, `dev`; `[project.scripts] agentcheck = "agentcheck.cli:app"`;
+>   `anthropic`, `openai`, `all`, `dev`; `[project.scripts] dryfire = "dryfire.cli:app"`;
 >   `[tool.ruff]`, `[tool.mypy]`, `[tool.pytest.ini_options]` with `markers = ["live: requires API key"]`.
-> - `agentcheck/__init__.py`, `agentcheck/__about__.py` (`APP_NAME`, `__version__`, `CONFIG_DIR = ".agentcheck"`).
+> - `dryfire/__init__.py`, `dryfire/__about__.py` (`APP_NAME`, `__version__`, `CONFIG_DIR = ".dryfire"`).
 > - Empty packages with `__init__.py`: `spec/`, `providers/`, `runner/`, `assertions/`, `reporters/`, `scaffold/`, `data/`.
 > - `tests/unit/`, `tests/integration/`, `tests/fixtures/`, `tests/conftest.py`.
 > - `.github/workflows/ci.yml` — matrix on 3.12/3.13; runs ruff, mypy, pytest; **no secrets configured**, proving the suite is offline.
-> - `.gitignore` (include `.agentcheck/runs/`, exclude `.agentcheck/cassettes/`), `LICENSE` (MIT), `README.md` stub.
+> - `.gitignore` (include `.dryfire/runs/`, exclude `.dryfire/cassettes/`), `LICENSE` (MIT), `README.md` stub.
 >
 > **Acceptance criteria.**
 > - [ ] `uv sync --all-extras` succeeds from a clean checkout.
 > - [ ] `uv run pytest` passes (zero tests is acceptable at this stage).
-> - [ ] `uv run ruff check .` and `uv run mypy agentcheck` both clean.
-> - [ ] `uv run agentcheck --help` prints usage and exits 0.
-> - [ ] `uv run --no-extra all python -c "import agentcheck"` succeeds with no provider SDK installed.
+> - [ ] `uv run ruff check .` and `uv run mypy dryfire` both clean.
+> - [ ] `uv run dryfire --help` prints usage and exits 0.
+> - [ ] `uv run --no-extra all python -c "import dryfire"` succeeds with no provider SDK installed.
 > - [ ] CI workflow runs green on push with no secrets set.
 >
 > **Out of scope.** Any command implementation beyond `--help`. Any domain logic.
 >
-> **Deliverable.** A repository where `uv run pytest && uv run ruff check . && uv run mypy agentcheck` is a single green gate.
+> **Deliverable.** A repository where `uv run pytest && uv run ruff check . && uv run mypy dryfire` is a single green gate.
 
 ---
 
@@ -86,8 +86,8 @@ amendments. Reference implementations live in `spikes/`.
 >   turns — this is the primary surface every structural assertion reads.
 >
 > **Files.**
-> - `agentcheck/providers/base.py` — `Usage`, `ToolDef`, `ToolCall`, `ToolResult`, `Message`, `ModelResponse`, `StopReason`, `ModelParams`, `Provider` protocol.
-> - `agentcheck/runner/trace.py` — `Turn`, `TerminationReason`, `Trace` with `tool_calls()` / `tool_names()`.
+> - `dryfire/providers/base.py` — `Usage`, `ToolDef`, `ToolCall`, `ToolResult`, `Message`, `ModelResponse`, `StopReason`, `ModelParams`, `Provider` protocol.
+> - `dryfire/runner/trace.py` — `Turn`, `TerminationReason`, `Trace` with `tool_calls()` / `tool_names()`.
 > - `tests/unit/test_domain_types.py`.
 >
 > **Acceptance criteria.**
@@ -137,7 +137,7 @@ amendments. Reference implementations live in `spikes/`.
 >   resolution deferred to AC-005. Do not bake defaults into the models.
 >
 > **Files.**
-> - `agentcheck/spec/models.py` — `ProjectConfig`, `Defaults`, `CassetteConfig`, `Suite`, `Case`, `MockRule`, `ToolSpec`.
+> - `dryfire/spec/models.py` — `ProjectConfig`, `Defaults`, `CassetteConfig`, `Suite`, `Case`, `MockRule`, `ToolSpec`.
 > - `tests/unit/test_spec_models.py`.
 >
 > **Acceptance criteria.**
@@ -191,9 +191,9 @@ amendments. Reference implementations live in `spikes/`.
 >   build a fast path.
 >
 > **Files.**
-> - `agentcheck/spec/positions.py` — `Position`, `load_positioned`, `locate`. Schema-agnostic.
-> - `agentcheck/spec/errors.py` — `SpecError`, the pydantic-code → plain-language message table, `render()`.
-> - `agentcheck/spec/loader.py` — pipeline orchestration, `$ref`, env interpolation.
+> - `dryfire/spec/positions.py` — `Position`, `load_positioned`, `locate`. Schema-agnostic.
+> - `dryfire/spec/errors.py` — `SpecError`, the pydantic-code → plain-language message table, `render()`.
+> - `dryfire/spec/loader.py` — pipeline orchestration, `$ref`, env interpolation.
 > - `tests/unit/test_spec_loader.py`, `tests/fixtures/broken/*.eval.yaml`.
 >
 > **Acceptance criteria.**
@@ -225,11 +225,11 @@ amendments. Reference implementations live in `spikes/`.
 
 **Prompt:**
 > **Context.** Settings arrive from four places with a precedence order: built-in defaults →
-> `agentcheck.yaml` `defaults:` → suite-level fields → case-level fields, with CLI flags
+> `dryfire.yaml` `defaults:` → suite-level fields → case-level fields, with CLI flags
 > overriding everything. AC-003 deliberately left these fields `| None` so this ticket owns
 > resolution in one place.
 >
-> **Task.** Implement discovery of `agentcheck.yaml`, suite-file globbing, and the
+> **Task.** Implement discovery of `dryfire.yaml`, suite-file globbing, and the
 > precedence chain producing a fully-resolved `ResolvedCase` for the runner.
 >
 > **Constraints.**
@@ -244,7 +244,7 @@ amendments. Reference implementations live in `spikes/`.
 >   paths both need them.
 >
 > **Files.**
-> - `agentcheck/config.py` — discovery, `ResolvedCase`, `resolve()`.
+> - `dryfire/config.py` — discovery, `ResolvedCase`, `resolve()`.
 > - `tests/unit/test_config_resolution.py`.
 >
 > **Acceptance criteria.**
@@ -276,7 +276,7 @@ amendments. Reference implementations live in `spikes/`.
 > pre-scripted sequence of `ModelResponse` objects.
 >
 > **Constraints.**
-> - Lives in `agentcheck/providers/fake.py`, **shipped in the package**, not in `tests/` —
+> - Lives in `dryfire/providers/fake.py`, **shipped in the package**, not in `tests/` —
 >   AC-016's keyless scaffold example depends on it at runtime.
 > - Must support a terse construction form. Aim for:
 >   `FakeProvider.script([tool_call("lookup_order", {"order_id": "A-991"}), text("Done.")])`
@@ -289,7 +289,7 @@ amendments. Reference implementations live in `spikes/`.
 > - Generates deterministic, unique tool-call ids (`fake_call_0`, `fake_call_1`, …).
 >
 > **Files.**
-> - `agentcheck/providers/fake.py` — `FakeProvider`, helpers `text()`, `tool_call()`, `parallel()`, `fails()`.
+> - `dryfire/providers/fake.py` — `FakeProvider`, helpers `text()`, `tool_call()`, `parallel()`, `fails()`.
 > - `tests/conftest.py` — fixtures.
 > - `tests/unit/test_fake_provider.py`.
 >
@@ -339,7 +339,7 @@ amendments. Reference implementations live in `spikes/`.
 >   exact install command — not an `ImportError` traceback.
 >
 > **Files.**
-> - `agentcheck/providers/anthropic.py`.
+> - `dryfire/providers/anthropic.py`.
 > - `tests/unit/test_anthropic_adapter.py`, `tests/fixtures/anthropic/*.json`.
 > - `tests/integration/test_anthropic_live.py` (`@pytest.mark.live`).
 >
@@ -350,7 +350,7 @@ amendments. Reference implementations live in `spikes/`.
 > - [ ] An assistant turn with `raw` set is echoed byte-identically by `to_wire`.
 > - [ ] `is_error=True` produces `"is_error": true` on the wire.
 > - [ ] An unknown `stop_reason` maps to `"error"` without raising.
-> - [ ] Importing `agentcheck` without the `anthropic` extra succeeds; **constructing** the
+> - [ ] Importing `dryfire` without the `anthropic` extra succeeds; **constructing** the
 >       adapter raises a message containing the install command.
 > - [ ] `@pytest.mark.live` test performing one real two-turn tool-calling exchange, skipped
 >       without `ANTHROPIC_API_KEY`.
@@ -396,7 +396,7 @@ amendments. Reference implementations live in `spikes/`.
 >   catch-all. Document this explicitly.
 >
 > **Files.**
-> - `agentcheck/runner/mocks.py` — `MockResolver`, `UNMOCKED` sentinel.
+> - `dryfire/runner/mocks.py` — `MockResolver`, `UNMOCKED` sentinel.
 > - `tests/unit/test_mock_resolver.py`.
 >
 > **Acceptance criteria.**
@@ -446,7 +446,7 @@ amendments. Reference implementations live in `spikes/`.
 > - `async def`. No `asyncio.run` inside — AC-012 owns scheduling.
 >
 > **Files.**
-> - `agentcheck/runner/loop.py` — `run_case`.
+> - `dryfire/runner/loop.py` — `run_case`.
 > - `tests/unit/test_loop.py`.
 >
 > **Acceptance criteria — one test per row, all against `FakeProvider`:**

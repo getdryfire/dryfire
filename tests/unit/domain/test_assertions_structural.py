@@ -9,12 +9,12 @@ from typing import Any
 
 import pytest
 
-from agentcheck.domain.assertions.base import AssertionResult
-from agentcheck.domain.assertions.registry import build
-from agentcheck.domain.assertions.trajectory import render_failure, render_trajectory
-from agentcheck.domain.model.message import ModelResponse, Usage
-from agentcheck.domain.model.tooling import ToolCall
-from agentcheck.domain.model.trace import Trace, Turn
+from dryfire.domain.assertions.base import AssertionResult
+from dryfire.domain.assertions.registry import build
+from dryfire.domain.assertions.trajectory import render_failure, render_trajectory
+from dryfire.domain.model.message import ModelResponse, Usage
+from dryfire.domain.model.tooling import ToolCall
+from dryfire.domain.model.trace import Trace, Turn
 
 _GOLDEN = Path(__file__).parents[2] / "fixtures" / "assertions" / "spec6_not_calls_tool.txt"
 
@@ -206,8 +206,8 @@ class TestSeventhAssertionTwoFiles:
 
         from pydantic import RootModel
 
-        from agentcheck.domain.assertions.base import register
-        from agentcheck.domain.assertions.registry import get, known_kinds
+        from dryfire.domain.assertions.base import register
+        from dryfire.domain.assertions.registry import get, known_kinds
 
         @register
         class SeventhAssertion:

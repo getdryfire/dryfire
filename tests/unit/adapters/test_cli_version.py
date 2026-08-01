@@ -4,8 +4,8 @@ read the pricing adapter directly."""
 
 from typer.testing import CliRunner
 
-from agentcheck.__about__ import __version__
-from agentcheck.adapters.driving.cli.app import app
+from dryfire.__about__ import __version__
+from dryfire.adapters.driving.cli.app import app
 
 
 def test_version_shows_app_version_and_pricing_date() -> None:

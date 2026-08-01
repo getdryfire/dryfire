@@ -9,15 +9,15 @@ from typing import Any
 
 import pytest
 
-from agentcheck.adapters.driven.providers import anthropic as anthropic_mod
-from agentcheck.adapters.driven.providers.anthropic import AnthropicGateway, from_wire, to_wire
-from agentcheck.application.ports.model_gateway import (
+from dryfire.adapters.driven.providers import anthropic as anthropic_mod
+from dryfire.adapters.driven.providers.anthropic import AnthropicGateway, from_wire, to_wire
+from dryfire.application.ports.model_gateway import (
     CompletionRequest,
     ModelGateway,
     ModelParams,
 )
-from agentcheck.domain.model.message import Message
-from agentcheck.domain.model.tooling import ToolDef, ToolResult
+from dryfire.domain.model.message import Message
+from dryfire.domain.model.tooling import ToolDef, ToolResult
 
 
 def _accepts_gateway(gateway: ModelGateway) -> ModelGateway:
@@ -135,7 +135,7 @@ class TestToWire:
         assert block["is_error"] is True
 
     def test_reconstructed_assistant_turn_when_no_raw(self) -> None:
-        from agentcheck.domain.model.tooling import ToolCall
+        from dryfire.domain.model.tooling import ToolCall
 
         assistant = Message(
             role="assistant",
@@ -165,10 +165,10 @@ class TestGateway:
         monkeypatch.setitem(sys.modules, "anthropic", None)
         with pytest.raises(RuntimeError) as exc:
             AnthropicGateway(api_key="x")
-        assert "agentcheck[anthropic]" in str(exc.value)
+        assert "dryfire[anthropic]" in str(exc.value)
 
     def test_module_does_not_import_the_sdk_at_top_level(self) -> None:
-        # Importing the module (and agentcheck) must succeed without the SDK; the
+        # Importing the module (and dryfire) must succeed without the SDK; the
         # SDK import is lazy inside __init__.
         top_level = [
             line

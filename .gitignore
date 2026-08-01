@@ -12,8 +12,8 @@ build/
 .mypy_cache/
 .ruff_cache/
 
-# agentcheck run artifacts are gitignored; cassettes (.agentcheck/cassettes/) are committed
-.agentcheck/runs/
+# dryfire run artifacts are gitignored; cassettes (.dryfire/cassettes/) are committed
+.dryfire/runs/
 
 # Secrets — never commit API keys
 .env

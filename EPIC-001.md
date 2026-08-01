@@ -1,4 +1,4 @@
-# EPIC-001 — agentcheck v0.1: Local-first agent trajectory eval runner
+# EPIC-001 — dryfire v0.1: Local-first agent trajectory eval runner
 
 **Spec:** `SPEC.md` §3–§8, §9 (v0.1)
 **Status:** Spikes complete — see `SPIKE-REPORT.md`. Ready for AC-001.
@@ -16,14 +16,14 @@ with output good enough that a failure message alone tells you what the agent di
 
 The epic is done when **all** of these are true:
 
-1. `uvx agentcheck init && cd . && agentcheck run` produces a green run in under 60 seconds
+1. `uvx dryfire init && cd . && dryfire run` produces a green run in under 60 seconds
    on a clean machine **with no API key set**.
 2. The full test suite passes offline, with no network access and no API key.
 3. All six v0.1 assertion kinds are implemented, registered, and individually tested.
 4. A failing `not_calls_tool` prints the actual ordered tool-call sequence and the offending
    call's arguments (SPEC §6, required output format).
 5. Exit codes 0/1/2/3 behave exactly as specified in SPEC §7.1, with a test per code.
-6. `agentcheck validate` catches every spec error class without making a network call.
+6. `dryfire validate` catches every spec error class without making a network call.
 7. Adding a hypothetical seventh assertion requires touching exactly two files.
 8. Package published to PyPI; README shows a runnable example above the fold.
 
@@ -116,7 +116,7 @@ Rules for writing these prompts:
 **Depends on:** none   **Time-box:** 1 working day
 
 **Prompt:**
-> **Context.** We are building `agentcheck`, a CLI that runs LLM agent tool-calling loops
+> **Context.** We are building `dryfire`, a CLI that runs LLM agent tool-calling loops
 > and asserts on the trajectory. `SPEC.md` §3 proposes provider-neutral types (`ToolDef`,
 > `ToolCall`, `ToolResult`, `Message`, `ModelResponse`, `StopReason`) and a `Provider`
 > protocol with a single `complete()` method. The entire architecture rests on this
@@ -234,7 +234,7 @@ Rules for writing these prompts:
 **Depends on:** none   **Time-box:** half day
 
 **Prompt:**
-> **Context.** `agentcheck`'s adoption target is a green test within 60 seconds of `init`
+> **Context.** `dryfire`'s adoption target is a green test within 60 seconds of `init`
 > (`SPEC.md` §1.6). The most likely thing to blow that budget is an unreadable validation
 > error when a user hand-edits a suite YAML. Specs are loaded into pydantic v2 models
 > (`SPEC.md` §4). Pydantic reports errors by field path (`cases.0.expect.2.tool_args`), not
@@ -301,7 +301,7 @@ To be expanded into full prompts in the next pass. IDs are stable; do not renumb
 | AC-015 | CLI: `run`, `validate`, `trace`, all flags, contractual exit codes | AC-014 | §7, §7.1 |
 | AC-016 | `init` scaffold + bundled keyless example meeting the 60-second target | AC-015 | §1.6, §9 |
 | AC-017 | Pricing data file + cost computation, `None` on unknown model | AC-002 | §3.2 |
-| AC-018 | Dogfood: agentcheck's own eval suite running against `FakeProvider` in CI | AC-016 | §8.2 |
+| AC-018 | Dogfood: dryfire's own eval suite running against `FakeProvider` in CI | AC-016 | §8.2 |
 | AC-019 | README with above-the-fold example, asciinema GIF, PyPI release | AC-018 | §9 |
 
 ---

@@ -7,7 +7,7 @@ default resolution. A $ref key reaching these models is a caller bug.
 import pytest
 from pydantic import ValidationError
 
-from agentcheck.adapters.driven.spec.models import (
+from dryfire.adapters.driven.spec.models import (
     Case,
     CassetteConfig,
     Defaults,
@@ -361,7 +361,7 @@ class TestProjectConfig:
                     "on_unmocked": "error",
                 },
                 "suites": ["evals/**/*.eval.yaml"],
-                "cassettes": {"dir": ".agentcheck/cassettes", "mode": "auto"},
+                "cassettes": {"dir": ".dryfire/cassettes", "mode": "auto"},
                 "pricing_file": None,
             }
         )

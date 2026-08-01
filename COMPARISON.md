@@ -1,4 +1,4 @@
-# agentcheck — features and positioning
+# dryfire — features and positioning
 
 **Supersedes SPEC.md §1.4.** That table was written before verifying Promptfoo's current
 feature set and claimed trajectory assertions as a gap. That claim is false — Promptfoo
@@ -58,7 +58,7 @@ their roadmap is now OpenAI's and moves faster than this file.
 
 ## vs Promptfoo
 
-| | agentcheck | Promptfoo |
+| | dryfire | Promptfoo |
 |---|---|---|
 | License | MIT | MIT |
 | Ownership | Independent | OpenAI (acquired March 2026) |
@@ -87,18 +87,18 @@ about everything else.
 
 - Mature project, large ecosystem, dozens of providers, far larger assertion library.
 - Model comparison and LLM-as-judge are mature there and unbuilt here until v0.3.
-- Red teaming is an entire product agentcheck will never have.
+- Red teaming is an entire product dryfire will never have.
 - Backed by real resources post-acquisition.
 
 **If you are testing a built agent end to end, or you need security red-teaming, use
 Promptfoo.**
 
-### Where agentcheck is different
+### Where dryfire is different
 
 - **Deterministic tool mocking.** Subset matching, error injection, and sequences. Without
   fake tools, trajectory tests hit real systems, carry side effects, and do not reproduce.
   This is the row doing most of the work.
-- **Nothing to instrument.** agentcheck drives the loop, so it owns the trace natively —
+- **Nothing to instrument.** dryfire drives the loop, so it owns the trace natively —
   no OTLP collector, no span normalisation, no tracing config.
 - **Tests a design, not an app.** You can assert on tool-selection behaviour from a
   prompt-and-schema spec before any agent exists. Unit test, not integration test.
@@ -106,7 +106,7 @@ Promptfoo.**
 
 ### Positioning line
 
-> agentcheck is a unit test for tool-selection behaviour — deterministic, mocked,
+> dryfire is a unit test for tool-selection behaviour — deterministic, mocked,
 > reproducible, with nothing to instrument. Promptfoo is an integration test for an agent
 > you have already built.
 
@@ -119,7 +119,7 @@ assertions cheap enough to run on every commit."
 
 A cleaner separation — these are complementary, not competing.
 
-| | agentcheck | Langfuse |
+| | dryfire | Langfuse |
 |---|---|---|
 | Phase | Pre-deployment | Production |
 | Shape | CLI, no server | Server + database + web UI |
@@ -128,5 +128,5 @@ A cleaner separation — these are complementary, not competing.
 | Primary job | Stop a regression from shipping | Show what happened after it shipped |
 | Team features | None | Dashboards, prompt management, datasets |
 
-Langfuse tells you what your agent did. agentcheck stops it from doing the wrong thing in
+Langfuse tells you what your agent did. dryfire stops it from doing the wrong thing in
 the first place. A team could reasonably run both.
