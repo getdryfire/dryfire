@@ -18,9 +18,11 @@ from collections.abc import Sequence
 from dataclasses import replace
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, TextIO
+from typing import Any, TextIO, cast
 
+from dryfire.adapters.driven.cache.file_store import FileCassetteStore
 from dryfire.adapters.driven.pricing.bundled import BundledPricingCatalog
+from dryfire.adapters.driven.providers.caching import CachingGateway
 from dryfire.adapters.driven.providers.fake import FakeGateway
 from dryfire.adapters.driven.reporting.json_sink import render_run, write_run
 from dryfire.adapters.driven.reporting.terminal import render_report, resolve_color
@@ -36,9 +38,10 @@ from dryfire.adapters.driven.spec.errors import SpecError
 from dryfire.adapters.driven.spec.errors import render as render_spec_errors
 from dryfire.adapters.driven.spec.loader import load_suite
 from dryfire.adapters.driven.spec.mocks import map_mocks
-from dryfire.adapters.driven.spec.models import Case, Defaults, Suite
+from dryfire.adapters.driven.spec.models import Case, CassetteConfig, CassetteMode, Defaults, Suite
 from dryfire.adapters.driven.spec.scripts import map_script
-from dryfire.application.ports.model_gateway import ModelGateway
+from dryfire.application.ports.model_gateway import CompletionRequest, ModelGateway
+from dryfire.application.ports.response_cache import ResponseCache
 from dryfire.application.scheduler import (
     CaseResult,
     PlannedCase,
@@ -48,6 +51,7 @@ from dryfire.application.scheduler import (
 )
 from dryfire.domain.mocking.resolver import merge_mocks
 from dryfire.domain.model.case import ResolvedCase
+from dryfire.domain.model.message import ModelResponse
 from dryfire.domain.pricing.calculator import calculate
 
 EXIT_OK = 0
@@ -99,24 +103,35 @@ def make_gateway(provider: str) -> ModelGateway:
 
 class _Loaded:
     def __init__(
-        self, suites: list[tuple[Path, Suite]], errors: list[SpecError], defaults: Defaults | None
+        self,
+        suites: list[tuple[Path, Suite]],
+        errors: list[SpecError],
+        defaults: Defaults | None,
+        cassettes: CassetteConfig | None = None,
+        config_dir: Path | None = None,
     ) -> None:
         self.suites = suites
         self.errors = errors
         self.defaults = defaults
+        self.cassettes = cassettes  # cassette dir/mode from project config (DF-204)
+        self.config_dir = config_dir  # cassette paths resolve relative to this
 
 
 def _load(paths: Sequence[str | Path], *, cwd: Path) -> _Loaded:
     try:
         config_path = discover_config(cwd)
-        defaults = load_project_config(config_path).defaults if config_path else None
+        project = load_project_config(config_path) if config_path else None
     except Exception as exc:  # noqa: BLE001 - a bad dryfire.yaml is a config error (exit 2)
         raise ConfigError(f"invalid dryfire.yaml: {exc}") from exc
 
+    defaults = project.defaults if project else None
+    cassettes = project.cassettes if project else None
+    config_dir = config_path.parent if config_path else None
+
     if paths:
         suite_paths = [Path(p) for p in paths]
-    elif config_path is not None:
-        suite_paths = glob_suites(config_path, load_project_config(config_path).suites)
+    elif config_path is not None and project is not None:
+        suite_paths = glob_suites(config_path, project.suites)
     else:
         raise ConfigError("no suite paths given and no dryfire.yaml found")
 
@@ -127,7 +142,7 @@ def _load(paths: Sequence[str | Path], *, cwd: Path) -> _Loaded:
         errors.extend(errs)
         if suite is not None:
             loaded.append((path, suite))
-    return _Loaded(loaded, errors, defaults)
+    return _Loaded(loaded, errors, defaults, cassettes, config_dir)
 
 
 def _render_errors(errors: list[SpecError]) -> str:
@@ -222,6 +237,58 @@ def _partition_by_availability(
         if keep:
             runnable.append(replace(suite, cases=keep))
     return runnable, default_gateway
+
+
+# -- Cassettes: mode resolution + wrapping (DF-204) -------------------------
+
+
+class _NoLiveGateway:
+    """The wrapped gateway for replay mode: it must never be called, because
+    every turn is served from a cassette. If it is called, a replay miss slipped
+    past the caching layer — fail loudly rather than silently reaching a provider."""
+
+    def __init__(self, provider: str) -> None:
+        self.name = provider
+
+    async def complete(self, request: CompletionRequest) -> ModelResponse:
+        raise RuntimeError("replay mode must not make a live provider call")
+
+
+def _resolve_cassettes(
+    flag: str | None, loaded: _Loaded, *, cwd: Path
+) -> tuple[CassetteMode, ResponseCache | None]:
+    """Resolve the cassette mode (CLI flag > project config > `off`) and, when it
+    is not `off`, the store rooted at the project's cassette dir."""
+    raw = flag or (loaded.cassettes.mode if loaded.cassettes else None) or "off"
+    if raw not in ("auto", "record", "replay", "off"):
+        raise ConfigError(f"invalid --cassette-mode {raw!r}; expected auto|record|replay|off")
+    mode = cast(CassetteMode, raw)
+    if mode == "off":
+        return mode, None
+    dirname = (loaded.cassettes.dir if loaded.cassettes else None) or ".dryfire/cassettes"
+    base = loaded.config_dir or cwd
+    return mode, FileCassetteStore(base / dirname)
+
+
+def _wrap_cases(
+    suites: list[PlannedSuite], *, inner_for: Any, store: ResponseCache, mode: CassetteMode
+) -> list[PlannedSuite]:
+    """Wrap every real-provider case (one with no per-case gateway) in a
+    CachingGateway. `inner_for(case)` supplies the wrapped gateway; fake cases,
+    which already carry their scripted gateway, are left untouched."""
+    out: list[PlannedSuite] = []
+    for suite in suites:
+        cases: list[PlannedCase] = []
+        for planned in suite.cases:
+            if planned.gateway is None:
+                caching = CachingGateway(
+                    inner_for(planned), store, mode=mode,
+                    suite=suite.name, case=planned.case.case_name,
+                )
+                planned = replace(planned, gateway=caching)
+            cases.append(planned)
+        out.append(replace(suite, cases=cases))
+    return out
 
 
 # -- Cost attachment + exit code --------------------------------------------
@@ -358,6 +425,7 @@ def run(
     fail_fast: bool = False,
     reporter: str = "terminal",
     json_out: str | None = None,
+    cassette_mode: str | None = None,
     verbose: bool = False,
     debug: bool = False,
     out: TextIO,
@@ -366,7 +434,8 @@ def run(
 ) -> int:
     """Run suites and report; return the contractual exit code."""
     try:
-        loaded = _load(paths, cwd=Path.cwd())
+        cwd = Path.cwd()
+        loaded = _load(paths, cwd=cwd)
         if loaded.errors:  # config before network — spec error is 2 even if provider is down
             err.write(_render_errors(loaded.errors))
             return EXIT_CONFIG
@@ -379,9 +448,24 @@ def run(
             out.write("no cases matched\n")
             return EXIT_OK
 
-        runnable, default_gateway = _partition_by_availability(planned, out=out)
-        if not runnable:  # every case was skipped for want of credentials
-            return EXIT_OK
+        mode, store = _resolve_cassettes(cassette_mode, loaded, cwd=cwd)
+        if mode == "replay":
+            # Replay needs no credentials — cassettes serve every turn, so skip the
+            # availability check entirely and wrap each real case in a replay gateway.
+            assert store is not None
+            runnable = _wrap_cases(
+                planned, inner_for=lambda pc: _NoLiveGateway(pc.case.provider),
+                store=store, mode=mode,
+            )
+            default_gateway: ModelGateway | None = None
+        else:
+            runnable, default_gateway = _partition_by_availability(planned, out=out)
+            if not runnable:  # every case was skipped for want of credentials
+                return EXIT_OK
+            if store is not None and default_gateway is not None:  # auto / record
+                runnable = _wrap_cases(
+                    runnable, inner_for=lambda pc: default_gateway, store=store, mode=mode,
+                )
 
         result = asyncio.run(
             run_suites(runnable, default_gateway,

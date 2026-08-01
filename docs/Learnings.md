@@ -577,6 +577,20 @@ the real proxy for "works from PyPI on a clean machine." Trusted Publishing (OID
 publisher on PyPI first. Also: `f"...into {Path('.')}. "` renders as "into .." — special-case the
 current directory in user-facing paths.
 
+### Cassettes as a decorator: keep the loop unchanged by riding on ModelResponse (DF-204)
+The epic's #1 rule is `git diff application/loop.py` empty. Two decisions made that hold: (1) surfacing
+cache-hits **rides on `ModelResponse.cache_hit` (default False)**, set by the CachingGateway — the loop
+only *stores* the response it's handed, so it never learns caching exists. This beat building the
+`EventSink` model, which would have emitted events from the loop (a loop change). Cost is one additive
+trace-JSON field; the reporter shows `⚡N cached` **only when present** so existing goldens stay green.
+(2) A `replay` **miss raises `CassetteMiss`**, which the loop *already* turns into `provider_error` →
+exit 3 — the required behaviour with zero loop change. Two integration gotchas: **replay must bypass the
+AC-016 credential-skip** (cassettes need no key, so replay wraps each real case over a `_NoLiveGateway`
+that raises if a live call is attempted — the airgap — and never calls `make_gateway`); and the
+fingerprint must be computed over the request **with `raw` stripped** (the provider's opaque passthrough
+carries non-reproducible ids that would make every key unstable). Mutation-check the airgap: delete the
+replay guard and the `CassetteMiss` test must fail (a miss falls through to a live call).
+
 ## Session Notes
 
 ### 2026-07-30 — AC-001 + toolchain

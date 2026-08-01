@@ -267,6 +267,29 @@ def test_missing_key_skips_the_case_with_a_note_not_a_failure(
     assert "ANTHROPIC_API_KEY" in result.output
 
 
+def test_cassette_replay_miss_exits_3(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    # No cassettes exist → a replay miss → provider_error → exit 3, and no gateway
+    # is ever built (replay is airgapped).
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+
+    def forbidden(provider: str) -> object:
+        raise AssertionError("replay must not build a gateway")
+
+    monkeypatch.setattr(composition, "make_gateway", forbidden)
+    result = runner.invoke(app, ["run", _write(tmp_path, _PASS), "--cassette-mode", "replay"])
+    assert result.exit_code == 3, result.output
+
+
+def test_invalid_cassette_mode_is_a_config_error_exit_2(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    result = runner.invoke(app, ["run", _write(tmp_path, _PASS), "--cassette-mode", "nonsense"])
+    assert result.exit_code == 2
+    assert "cassette-mode" in result.output
+
+
 def test_mixed_run_fake_passes_while_keyless_anthropic_is_skipped(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

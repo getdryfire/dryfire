@@ -23,22 +23,25 @@ Update this file when work ships, phases change, or priorities shift.
 
 > Actively building. Code is being written.
 
-### DF-203 — File cassette store (implemented, PR open)
-The file-backed `ResponseCache` — cassettes on disk, atomic and reviewable. Declares the port
-(missing until now) and implements `FileCassetteStore`. Unblocks DF-204 (the caching decorator).
-Gate green (347 tests + 1 live-skipped), arch 5/5.
-- `application/ports/response_cache.py` — `ResponseCache` Protocol (`get(fp)->ModelResponse|None`,
-  `put(record, *, recorded_at)`) + frozen `CassetteRecord` DTO. `recorded_at` is injected (no Clock
-  port until DF-206), mirroring the reporters.
-- `adapters/driven/cache/file_store.py` — layout
-  `.dryfire/cassettes/<suite>/<case>/<NN>-<fingerprint>.json`; **reads keyed by fingerprint alone**
-  (path-independent glob); atomic write (full-serialise → temp → `os.replace`, temp cleaned on
-  failure); stable-key pretty JSON so a re-record with only a changed response is a one-line diff;
-  `schema_version` mismatch → miss, not error; `SCHEMA_VERSION` sourced from `domain/fingerprint`.
-- **Injective path sanitisation:** safe names pass through verbatim (readable paths); any rewritten
-  name gets a short hash of the original appended, so `a/b`, `a:b`, and `a_b` never collide.
-- First `tests/contracts/` suite: the `ResponseCache` contract runs against `FileCassetteStore` **and**
-  an `InMemoryCache` fake, so they can't drift.
+### DF-204 — CachingGateway decorator + four modes (implemented, PR open)
+The ticket that proves the architecture: cassette record/replay lands as a **decorator over
+`ModelGateway`** with **`application/loop.py` byte-for-byte unchanged** (verified). Gate green (358
+tests + 1 live-skipped), dogfood green, loop unchanged.
+- `adapters/driven/providers/caching.py` — `CachingGateway` wraps any `ModelGateway`. Modes: `off`
+  (bypass), `auto` (miss→live+record), `record` (always live, overwrite), `replay` (hit→serve,
+  **miss→`CassetteMiss`, never a live call**). Request reduced to the fingerprint form (`raw` stripped);
+  provider from `inner.name`; `recorded_at` injected.
+- **Event-model decision (was deferred to here):** cache-hit rides on **`ModelResponse.cache_hit`**
+  (default `False`), set by the gateway. The loop only *stores* the response, so it never learns caching
+  exists — no `EventSink` build, no loop change. Additive trace-JSON field (round-trip + schema
+  unaffected). Terminal reporter shows `⚡N cached` **only when present** (existing goldens stay green).
+- **Replay bypasses the credential check entirely** — no key needed. A `replay` miss raises
+  `CassetteMiss`, which the loop already turns into `provider_error` → **exit 3** (no loop change). A
+  `_NoLiveGateway` inner raises if a live call is ever attempted → airgap.
+- Wired in `composition.py` (`--cassette-mode` flag > project `cassettes.mode` > `off`; store rooted at
+  `cassettes.dir`). Acceptance test records a 2-turn suite then replays it with `make_gateway` patched
+  to raise — green, proving a fully offline run incl. turn 2+ (the SPIKE-002 failure mode). Airgap +
+  replay-miss both mutation-checked.
 
 ---
 
@@ -46,12 +49,10 @@ Gate green (347 tests + 1 live-skipped), arch 5/5.
 
 > Committed work, ready to start. Ordered by the EPIC-002 dependency graph (`EPIC-002.md`).
 
-1. **DF-204** — CachingGateway decorator + the four modes (auto/record/replay/off) in `composition.py`.
-   The architecture proof: **`git diff application/loop.py` must be empty.** Needs DF-206 for ordering
-   (`Caching(Retrying(Real))`) and the **event-model decision** (thread `cache_hit` through the trace,
-   or build `EventSink` — deferred to this ticket). Then **DF-205** `prune`.
+1. **DF-205** — `prune` command (delete orphaned/stale cassettes; dry-run by default). Needs DF-204.
 2. **DF-201** — OpenAI gateway (independent; lifts SPIKE-001; `git diff application/` must be empty).
 3. **DF-206** retries — needs a new **Clock port** (surfaced in review) so backoff tests don't wait.
+   When it lands, composition wiring becomes `Caching(Retrying(Real))` (order is load-bearing).
 4. Remaining: DF-207/208 assertions · DF-209 JUnit · DF-210 Action · DF-211 passthrough · DF-212
    release. Two half-day spikes first: SPIKE-004 (passthrough), SPIKE-005 (JUnit).
 
@@ -60,6 +61,13 @@ Gate green (347 tests + 1 live-skipped), arch 5/5.
 ## Shipped
 
 > Working in the codebase. Committed and tested.
+
+### DF-203 — File cassette store (2026-08-01, PR #22)
+The file-backed `ResponseCache`: declared the port + `FileCassetteStore`. Layout
+`.dryfire/cassettes/<suite>/<case>/<NN>-<fingerprint>.json`, **reads keyed by fingerprint alone**,
+atomic writes (temp + `os.replace`), stable-key JSON for small diffs, `schema_version` mismatch → miss.
+Injective path sanitisation (`a/b`/`a:b`/`a_b` never collide). First `tests/contracts/` suite runs the
+port contract against `FileCassetteStore` + an `InMemoryCache` fake.
 
 ### DF-202 — Request fingerprinting (2026-08-01, PR #21) — first EPIC-002 ticket
 Lifted SPIKE-002's cassette fingerprint into `domain/fingerprint.py` (pure, stdlib-only, dict-based).

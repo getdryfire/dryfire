@@ -68,6 +68,11 @@ def _case_line(case: CaseResult, *, color: bool) -> str:
     # A non-end_turn termination is surfaced on the case line, never hidden.
     if trace.termination != "end_turn":
         line += f"   {trace.termination}"
+    # Cassette hits (DF-204) are shown only when present, so a normal run's output
+    # is unchanged. The gateway flags each response it served from a cassette.
+    cached = sum(1 for turn in trace.turns if turn.response.cache_hit)
+    if cached:
+        line += f"   ⚡{cached} cached"
     return line
 
 
