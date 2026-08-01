@@ -49,3 +49,7 @@ class ModelResponse(BaseModel):
     usage: Usage
     latency_ms: int
     raw: dict[str, Any]
+    # Set by the caching gateway (DF-204) when this response was served from a
+    # cassette rather than a live call. The loop only stores the response, so it
+    # never learns caching exists; reporters read this to show cache hits.
+    cache_hit: bool = False

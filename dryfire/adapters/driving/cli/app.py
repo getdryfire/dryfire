@@ -50,6 +50,9 @@ def run(
     fail_fast: bool = typer.Option(False, "--fail-fast", help="Stop on first failing case."),
     reporter: str = typer.Option("terminal", "--reporter", help="terminal | json."),
     json_out: str = typer.Option(None, "--json-out", help="Write full traces as JSON to PATH."),
+    cassette_mode: str = typer.Option(
+        None, "--cassette-mode", help="auto | record | replay | off (default off)."
+    ),
     verbose: bool = typer.Option(False, "-v", "--verbose", help="Print traces for failing cases."),
     debug: bool = typer.Option(False, "--debug", help="Show tracebacks on internal errors."),
 ) -> None:
@@ -63,6 +66,7 @@ def run(
         fail_fast=fail_fast,
         reporter=reporter,
         json_out=json_out,
+        cassette_mode=cassette_mode,
         verbose=verbose,
         debug=debug,
         out=sys.stdout,

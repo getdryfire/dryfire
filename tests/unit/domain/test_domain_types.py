@@ -168,6 +168,17 @@ class TestModelResponse:
         assert r.latency_ms == 42
         assert r.raw == {"id": "msg_1"}
 
+    def test_cache_hit_defaults_false_and_is_settable(self) -> None:
+        # DF-204: the caching gateway flags a response it served from a cassette,
+        # without the loop (which only stores the response) learning caching exists.
+        live = ModelResponse(
+            text="hi", tool_calls=[], stop_reason="end_turn",
+            usage=Usage(input_tokens=1, output_tokens=1), latency_ms=1, raw={},
+        )
+        assert live.cache_hit is False
+        cached = live.model_copy(update={"cache_hit": True})
+        assert cached.cache_hit is True
+
 
 class TestTrace:
     def _trace(self) -> Trace:
