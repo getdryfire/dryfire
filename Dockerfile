@@ -1,4 +1,4 @@
-# Development image. There is deliberately NO production image: agentcheck ships
+# Development image. There is deliberately NO production image: dryfire ships
 # to PyPI as a package (SPEC §1.4 — no server, no service). Docker exists here to
 # provide a reproducible Linux toolchain and a local CI matrix (docker-compose.yml).
 ARG PYTHON_VERSION=3.12

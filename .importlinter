@@ -1,5 +1,5 @@
 [importlinter]
-root_package = agentcheck
+root_package = dryfire
 include_external_packages = True
 
 ; Contract 1 — dependencies point inward: adapters -> application -> domain.
@@ -7,26 +7,26 @@ include_external_packages = True
 name = Layered: adapters may import application may import domain, never the reverse
 type = layers
 layers =
-    agentcheck.adapters
-    agentcheck.application
-    agentcheck.domain
+    dryfire.adapters
+    dryfire.application
+    dryfire.domain
 
 ; Contract 2 — domain independence.
 [importlinter:contract:domain-independence]
 name = Domain imports nothing from application or adapters
 type = forbidden
 source_modules =
-    agentcheck.domain
+    dryfire.domain
 forbidden_modules =
-    agentcheck.application
-    agentcheck.adapters
+    dryfire.application
+    dryfire.adapters
 
 ; Contract 3 — domain third-party allowlist: pydantic and stdlib only (ADR-005).
 [importlinter:contract:domain-third-party-allowlist]
 name = Domain may import only pydantic and the stdlib
 type = forbidden
 source_modules =
-    agentcheck.domain
+    dryfire.domain
 forbidden_modules =
     typer
     ruamel
@@ -41,9 +41,9 @@ forbidden_modules =
 name = Application may not import any adapter
 type = forbidden
 source_modules =
-    agentcheck.application
+    dryfire.application
 forbidden_modules =
-    agentcheck.adapters
+    dryfire.adapters
 
 ; Contract 5 — composition isolation. Only composition.py and the CLI may import
 ; concrete driven adapters. Driving adapters other than the CLI must be added
@@ -52,7 +52,7 @@ forbidden_modules =
 name = Domain and application never touch concrete driven adapters
 type = forbidden
 source_modules =
-    agentcheck.domain
-    agentcheck.application
+    dryfire.domain
+    dryfire.application
 forbidden_modules =
-    agentcheck.adapters.driven
+    dryfire.adapters.driven

@@ -1,8 +1,8 @@
-# fail.eval.yaml — agentcheck testing its own failure paths (AC-018 dogfood).
+# fail.eval.yaml — dryfire testing its own failure paths (AC-018 dogfood).
 #
 # Every case here is EXPECTED TO FAIL. The dogfood CI job runs this suite and
 # fails if any case unexpectedly PASSES — that would mean an assertion stopped
-# catching the thing it exists to catch. So `agentcheck run` exiting 1 on this
+# catching the thing it exists to catch. So `dryfire run` exiting 1 on this
 # suite is the GREEN outcome for CI.
 #
 # Each case is the mirror of a passing case in pass.eval.yaml, deliberately

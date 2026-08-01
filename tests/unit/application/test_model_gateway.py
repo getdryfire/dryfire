@@ -4,12 +4,12 @@ The port carries no loop, retry, or assertion logic — only the completion
 contract. cost() is deliberately absent; pricing is a separate port (AC-017).
 """
 
-from agentcheck.application.ports.model_gateway import (
+from dryfire.application.ports.model_gateway import (
     CompletionRequest,
     ModelGateway,
     ModelParams,
 )
-from agentcheck.domain.model.message import Message, ModelResponse, Usage
+from dryfire.domain.model.message import Message, ModelResponse, Usage
 
 
 class FakeGateway:

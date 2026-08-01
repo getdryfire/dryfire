@@ -4,18 +4,18 @@ offline against FakeGateway. run_case never raises for a normal outcome."""
 from pathlib import Path
 from typing import Any
 
-from agentcheck.adapters.driven.providers.fake import (
+from dryfire.adapters.driven.providers.fake import (
     FakeGateway,
     fails,
     parallel,
     text,
     tool_call,
 )
-from agentcheck.application.loop import run_case
-from agentcheck.domain.mocking.resolver import Error, MockResolver, MockRule, Return, Sequence
-from agentcheck.domain.model.case import ResolvedCase
-from agentcheck.domain.model.message import ModelResponse, Usage
-from agentcheck.domain.model.tooling import ToolCall
+from dryfire.application.loop import run_case
+from dryfire.domain.mocking.resolver import Error, MockResolver, MockRule, Return, Sequence
+from dryfire.domain.model.case import ResolvedCase
+from dryfire.domain.model.message import ModelResponse, Usage
+from dryfire.domain.model.tooling import ToolCall
 
 
 def _rc(**over: Any) -> ResolvedCase:

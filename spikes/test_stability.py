@@ -81,7 +81,7 @@ def test_stable_across_extraneous_request_metadata():
         "api_key": "sk-ant-SECRET",
         "request_id": "req_0192",
         "timestamp": "2026-07-30T12:00:00Z",
-        "user_agent": "agentcheck/0.1.3",
+        "user_agent": "dryfire/0.1.3",
     }
     assert fingerprint(**req) == BASELINE
 

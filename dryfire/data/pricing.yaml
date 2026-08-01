@@ -1,0 +1,53 @@
+# Bundled advisory pricing for dryfire (SPEC §3.2, AC-017).
+#
+# Keyed `provider:model` -> USD **per million tokens**. Values are quoted so they
+# parse to exact Decimals (a bare 0.30 would arrive as a float and drift). Cost is
+# advisory: an unknown model yields no cost (`—`), never a guess. Stale pricing is
+# a documented, accepted limitation — see `_meta.updated`.
+#
+# Cache convention (Anthropic list prices, 5-minute-TTL ephemeral cache):
+#   cache_read  = 0.10 x input      cache_write = 1.25 x input
+#
+# v0.1 is Anthropic-only; other providers arrive with their adapters (v0.2+).
+
+_meta:
+  updated: "2026-07-31"
+  currency: USD
+  unit: per_million_tokens
+  source: "Anthropic list prices (platform.claude.com/docs/en/pricing)"
+
+"anthropic:claude-opus-4-8":
+  input: "5.00"
+  output: "25.00"
+  cache_read: "0.50"
+  cache_write: "6.25"
+
+"anthropic:claude-opus-4-7":
+  input: "5.00"
+  output: "25.00"
+  cache_read: "0.50"
+  cache_write: "6.25"
+
+"anthropic:claude-opus-4-6":
+  input: "5.00"
+  output: "25.00"
+  cache_read: "0.50"
+  cache_write: "6.25"
+
+"anthropic:claude-sonnet-5":
+  input: "3.00"
+  output: "15.00"
+  cache_read: "0.30"
+  cache_write: "3.75"
+
+"anthropic:claude-sonnet-4-6":
+  input: "3.00"
+  output: "15.00"
+  cache_read: "0.30"
+  cache_write: "3.75"
+
+"anthropic:claude-haiku-4-5":
+  input: "1.00"
+  output: "5.00"
+  cache_read: "0.10"
+  cache_write: "1.25"

@@ -2,13 +2,13 @@
 
 from pathlib import Path
 
-from agentcheck.adapters.driven.spec.config import (
+from dryfire.adapters.driven.spec.config import (
     discover_config,
     glob_suites,
     load_project_config,
     resolve,
 )
-from agentcheck.adapters.driven.spec.models import Case, Defaults, Suite
+from dryfire.adapters.driven.spec.models import Case, Defaults, Suite
 
 _PATH = Path("evals/s.eval.yaml")
 
@@ -156,12 +156,12 @@ class TestPurity:
 
 class TestDiscovery:
     def test_finds_config_in_an_ancestor_from_a_subdirectory(self, tmp_path: Path) -> None:
-        (tmp_path / "agentcheck.yaml").write_text("version: 1\n", encoding="utf-8")
+        (tmp_path / "dryfire.yaml").write_text("version: 1\n", encoding="utf-8")
         sub = tmp_path / "a" / "b" / "c"
         sub.mkdir(parents=True)
         found = discover_config(sub)
         assert found is not None
-        assert found.samefile(tmp_path / "agentcheck.yaml")
+        assert found.samefile(tmp_path / "dryfire.yaml")
 
     def test_returns_none_when_no_config_anywhere(self, tmp_path: Path) -> None:
         assert discover_config(tmp_path) is None
@@ -175,7 +175,7 @@ class TestDiscovery:
 
 class TestProjectConfigLoading:
     def test_loads_a_valid_project_config(self, tmp_path: Path) -> None:
-        cfg = tmp_path / "agentcheck.yaml"
+        cfg = tmp_path / "dryfire.yaml"
         cfg.write_text(
             "version: 1\n"
             "defaults:\n"
@@ -194,7 +194,7 @@ class TestProjectConfigLoading:
 
 class TestGlobbing:
     def test_patterns_resolve_relative_to_the_config_directory(self, tmp_path: Path) -> None:
-        cfg = tmp_path / "agentcheck.yaml"
+        cfg = tmp_path / "dryfire.yaml"
         cfg.write_text("version: 1\n", encoding="utf-8")
         (tmp_path / "evals").mkdir()
         (tmp_path / "evals" / "a.eval.yaml").write_text("", encoding="utf-8")

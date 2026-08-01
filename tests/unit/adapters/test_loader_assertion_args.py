@@ -7,9 +7,9 @@ from typing import Any, ClassVar
 import pytest
 from pydantic import BaseModel
 
-from agentcheck.adapters.driven.spec.loader import load_suite
-from agentcheck.domain.assertions.base import AssertionResult, register
-from agentcheck.domain.model.trace import Trace
+from dryfire.adapters.driven.spec.loader import load_suite
+from dryfire.domain.assertions.base import AssertionResult, register
+from dryfire.domain.model.trace import Trace
 
 pytestmark = pytest.mark.usefixtures("registry_isolation")
 

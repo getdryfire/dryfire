@@ -9,10 +9,10 @@ import os
 
 import pytest
 
-from agentcheck.adapters.driven.providers.anthropic import AnthropicGateway
-from agentcheck.application.ports.model_gateway import CompletionRequest, ModelParams
-from agentcheck.domain.model.message import Message
-from agentcheck.domain.model.tooling import ToolDef, ToolResult
+from dryfire.adapters.driven.providers.anthropic import AnthropicGateway
+from dryfire.application.ports.model_gateway import CompletionRequest, ModelParams
+from dryfire.domain.model.message import Message
+from dryfire.domain.model.tooling import ToolDef, ToolResult
 
 pytestmark = [
     pytest.mark.live,

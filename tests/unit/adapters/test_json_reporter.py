@@ -13,18 +13,18 @@ from pathlib import Path
 import jsonschema
 import pytest
 
-from agentcheck.adapters.driven.reporting.json_sink import (
+from dryfire.adapters.driven.reporting.json_sink import (
     SCHEMA_VERSION,
     deserialize_run,
     render_run,
     write_run,
 )
-from agentcheck.adapters.driven.reporting.terminal import render_report
-from agentcheck.application.scheduler import CaseResult, RunResult, SuiteResult
-from agentcheck.domain.assertions.base import AssertionResult
-from agentcheck.domain.model.message import Message, ModelResponse, Usage
-from agentcheck.domain.model.tooling import ToolCall, ToolResult
-from agentcheck.domain.model.trace import Trace, Turn
+from dryfire.adapters.driven.reporting.terminal import render_report
+from dryfire.application.scheduler import CaseResult, RunResult, SuiteResult
+from dryfire.domain.assertions.base import AssertionResult
+from dryfire.domain.model.message import Message, ModelResponse, Usage
+from dryfire.domain.model.tooling import ToolCall, ToolResult
+from dryfire.domain.model.trace import Trace, Turn
 
 _SCHEMA = Path(__file__).parent.parent.parent / "fixtures" / "run_schema.json"
 _AT = datetime(2026, 7, 31, 12, 0, 0, tzinfo=UTC)
@@ -170,7 +170,7 @@ def test_failed_serialization_leaves_the_prior_file_intact(
     def boom(*a: object, **k: object) -> str:
         raise ValueError("serialization exploded")
 
-    monkeypatch.setattr("agentcheck.adapters.driven.reporting.json_sink.json.dumps", boom)
+    monkeypatch.setattr("dryfire.adapters.driven.reporting.json_sink.json.dumps", boom)
     try:
         write_run(_run(), out, generated_at=_AT)
     except ValueError:
@@ -190,7 +190,7 @@ def test_interrupted_rename_leaves_no_partial_target(
     def boom(*a: object, **k: object) -> None:
         raise OSError("rename interrupted")
 
-    monkeypatch.setattr("agentcheck.adapters.driven.reporting.json_sink.os.replace", boom)
+    monkeypatch.setattr("dryfire.adapters.driven.reporting.json_sink.os.replace", boom)
     with pytest.raises(OSError):
         write_run(_run(), out, generated_at=_AT)
     assert not out.exists()  # target never created — no partial file

@@ -45,8 +45,8 @@ registry surface was changed and should be restored instead.
 >   it in now, but do not make it impossible either.)
 >
 > **Files.**
-> - `agentcheck/assertions/base.py` — `Assertion` protocol, `AssertionResult`, `@register` decorator.
-> - `agentcheck/assertions/registry.py` — replace AC-004's stub backing; `known_kinds()`, `get(kind)`, `validate_args(kind, args)`.
+> - `dryfire/assertions/base.py` — `Assertion` protocol, `AssertionResult`, `@register` decorator.
+> - `dryfire/assertions/registry.py` — replace AC-004's stub backing; `known_kinds()`, `get(kind)`, `validate_args(kind, args)`.
 > - `tests/unit/test_assertion_framework.py`.
 >
 > **Acceptance criteria.**
@@ -106,8 +106,8 @@ registry surface was changed and should be restored instead.
 >   `unmocked_tool`) must still produce a coherent result, not crash on a short trace.
 >
 > **Files.**
-> - `agentcheck/assertions/structural.py` (or one file per assertion — your call, but §6.3's two-file rule must still hold).
-> - `agentcheck/assertions/_trajectory.py` — the shared `a → b → (end_turn)` renderer.
+> - `dryfire/assertions/structural.py` (or one file per assertion — your call, but §6.3's two-file rule must still hold).
+> - `dryfire/assertions/_trajectory.py` — the shared `a → b → (end_turn)` renderer.
 > - `tests/unit/test_assertions_structural.py`.
 >
 > **Acceptance criteria — pass and fail case for each of the six, plus:**
@@ -156,7 +156,7 @@ registry surface was changed and should be restored instead.
 > - Deterministic under `FakeProvider`: same input, same ordered results, every run.
 >
 > **Files.**
-> - `agentcheck/runner/scheduler.py` — `run_suites()`, `RunResult`, `SuiteResult`, `CaseResult`.
+> - `dryfire/runner/scheduler.py` — `run_suites()`, `RunResult`, `SuiteResult`, `CaseResult`.
 > - `tests/unit/test_scheduler.py`.
 >
 > **Acceptance criteria.**
@@ -201,7 +201,7 @@ registry surface was changed and should be restored instead.
 > - Respect `NO_COLOR` and `--no-color`.
 >
 > **Files.**
-> - `agentcheck/reporters/terminal.py`.
+> - `dryfire/reporters/terminal.py`.
 > - `tests/unit/test_terminal_reporter.py`, `tests/fixtures/expected_output/*.txt`.
 >
 > **Acceptance criteria.**
@@ -244,7 +244,7 @@ registry surface was changed and should be restored instead.
 >   sends JSON to stdout and suppresses terminal output.
 >
 > **Files.**
-> - `agentcheck/reporters/json_reporter.py`.
+> - `dryfire/reporters/json_reporter.py`.
 > - `tests/unit/test_json_reporter.py`.
 >
 > **Acceptance criteria.**
@@ -290,7 +290,7 @@ registry surface was changed and should be restored instead.
 >   "no cases matched" message — not a silent success.
 >
 > **Files.**
-> - `agentcheck/cli.py`.
+> - `dryfire/cli.py`.
 > - `tests/integration/test_cli.py` — via `typer.testing.CliRunner`.
 >
 > **Acceptance criteria.**
@@ -315,15 +315,15 @@ registry surface was changed and should be restored instead.
 **Depends on:** AC-015   **Spec:** §1.6
 
 **Prompt:**
-> **Context.** SPEC §1.6 makes this a **hard acceptance criterion**: `uvx agentcheck init`
+> **Context.** SPEC §1.6 makes this a **hard acceptance criterion**: `uvx dryfire init`
 > to a green test in under 60 seconds on a clean machine, **with no API key**. For a
 > developer tool this single number outweighs the next twenty features. It is achievable
 > only because AC-006 shipped `FakeProvider` inside the package.
 >
-> **Task.** Implement `agentcheck init` and the bundled example that makes the target real.
+> **Task.** Implement `dryfire init` and the bundled example that makes the target real.
 >
 > **Constraints.**
-> - Scaffold: `agentcheck.yaml`, `evals/hello.eval.yaml` (keyless, `FakeProvider`-backed),
+> - Scaffold: `dryfire.yaml`, `evals/hello.eval.yaml` (keyless, `FakeProvider`-backed),
 >   `evals/refund_agent.eval.yaml` (the real SPEC §4.3 example, requires a key), and a short
 >   `evals/README.md`.
 > - **The default example must pass with no API key and no network.** That is what makes the
@@ -338,8 +338,8 @@ registry surface was changed and should be restored instead.
 > - Both scaffolded suites must be valid per `validate`.
 >
 > **Files.**
-> - `agentcheck/scaffold/template/**` — the files as data.
-> - `agentcheck/cli.py` — the `init` command.
+> - `dryfire/scaffold/template/**` — the files as data.
+> - `dryfire/cli.py` — the `init` command.
 > - `tests/integration/test_init.py`.
 > - `scripts/measure_cold_start.sh` — the timing harness.
 >
@@ -348,10 +348,10 @@ registry surface was changed and should be restored instead.
 >       `scripts/measure_cold_start.sh` performs install → `init` → `run` and reports total
 >       wall-clock. **Must be under 60s.** Record the measured number in the PR description.
 >       This is a measurement, not a judgement call.
-> - [ ] `agentcheck init && agentcheck run` exits `0` with no API key and no network.
+> - [ ] `dryfire init && dryfire run` exits `0` with no API key and no network.
 > - [ ] The keyed example is skipped with a visible note, not a failure.
 > - [ ] `init` into a non-empty directory refuses without `--force` and lists the conflicts.
-> - [ ] Both scaffolded suites pass `agentcheck validate`.
+> - [ ] Both scaffolded suites pass `dryfire validate`.
 > - [ ] The command printed by `init` is the one the tests actually run — assert the string.
 > - [ ] Scaffolded YAML contains explanatory comments on every top-level key.
 >
@@ -373,7 +373,7 @@ registry surface was changed and should be restored instead.
 > **Task.** Implement the bundled pricing table and cost calculation.
 >
 > **Constraints.**
-> - `agentcheck/data/pricing.yaml`, keyed `provider:model` → `{input, output, cache_read,
+> - `dryfire/data/pricing.yaml`, keyed `provider:model` → `{input, output, cache_read,
 >   cache_write}` in **USD per million tokens**.
 > - Unknown model → `None`. Never raise, never fall back to a similar model, never zero.
 > - User override via `pricing_file:` in project config **replaces** the bundled table for
@@ -388,7 +388,7 @@ registry surface was changed and should be restored instead.
 >   near-miss silently pricing against the wrong model is worse than `None`.
 >
 > **Files.**
-> - `agentcheck/data/pricing.yaml`, `agentcheck/pricing.py`.
+> - `dryfire/data/pricing.yaml`, `dryfire/pricing.py`.
 > - `tests/unit/test_pricing.py`.
 >
 > **Acceptance criteria.**
@@ -412,11 +412,11 @@ registry surface was changed and should be restored instead.
 **Depends on:** AC-016   **Spec:** §8.2
 
 **Prompt:**
-> **Context.** SPEC §8.2 requires agentcheck to run its own eval suite in CI against
+> **Context.** SPEC §8.2 requires dryfire to run its own eval suite in CI against
 > `FakeProvider`. Beyond testing, this is the credibility artifact: a tool that does not use
 > itself is hard to recommend, and the CI badge is a claim you want to be able to make.
 >
-> **Task.** Write an eval suite exercising agentcheck's own features and wire it into CI as a
+> **Task.** Write an eval suite exercising dryfire's own features and wire it into CI as a
 > required check.
 >
 > **Constraints.**
@@ -482,7 +482,7 @@ registry surface was changed and should be restored instead.
 >   better. An unfair table is the fastest way to get dismissed by the exact people whose
 >   opinion carries.
 > - PyPI: verify the name is available **before** anything else in this ticket. If taken, stop
->   and escalate — the rename touches `pyproject.toml`, the CLI entry point, and `.agentcheck/`
+>   and escalate — the rename touches `pyproject.toml`, the CLI entry point, and `.dryfire/`
 >   paths across the whole epic.
 > - Tag `v0.1.0`, publish via a GitHub Action on tag using trusted publishing, not a token.
 >
@@ -496,11 +496,11 @@ registry surface was changed and should be restored instead.
 > - [ ] The comparison table names at least one thing each competitor does better.
 > - [ ] Non-goals section present, citing SPEC §1.5.
 > - [ ] Demo GIF under 30s, its source script committed.
-> - [ ] `uvx agentcheck@0.1.0 init` works from PyPI on a clean machine after publish.
+> - [ ] `uvx dryfire@0.1.0 init` works from PyPI on a clean machine after publish.
 > - [ ] `CHANGELOG.md` covers v0.1.0.
 > - [ ] Release workflow publishes on tag via trusted publishing.
 >
 > **Out of scope.** Docs site, blog post, launch posts — separate from shipping the package.
 >
-> **Deliverable.** `pip install agentcheck` works, and the README earns a second look from
+> **Deliverable.** `pip install dryfire` works, and the README earns a second look from
 > someone who found it through a search result.

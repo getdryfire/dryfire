@@ -8,5 +8,5 @@ __pycache__
 .ruff_cache
 dist
 build
-.agentcheck/runs
+.dryfire/runs
 .DS_Store

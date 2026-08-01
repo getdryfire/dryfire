@@ -92,7 +92,7 @@ silently stale replay. Cheap versus dangerous.
 ### 3. On-disk layout
 
 ```
-.agentcheck/cassettes/
+.dryfire/cassettes/
   refund_agent/                                  # suite name
     escalates_refund_over_limit/                 # case name
       00-f0b4fbe056178ff6.json                   # turn index + fingerprint
@@ -126,7 +126,7 @@ debuggable instead of an opaque hex filename.
 
 **Trade-off accepted:** path-based naming means renaming a suite or case orphans its
 cassettes. Readability in git diffs is worth more than rename-resilience; add an
-`agentcheck prune` command to delete orphans.
+`dryfire prune` command to delete orphans.
 
 ### 4. Cassette schema migration
 
@@ -164,7 +164,7 @@ Constraints on v0.1 that follow:
 ## Verdict
 
 Adopt `fingerprint.py` as written. Lift `canonical_json`, `normalise_call_ids`,
-`_CALL_ID_KEYS`, and `hashable_request` verbatim into `agentcheck/cassettes/fingerprint.py`
+`_CALL_ID_KEYS`, and `hashable_request` verbatim into `dryfire/cassettes/fingerprint.py`
 at v0.2; port `test_stability.py` unchanged as its regression suite.
 
 **Amendments required to SPEC.md:**

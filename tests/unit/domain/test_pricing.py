@@ -3,8 +3,8 @@ Decimal | None. Decimal throughout so a long run's summed cost never drifts."""
 
 from decimal import Decimal
 
-from agentcheck.domain.model.message import Usage
-from agentcheck.domain.pricing.calculator import Cost, Rates, calculate
+from dryfire.domain.model.message import Usage
+from dryfire.domain.pricing.calculator import Cost, Rates, calculate
 
 
 def _usage(**over: int) -> Usage:

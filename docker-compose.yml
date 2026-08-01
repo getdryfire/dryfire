@@ -1,4 +1,4 @@
-# No postgres, no redis, no long-running services — agentcheck is a zero-infra
+# No postgres, no redis, no long-running services — dryfire is a zero-infra
 # CLI (SPEC §1.4). Compose provides one-shot toolchain containers:
 #   make docker-check       full gate on Python 3.12
 #   make docker-check-313   full gate on Python 3.13 (local CI matrix)
@@ -9,7 +9,7 @@ services:
       context: .
       args:
         PYTHON_VERSION: "3.12"
-    image: agentcheck-dev:py312
+    image: dryfire-dev:py312
     volumes:
       - .:/app
       # Mask the host's .venv (macOS binaries); the container venv is /opt/venv.
@@ -23,7 +23,7 @@ services:
       context: .
       args:
         PYTHON_VERSION: "3.13"
-    image: agentcheck-dev:py313
+    image: dryfire-dev:py313
     volumes:
       - .:/app
       - /app/.venv

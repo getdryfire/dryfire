@@ -8,15 +8,15 @@ from pathlib import Path
 
 import pytest
 
-from agentcheck.adapters.driven.reporting.terminal import (
+from dryfire.adapters.driven.reporting.terminal import (
     TerminalReporter,
     render_report,
     resolve_color,
 )
-from agentcheck.application.scheduler import CaseResult, RunResult, SuiteResult
-from agentcheck.domain.assertions.base import AssertionResult
-from agentcheck.domain.model.message import ModelResponse, Usage
-from agentcheck.domain.model.trace import TerminationReason, Trace, Turn
+from dryfire.application.scheduler import CaseResult, RunResult, SuiteResult
+from dryfire.domain.assertions.base import AssertionResult
+from dryfire.domain.model.message import ModelResponse, Usage
+from dryfire.domain.model.trace import TerminationReason, Trace, Turn
 
 _FIXTURES = Path(__file__).parent.parent.parent / "fixtures" / "expected_output"
 

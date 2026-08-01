@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# AC-018 — dogfood: agentcheck runs its own eval suite against FakeProvider.
+# AC-018 — dogfood: dryfire runs its own eval suite against FakeProvider.
 #
 # Proves the tool works by using it, entirely offline (no API key, no network).
 # The trick with a test runner is that a *failing* case is a success: the suites
@@ -9,13 +9,13 @@
 #
 # Exit 0 = the tool behaved as advertised. Exit 1 = a dogfood regression.
 #
-# Not `set -e`: we invoke `agentcheck run` expecting non-zero exit codes and
+# Not `set -e`: we invoke `dryfire run` expecting non-zero exit codes and
 # check them deliberately.
 set -uo pipefail
 
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SELF="$REPO/evals/self"
-AC=(uv run --project "$REPO" agentcheck)
+AC=(uv run --project "$REPO" dryfire)
 
 JSON_DIR="$(mktemp -d)"
 trap 'rm -rf "$JSON_DIR"' EXIT
@@ -103,7 +103,7 @@ sys.exit(0 if ok else 1)
 PY
 
 if [ "$fails" -ne 0 ]; then
-  echo "DOGFOOD FAILED — agentcheck did not behave as advertised." >&2
+  echo "DOGFOOD FAILED — dryfire did not behave as advertised." >&2
   exit 1
 fi
-echo "DOGFOOD OK — agentcheck passed its own eval suite."
+echo "DOGFOOD OK — dryfire passed its own eval suite."

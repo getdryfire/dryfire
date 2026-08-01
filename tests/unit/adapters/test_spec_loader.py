@@ -5,8 +5,8 @@ from pathlib import Path
 
 import pytest
 
-from agentcheck.adapters.driven.spec.errors import render
-from agentcheck.adapters.driven.spec.loader import load_suite, load_suites
+from dryfire.adapters.driven.spec.errors import render
+from dryfire.adapters.driven.spec.loader import load_suite, load_suites
 
 _FIXTURES = Path(__file__).parents[2] / "fixtures" / "broken"
 

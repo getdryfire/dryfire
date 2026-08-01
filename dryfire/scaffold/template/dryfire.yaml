@@ -1,0 +1,19 @@
+# dryfire configuration — this file marks the project root and holds the
+# defaults every suite inherits. Any value here can be overridden per suite or
+# per case. Run `dryfire run` from this directory.
+version: 1
+
+# Defaults every suite inherits unless it sets its own.
+defaults:
+  # The model a suite uses when it doesn't name its own. Advisory cost is looked
+  # up from this name; `dryfire --version` prints how fresh the price table is.
+  model: claude-sonnet-4-6
+  # Stop a runaway tool-calling loop after this many turns.
+  max_turns: 6
+  # Deterministic by default — a trajectory test should not wander between runs.
+  temperature: 0
+
+# Which files `dryfire run` discovers when you give it no explicit paths.
+# Globs are resolved relative to this file.
+suites:
+  - evals/**/*.eval.yaml

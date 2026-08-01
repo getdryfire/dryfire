@@ -7,59 +7,6 @@ resolution-markers = [
 ]
 
 [[package]]
-name = "agentcheck"
-source = { editable = "." }
-dependencies = [
-    { name = "anyio" },
-    { name = "httpx" },
-    { name = "pydantic" },
-    { name = "rich" },
-    { name = "ruamel-yaml" },
-    { name = "typer" },
-]
-
-[package.optional-dependencies]
-all = [
-    { name = "anthropic" },
-    { name = "openai" },
-]
-anthropic = [
-    { name = "anthropic" },
-]
-dev = [
-    { name = "import-linter" },
-    { name = "jsonschema" },
-    { name = "mypy" },
-    { name = "pytest" },
-    { name = "pytest-asyncio" },
-    { name = "ruff" },
-]
-openai = [
-    { name = "openai" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "anthropic", marker = "extra == 'all'", specifier = ">=0.40" },
-    { name = "anthropic", marker = "extra == 'anthropic'", specifier = ">=0.40" },
-    { name = "anyio", specifier = ">=4.4" },
-    { name = "httpx", specifier = ">=0.27" },
-    { name = "import-linter", marker = "extra == 'dev'", specifier = ">=2.1" },
-    { name = "jsonschema", marker = "extra == 'dev'", specifier = ">=4.26.0" },
-    { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.13" },
-    { name = "openai", marker = "extra == 'all'", specifier = ">=1.50" },
-    { name = "openai", marker = "extra == 'openai'", specifier = ">=1.50" },
-    { name = "pydantic", specifier = ">=2.7" },
-    { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.3" },
-    { name = "pytest-asyncio", marker = "extra == 'dev'", specifier = ">=0.24" },
-    { name = "rich", specifier = ">=13.7" },
-    { name = "ruamel-yaml", specifier = ">=0.18" },
-    { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.8" },
-    { name = "typer", specifier = ">=0.12" },
-]
-provides-extras = ["all", "anthropic", "dev", "openai"]
-
-[[package]]
 name = "annotated-doc"
 version = "0.0.5"
 source = { registry = "https://pypi.org/simple" }
@@ -206,6 +153,59 @@ sdist = { url = "https://files.pythonhosted.org/packages/e0/4d/f332313098c1de1b2
 wheels = [
     { url = "https://files.pythonhosted.org/packages/a7/5f/ed01f9a3cdffbd5a008556fc7b2a08ddb1cc6ace7effa7340604b1d16699/docstring_parser-0.18.0-py3-none-any.whl", hash = "sha256:b3fcbed555c47d8479be0796ef7e19c2670d428d72e96da63f3a40122860374b", size = 22484, upload-time = "2026-04-14T04:09:18.638Z" },
 ]
+
+[[package]]
+name = "dryfire"
+source = { editable = "." }
+dependencies = [
+    { name = "anyio" },
+    { name = "httpx" },
+    { name = "pydantic" },
+    { name = "rich" },
+    { name = "ruamel-yaml" },
+    { name = "typer" },
+]
+
+[package.optional-dependencies]
+all = [
+    { name = "anthropic" },
+    { name = "openai" },
+]
+anthropic = [
+    { name = "anthropic" },
+]
+dev = [
+    { name = "import-linter" },
+    { name = "jsonschema" },
+    { name = "mypy" },
+    { name = "pytest" },
+    { name = "pytest-asyncio" },
+    { name = "ruff" },
+]
+openai = [
+    { name = "openai" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "anthropic", marker = "extra == 'all'", specifier = ">=0.40" },
+    { name = "anthropic", marker = "extra == 'anthropic'", specifier = ">=0.40" },
+    { name = "anyio", specifier = ">=4.4" },
+    { name = "httpx", specifier = ">=0.27" },
+    { name = "import-linter", marker = "extra == 'dev'", specifier = ">=2.1" },
+    { name = "jsonschema", marker = "extra == 'dev'", specifier = ">=4.26.0" },
+    { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.13" },
+    { name = "openai", marker = "extra == 'all'", specifier = ">=1.50" },
+    { name = "openai", marker = "extra == 'openai'", specifier = ">=1.50" },
+    { name = "pydantic", specifier = ">=2.7" },
+    { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.3" },
+    { name = "pytest-asyncio", marker = "extra == 'dev'", specifier = ">=0.24" },
+    { name = "rich", specifier = ">=13.7" },
+    { name = "ruamel-yaml", specifier = ">=0.18" },
+    { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.8" },
+    { name = "typer", specifier = ">=0.12" },
+]
+provides-extras = ["all", "anthropic", "dev", "openai"]
 
 [[package]]
 name = "grimp"

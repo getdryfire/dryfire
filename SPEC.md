@@ -1,9 +1,9 @@
-# agentcheck — Technical Product Specification
+# dryfire — Technical Product Specification
 
-> **Working name:** `agentcheck`. It appears as the package name, CLI binary, and config
-> directory `.agentcheck/`. If renamed, it is a single find-replace across the repo plus
+> **Working name:** `dryfire`. It appears as the package name, CLI binary, and config
+> directory `.dryfire/`. If renamed, it is a single find-replace across the repo plus
 > `pyproject.toml`. Do not hardcode the name in user-facing strings — read it from
-> `agentcheck.__about__.APP_NAME`.
+> `dryfire.__about__.APP_NAME`.
 
 **Status:** Draft 1 — pre-implementation
 **Owner:** Carlos
@@ -41,7 +41,7 @@ one decision.
 
 ### 1.4 Positioning
 
-| | Approach | agentcheck's difference |
+| | Approach | dryfire's difference |
 |---|---|---|
 | Promptfoo | Single-turn prompt evals, string/judge assertions | Trajectory assertions, tool mocking |
 | Langfuse | Hosted-first observability + prompt mgmt | Local-first, no server, no account, CI-shaped |
@@ -66,7 +66,7 @@ Design commitments that follow from this positioning and must not be traded away
 
 ### 1.6 Adoption target
 
-`uvx agentcheck init` → passing green test in **under 60 seconds**, no API key required for
+`uvx dryfire init` → passing green test in **under 60 seconds**, no API key required for
 the scaffolded example (its model turns are scripted via `provider: fake` — §4.4; cassettes
 are v0.2). This number is a hard acceptance criterion on the v0.1 release, not an aspiration.
 
@@ -89,7 +89,7 @@ one that must exist for the project to have been worth doing.
 ## 3. Core domain model
 
 These types are provider-agnostic and are the contract every other subsystem depends on.
-They live in `agentcheck/providers/base.py` and `agentcheck/runner/trace.py`.
+They live in `dryfire/providers/base.py` and `dryfire/runner/trace.py`.
 
 ```python
 # ---- Provider-normalized types -------------------------------------------
@@ -219,7 +219,7 @@ OpenAI with no loop, retry, or assertion knowledge in either adapter.
 
 ### 3.2 Pricing data
 
-Cost is computed from a bundled `agentcheck/data/pricing.yaml` keyed by
+Cost is computed from a bundled `dryfire/data/pricing.yaml` keyed by
 `provider:model → {input, output, cache_read, cache_write}` in USD per million tokens.
 Users may override with `pricing_file:` in project config. Unknown model → `cost = None`,
 never an exception, never a guess. Stale pricing is a documented, accepted limitation;
@@ -284,15 +284,15 @@ mistake produces one error.
 
 | File | Purpose |
 |---|---|
-| `agentcheck.yaml` | Project config at repo root. Defaults, provider settings, paths. |
+| `dryfire.yaml` | Project config at repo root. Defaults, provider settings, paths. |
 | `**/*.eval.yaml` | Suite files. Discovered by glob. |
-| `.agentcheck/cassettes/**` | Recorded responses (v0.2). Committed to git. |
-| `.agentcheck/runs/**` | Run artifacts, JSON traces. Gitignored. |
+| `.dryfire/cassettes/**` | Recorded responses (v0.2). Committed to git. |
+| `.dryfire/runs/**` | Run artifacts, JSON traces. Gitignored. |
 
 ### 4.2 Project config
 
 ```yaml
-# agentcheck.yaml
+# dryfire.yaml
 version: 1
 
 defaults:
@@ -306,7 +306,7 @@ suites:
   - "evals/**/*.eval.yaml"
 
 cassettes:
-  dir: .agentcheck/cassettes
+  dir: .dryfire/cassettes
   mode: auto                  # auto | record | replay | off
 
 pricing_file: null
@@ -453,7 +453,7 @@ A `fake` case must have a `script`; a `script` on a real-provider case is meanin
 
 ## 5. The agent loop
 
-Implemented in `agentcheck/runner/loop.py`. This is the single most important algorithm in
+Implemented in `dryfire/runner/loop.py`. This is the single most important algorithm in
 the product; it must be readable and directly testable without network access.
 
 ```
@@ -550,12 +550,12 @@ spec loader, or reporters. Unknown assertion kind is a **spec validation error**
 ## 7. CLI
 
 ```
-agentcheck init [--dir .]              scaffold example project
-agentcheck validate [paths...]         parse + validate specs, zero network calls
-agentcheck run [paths...]              execute suites
-agentcheck trace <suite::case>         run one case, print full turn-by-turn trace
-agentcheck compare ...                 (v0.3)
-agentcheck export ...                  (v0.4)
+dryfire init [--dir .]              scaffold example project
+dryfire validate [paths...]         parse + validate specs, zero network calls
+dryfire run [paths...]              execute suites
+dryfire trace <suite::case>         run one case, print full turn-by-turn trace
+dryfire compare ...                 (v0.3)
+dryfire export ...                  (v0.4)
 ```
 
 `run` flags:
@@ -606,10 +606,10 @@ primary consumer.
 ## 8. Package layout
 
 ```
-agentcheck/
+dryfire/
   __about__.py            APP_NAME, __version__
   cli.py                  typer app, flag parsing, exit codes
-  config.py               agentcheck.yaml loading, defaults resolution
+  config.py               dryfire.yaml loading, defaults resolution
   spec/
     models.py             pydantic models for suites and cases
     loader.py             YAML → models, $ref resolution, env interpolation
@@ -660,11 +660,11 @@ Core: `typer`, `pydantic>=2`, `ruamel.yaml`, `rich`, `httpx`, `anyio`.
 > information. Measured overhead of round-trip loading on a 488-line suite is ~40 ms
 > (2.2× `pyyaml`), which is negligible against a single provider call. Do not build a fast
 > path.
-Extras: `agentcheck[anthropic]` → `anthropic`; `agentcheck[openai]` → `openai`;
-`agentcheck[all]`.
+Extras: `dryfire[anthropic]` → `anthropic`; `dryfire[openai]` → `openai`;
+`dryfire[all]`.
 Dev: `pytest`, `pytest-asyncio`, `ruff`, `mypy`, `uv`.
 
-Provider SDKs are **optional extras**. Importing `agentcheck` must not require any provider
+Provider SDKs are **optional extras**. Importing `dryfire` must not require any provider
 SDK. A missing extra produces an actionable error naming the exact install command.
 
 ### 8.2 Testing strategy
@@ -685,7 +685,7 @@ SDK. A missing extra produces an actionable error naming the exact install comma
 **Ships:** everything in sections 3–8 marked v0.1.
 **Provider:** Anthropic only.
 **Definition of done:**
-- `uvx agentcheck init && agentcheck run` produces a green result in <60s with no API key
+- `uvx dryfire init && dryfire run` produces a green result in <60s with no API key
   (scaffold ships a `FakeProvider`-backed example; a second example requires a key).
 - Full test suite passes offline.
 - README with runnable example above the fold and an asciinema GIF.
@@ -727,10 +727,10 @@ SDK. A missing extra produces an actionable error naming the exact install comma
   `schema_version` is inside the hash input, so bumping it invalidates every cassette
   globally by construction — no migration code, ever.
 
-  **Storage:** `.agentcheck/cassettes/<suite>/<case>/<NN>-<fingerprint>.json`, where `NN` is
+  **Storage:** `.dryfire/cassettes/<suite>/<case>/<NN>-<fingerprint>.json`, where `NN` is
   the turn index. Each file carries a human-readable pretty-printed request digest
   alongside the raw response, so a stale cassette is debuggable rather than opaque hex.
-  Renaming a suite or case orphans its cassettes; `agentcheck prune` removes orphans.
+  Renaming a suite or case orphans its cassettes; `dryfire prune` removes orphans.
 
   **Modes:**
 
@@ -743,7 +743,7 @@ SDK. A missing extra produces an actionable error naming the exact install comma
 
   `replay` never making a live call is what makes CI runs cost-bounded and airgap-safe.
 - **Reporters:** JUnit XML (for CI test reporting), JSON.
-- **GitHub Action** at `.github/actions/agentcheck` + a documented workflow snippet.
+- **GitHub Action** at `.github/actions/dryfire` + a documented workflow snippet.
 - **Assertions:** `cost_under`, `latency_under_ms`, `min_tool_calls`, `final_matches`,
   `final_json_schema`.
 - **Retries:** exponential backoff on 429/5xx, `--max-retries` (default 3), retries never

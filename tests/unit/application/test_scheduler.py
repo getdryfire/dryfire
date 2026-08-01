@@ -13,8 +13,8 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
-from agentcheck.application.ports.model_gateway import CompletionRequest
-from agentcheck.application.scheduler import (
+from dryfire.application.ports.model_gateway import CompletionRequest
+from dryfire.application.scheduler import (
     CaseResult,
     PlannedCase,
     PlannedSuite,
@@ -22,10 +22,10 @@ from agentcheck.application.scheduler import (
     SuiteResult,
     run_suites,
 )
-from agentcheck.domain.mocking.resolver import Error, MockRule, Return, Sequence
-from agentcheck.domain.model.case import ResolvedCase
-from agentcheck.domain.model.message import ModelResponse, Usage
-from agentcheck.domain.model.tooling import ToolCall
+from dryfire.domain.mocking.resolver import Error, MockRule, Return, Sequence
+from dryfire.domain.model.case import ResolvedCase
+from dryfire.domain.model.message import ModelResponse, Usage
+from dryfire.domain.model.tooling import ToolCall
 
 # -- Case / plan builders ---------------------------------------------------
 
