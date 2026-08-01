@@ -23,20 +23,22 @@ Update this file when work ships, phases change, or priorities shift.
 
 > Actively building. Code is being written.
 
-### DF-202 — Request fingerprinting (implemented, PR open)
-First EPIC-002 ticket. Lifts SPIKE-002's cassette fingerprint into the package as pure domain
-(`domain/fingerprint.py`, stdlib-only, dict-based — no adapter coupling). Unblocks the cassette chain
-(DF-203 store → DF-204 caching decorator → DF-205 prune). Gate green (333 tests + 1 live-skipped).
-- 19 spike tests ported verbatim (logic-identical, `-> None` added for the stricter home). STABLE
-  under key order, extraneous metadata, provider-generated call ids, and unicode NFC/NFD; SENSITIVE to
-  model/provider/system/message/params and tool name/description/**order**/schema, and int-vs-float.
-- **Tool-call id normalisation is the load-bearing finding:** ids are rewritten to positional
-  placeholders (`call_0`, …) on the **hash path only** (wire keeps them verbatim), or every multi-turn
-  cassette misses on turn 2+. Tool **descriptions and order are hashed** (sensitivity wins).
-- Two DF-202 additions beyond the spike: cross-process determinism verified in a real subprocess under
-  `PYTHONHASHSEED=random`; stability across a real 3-turn conversation with two different call-id sets.
-- `SCHEMA_VERSION` is inside the hash input → bumping it invalidates every cassette by construction.
-- Import-linter contract 3 (domain imports only pydantic + stdlib) still KEPT.
+### DF-203 — File cassette store (implemented, PR open)
+The file-backed `ResponseCache` — cassettes on disk, atomic and reviewable. Declares the port
+(missing until now) and implements `FileCassetteStore`. Unblocks DF-204 (the caching decorator).
+Gate green (347 tests + 1 live-skipped), arch 5/5.
+- `application/ports/response_cache.py` — `ResponseCache` Protocol (`get(fp)->ModelResponse|None`,
+  `put(record, *, recorded_at)`) + frozen `CassetteRecord` DTO. `recorded_at` is injected (no Clock
+  port until DF-206), mirroring the reporters.
+- `adapters/driven/cache/file_store.py` — layout
+  `.dryfire/cassettes/<suite>/<case>/<NN>-<fingerprint>.json`; **reads keyed by fingerprint alone**
+  (path-independent glob); atomic write (full-serialise → temp → `os.replace`, temp cleaned on
+  failure); stable-key pretty JSON so a re-record with only a changed response is a one-line diff;
+  `schema_version` mismatch → miss, not error; `SCHEMA_VERSION` sourced from `domain/fingerprint`.
+- **Injective path sanitisation:** safe names pass through verbatim (readable paths); any rewritten
+  name gets a short hash of the original appended, so `a/b`, `a:b`, and `a_b` never collide.
+- First `tests/contracts/` suite: the `ResponseCache` contract runs against `FileCassetteStore` **and**
+  an `InMemoryCache` fake, so they can't drift.
 
 ---
 
@@ -44,19 +46,27 @@ First EPIC-002 ticket. Lifts SPIKE-002's cassette fingerprint into the package a
 
 > Committed work, ready to start. Ordered by the EPIC-002 dependency graph (`EPIC-002.md`).
 
-1. **DF-203** — file cassette store (`.dryfire/cassettes/…`, atomic writes) — needs DF-202. Then
-   **DF-204** caching decorator (the "loop unchanged" proof) → **DF-205** `prune`.
+1. **DF-204** — CachingGateway decorator + the four modes (auto/record/replay/off) in `composition.py`.
+   The architecture proof: **`git diff application/loop.py` must be empty.** Needs DF-206 for ordering
+   (`Caching(Retrying(Real))`) and the **event-model decision** (thread `cache_hit` through the trace,
+   or build `EventSink` — deferred to this ticket). Then **DF-205** `prune`.
 2. **DF-201** — OpenAI gateway (independent; lifts SPIKE-001; `git diff application/` must be empty).
-3. Prerequisites surfaced during review: **Clock port** (for DF-206 retries), and the **event-model
-   decision** for DF-204 (deferred — thread `cache_hit` through the trace, or build `EventSink`).
-4. Remaining: DF-206 retries · DF-207/208 assertions · DF-209 JUnit · DF-210 Action · DF-211
-   passthrough · DF-212 release. Two half-day spikes first: SPIKE-004 (passthrough), SPIKE-005 (JUnit).
+3. **DF-206** retries — needs a new **Clock port** (surfaced in review) so backoff tests don't wait.
+4. Remaining: DF-207/208 assertions · DF-209 JUnit · DF-210 Action · DF-211 passthrough · DF-212
+   release. Two half-day spikes first: SPIKE-004 (passthrough), SPIKE-005 (JUnit).
 
 ---
 
 ## Shipped
 
 > Working in the codebase. Committed and tested.
+
+### DF-202 — Request fingerprinting (2026-08-01, PR #21) — first EPIC-002 ticket
+Lifted SPIKE-002's cassette fingerprint into `domain/fingerprint.py` (pure, stdlib-only, dict-based).
+19 spike tests ported + 2 additions (cross-process subprocess determinism under `PYTHONHASHSEED=random`;
+real 3-turn stability across different call-id sets). Tool-call ids normalised to positional
+placeholders on the **hash path only**; tool descriptions + order hashed (sensitivity wins);
+`SCHEMA_VERSION` inside the hash. Contract 3 (domain = pydantic + stdlib) kept.
 
 ### AC-019 — README, demo, and PyPI release (2026-08-01, PR #20) — v0.1.0, EPIC-001 complete
 Version `0.1.0`. README leads with the differentiator + an authentic `not_calls_tool` failure block
