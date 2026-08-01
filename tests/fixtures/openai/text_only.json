@@ -1,0 +1,10 @@
+{
+  "id": "chatcmpl-text",
+  "object": "chat.completion",
+  "created": 1753900002,
+  "model": "gpt-4o-2024-08-06",
+  "choices": [
+    {"index": 0, "message": {"role": "assistant", "content": "It arrived on Tuesday."}, "finish_reason": "stop"}
+  ],
+  "usage": {"prompt_tokens": 30, "completion_tokens": 7, "total_tokens": 37}
+}

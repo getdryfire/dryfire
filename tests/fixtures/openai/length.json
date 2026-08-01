@@ -1,0 +1,10 @@
+{
+  "id": "chatcmpl-length",
+  "object": "chat.completion",
+  "created": 1753900003,
+  "model": "gpt-4o-2024-08-06",
+  "choices": [
+    {"index": 0, "message": {"role": "assistant", "content": "The order was placed on"}, "finish_reason": "length"}
+  ],
+  "usage": {"prompt_tokens": 30, "completion_tokens": 16, "total_tokens": 46}
+}

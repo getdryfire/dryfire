@@ -1,0 +1,21 @@
+{
+  "id": "chatcmpl-parallel",
+  "object": "chat.completion",
+  "created": 1753900001,
+  "model": "gpt-4o-2024-08-06",
+  "choices": [
+    {
+      "index": 0,
+      "message": {
+        "role": "assistant",
+        "content": null,
+        "tool_calls": [
+          {"id": "call_A", "type": "function", "function": {"name": "lookup_order", "arguments": "{\"order_id\": \"A-991\"}"}},
+          {"id": "call_B", "type": "function", "function": {"name": "check_stock", "arguments": "{\"sku\": \"X-1\"}"}}
+        ]
+      },
+      "finish_reason": "tool_calls"
+    }
+  ],
+  "usage": {"prompt_tokens": 50, "completion_tokens": 20, "total_tokens": 70}
+}

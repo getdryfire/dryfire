@@ -267,6 +267,32 @@ def test_missing_key_skips_the_case_with_a_note_not_a_failure(
     assert "ANTHROPIC_API_KEY" in result.output
 
 
+def test_provider_openai_runs_end_to_end(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    # A `provider: openai` suite, driven by a REAL recorded OpenAI payload parsed
+    # by the adapter's from_wire — proves the second provider wires end to end.
+    import json as _json
+
+    from dryfire.adapters.driven.providers.openai import from_wire
+
+    fixture = _json.loads(
+        (Path(__file__).parents[1] / "fixtures" / "openai" / "text_only.json").read_text()
+    )
+
+    class _OpenAIFixtureGateway:
+        name = "openai"
+
+        async def complete(self, request: Any) -> ModelResponse:
+            return from_wire(fixture, latency_ms=1)
+
+    _use_gateway(monkeypatch, _OpenAIFixtureGateway())
+    suite = (
+        "name: oai\nprovider: openai\ncases:\n  - name: c\n    input: hi\n"
+        "    expect:\n      - final_contains: Tuesday\n"
+    )
+    result = runner.invoke(app, ["run", _write(tmp_path, suite)])
+    assert result.exit_code == 0, result.output
+
+
 def test_cassette_replay_miss_exits_3(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     # No cassettes exist → a replay miss → provider_error → exit 3, and no gateway
     # is ever built (replay is airgapped).

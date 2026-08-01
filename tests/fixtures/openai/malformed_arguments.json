@@ -1,0 +1,20 @@
+{
+  "id": "chatcmpl-malformed",
+  "object": "chat.completion",
+  "created": 1753900004,
+  "model": "gpt-4o-2024-08-06",
+  "choices": [
+    {
+      "index": 0,
+      "message": {
+        "role": "assistant",
+        "content": null,
+        "tool_calls": [
+          {"id": "call_bad", "type": "function", "function": {"name": "issue_refund", "arguments": "{\"amount\": 500, \"order"}}
+        ]
+      },
+      "finish_reason": "tool_calls"
+    }
+  ],
+  "usage": {"prompt_tokens": 40, "completion_tokens": 10, "total_tokens": 50}
+}
