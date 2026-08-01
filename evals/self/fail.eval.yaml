@@ -1,0 +1,94 @@
+# fail.eval.yaml — agentcheck testing its own failure paths (AC-018 dogfood).
+#
+# Every case here is EXPECTED TO FAIL. The dogfood CI job runs this suite and
+# fails if any case unexpectedly PASSES — that would mean an assertion stopped
+# catching the thing it exists to catch. So `agentcheck run` exiting 1 on this
+# suite is the GREEN outcome for CI.
+#
+# Each case is the mirror of a passing case in pass.eval.yaml, deliberately
+# broken so you can see exactly what each assertion catches.
+name: dogfood_fail
+provider: fake
+
+tools:
+  - name: get_weather
+    description: Look up the weather for a city.
+    input_schema:
+      type: object
+      properties: {city: {type: string}}
+      required: [city]
+  - name: notify_user
+    description: Send the user a notification.
+    input_schema: {type: object}
+  # Declared but intentionally NOT mocked — the unmocked_tool case calls it.
+  - name: charge_card
+    description: An unmocked tool, to exercise the unmocked_tool termination.
+    input_schema: {type: object}
+
+mocks:
+  get_weather:
+    - return: {temp_f: 65, conditions: sunny}
+  notify_user:
+    - return: {sent: true}
+
+cases:
+  - name: calls_tool_fails                  # expects a call that never happens
+    input: "say hi only"
+    script:
+      - text: "Hi, no tools needed."
+    expect:
+      - calls_tool: get_weather
+
+  - name: not_calls_tool_fails              # forbids a tool the model does call
+    input: "check weather"
+    script:
+      - tool_call: {name: get_weather, arguments: {city: "San Francisco"}}
+      - text: "Sunny."
+    expect:
+      - not_calls_tool: get_weather
+
+  - name: tool_args_fails                   # right tool, wrong arguments
+    input: "weather in SF"
+    script:
+      - tool_call: {name: get_weather, arguments: {city: "San Francisco"}}
+      - text: "Sunny."
+    expect:
+      - tool_args:
+          tool: get_weather
+          match: {city: "New York"}
+
+  - name: call_order_fails                  # tools called, but in the other order
+    input: "check then notify"
+    script:
+      - tool_call: {name: get_weather, arguments: {city: "San Francisco"}}
+      - tool_call: {name: notify_user, arguments: {}}
+      - text: "Done."
+    expect:
+      - call_order: [notify_user, get_weather]
+
+  - name: max_turns_assertion_fails         # took more turns than allowed
+    input: "two steps"
+    script:
+      - tool_call: {name: get_weather, arguments: {city: "San Francisco"}}
+      - tool_call: {name: notify_user, arguments: {}}
+      - text: "Done."
+    expect:
+      - max_turns: 1
+
+  - name: final_contains_fails              # final text lacks the substring
+    input: "weather please"
+    script:
+      - tool_call: {name: get_weather, arguments: {city: "San Francisco"}}
+      - text: "It's sunny."
+    expect:
+      - final_contains: "raining"
+
+  # Exercises the unmocked_tool termination: charge_card has no mock and the
+  # default on_unmocked is `error`, so the loop stops and the case fails.
+  - name: unmocked_tool_terminates
+    input: "charge me"
+    script:
+      - tool_call: {name: charge_card, arguments: {amount: 10}}
+      - text: "unreachable — the loop stops at the unmocked call"
+    expect:
+      - final_contains: "charged"
