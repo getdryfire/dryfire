@@ -1,6 +1,6 @@
 # Progress
 
-**Last Updated:** 2026-08-01
+**Last Updated:** 2026-08-01 · **Active epic:** EPIC-002 (v0.2, CI-grade)
 
 ---
 
@@ -11,8 +11,9 @@ Global tracker for dryfire. Answers three questions without digging through the 
 2. What's shipped and working?
 3. What's next?
 
-**Epic reference:** `EPIC-001.md` has the v0.1 goal and ticket sequencing; the tickets live
-in `TICKETS-AC-001-009.md` and `TICKETS-AC-010-019.md`.
+**Epic reference:** `EPIC-001.md` (v0.1, **shipped** — AC-001…AC-019) and `EPIC-002.md` (v0.2,
+active — DF-201…DF-212, tickets inline in that file). v0.1 is code-complete on `main` at version
+`0.1.0`; the PyPI publish is deliberately deferred (owner's call).
 
 Update this file when work ships, phases change, or priorities shift.
 
@@ -22,38 +23,48 @@ Update this file when work ships, phases change, or priorities shift.
 
 > Actively building. Code is being written.
 
-### AC-019 — README, demo, and PyPI release (implemented, PR open)
-The final EPIC-001 ticket. Version bumped `0.1.0.dev0 → 0.1.0`. **PyPI name `dryfire` confirmed
-available** (HTTP 404) before other work. Gate green (312 tests + 1 live-skipped); wheel builds,
-`twine check` passes, and a clean-venv install of the wheel runs `init → run` green offline.
-- **README** — leads with the differentiator and a runnable suite + an **authentic** failure block
-  (the `not_calls_tool` safety-regression hook) above the fold, before install. Non-goals cite SPEC
-  §1.5. Fair Promptfoo/Langfuse comparison folded from `COMPARISON.md`, **re-verified against
-  promptfoo.dev** (Promptfoo does have trajectory assertions, but on instrumented traces; OpenAI
-  acquired it March 2026; it has red-teaming — all named as things it does better).
-- `CHANGELOG.md` (v0.1.0), `CONTRIBUTING.md` (the gate + TDD + arch rules), `docs/demo.tape` (a
-  committed vhs script: init → run → break → fix → green, portable `perl -i`, verified green→red→green).
-- `.github/workflows/release.yml` — publishes on a `v*` tag via **PyPI Trusted Publishing** (OIDC, no
-  token), gated on tag==version + `make check` + `make dogfood`.
-- Cosmetic: `init` now says "into the current directory" instead of a confusing "into ..".
-- **Human-gated (flagged in the PR, not done by the agent):** record the GIF (`vhs docs/demo.tape` —
-  vhs not installed locally), configure the PyPI trusted publisher, and push the `v0.1.0` tag.
+### DF-202 — Request fingerprinting (implemented, PR open)
+First EPIC-002 ticket. Lifts SPIKE-002's cassette fingerprint into the package as pure domain
+(`domain/fingerprint.py`, stdlib-only, dict-based — no adapter coupling). Unblocks the cassette chain
+(DF-203 store → DF-204 caching decorator → DF-205 prune). Gate green (333 tests + 1 live-skipped).
+- 19 spike tests ported verbatim (logic-identical, `-> None` added for the stricter home). STABLE
+  under key order, extraneous metadata, provider-generated call ids, and unicode NFC/NFD; SENSITIVE to
+  model/provider/system/message/params and tool name/description/**order**/schema, and int-vs-float.
+- **Tool-call id normalisation is the load-bearing finding:** ids are rewritten to positional
+  placeholders (`call_0`, …) on the **hash path only** (wire keeps them verbatim), or every multi-turn
+  cassette misses on turn 2+. Tool **descriptions and order are hashed** (sensitivity wins).
+- Two DF-202 additions beyond the spike: cross-process determinism verified in a real subprocess under
+  `PYTHONHASHSEED=random`; stability across a real 3-turn conversation with two different call-id sets.
+- `SCHEMA_VERSION` is inside the hash input → bumping it invalidates every cassette by construction.
+- Import-linter contract 3 (domain imports only pydantic + stdlib) still KEPT.
 
 ---
 
 ## Up Next
 
-> Committed work, ready to start. Ordered by the EPIC-001 dependency graph.
+> Committed work, ready to start. Ordered by the EPIC-002 dependency graph (`EPIC-002.md`).
 
-_EPIC-001 is complete once AC-019 merges and v0.1.0 is tagged. Next is v0.2 (EPIC-002): OpenAI
-adapter, cassette record/replay, JUnit + JSON reporters, GitHub Action, cost/latency assertions,
-retry/backoff._
+1. **DF-203** — file cassette store (`.dryfire/cassettes/…`, atomic writes) — needs DF-202. Then
+   **DF-204** caching decorator (the "loop unchanged" proof) → **DF-205** `prune`.
+2. **DF-201** — OpenAI gateway (independent; lifts SPIKE-001; `git diff application/` must be empty).
+3. Prerequisites surfaced during review: **Clock port** (for DF-206 retries), and the **event-model
+   decision** for DF-204 (deferred — thread `cache_hit` through the trace, or build `EventSink`).
+4. Remaining: DF-206 retries · DF-207/208 assertions · DF-209 JUnit · DF-210 Action · DF-211
+   passthrough · DF-212 release. Two half-day spikes first: SPIKE-004 (passthrough), SPIKE-005 (JUnit).
 
 ---
 
 ## Shipped
 
 > Working in the codebase. Committed and tested.
+
+### AC-019 — README, demo, and PyPI release (2026-08-01, PR #20) — v0.1.0, EPIC-001 complete
+Version `0.1.0`. README leads with the differentiator + an authentic `not_calls_tool` failure block
+above the fold; non-goals cite SPEC §1.5; fair Promptfoo/Langfuse comparison re-verified against
+promptfoo.dev. `CHANGELOG.md`, `CONTRIBUTING.md`, `docs/demo.tape` (vhs), and
+`.github/workflows/release.yml` (PyPI Trusted Publishing on a `v*` tag). Wheel verified end-to-end
+(clean-venv install → `init → run` green). **Publish is deferred by the owner** — record the GIF,
+register the PyPI trusted publisher, and push the `v0.1.0` tag when ready.
 
 ### Rename: agentcheck → dryfire (2026-08-01, PR #19)
 The name `agentcheck` was taken, so the project is now `dryfire`. Package dir, CLI command, dist
