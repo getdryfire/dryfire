@@ -23,18 +23,19 @@ Update this file when work ships, phases change, or priorities shift.
 
 > Actively building. Code is being written.
 
-### DF-205 — `prune` command (implemented, PR open)
-Closes the cassette workstream (DF-202→205): `dryfire prune` deletes orphaned or stale cassettes.
-Dry-run by default, `--yes` to delete; exits 0 whether or not anything was pruned. Gate green (365
-tests + 1 live-skipped), loop unchanged.
-- `adapters/driven/cache/prune.py` — scans `.dryfire/cassettes/<suite>/<case>/…` against the sanitised
-  set of suites/cases that currently parse; classifies each as **orphaned suite**, **orphaned case**,
-  or **stale schema_version**. `remove_empty_dirs` cleans emptied dirs after `--yes`.
-- **Safety rule (mutation-checked):** a cassette whose suite failed to parse is **never** pruned —
-  parsing is what yields a suite's name, so when any suite fails to load, every cassette dir that
-  doesn't match a *successfully parsed* suite is protected. A broken spec must not cause data loss.
-- `_sanitise` promoted to public `sanitise` in `file_store.py` so prune matches on-disk dir names by
-  the same rule the store wrote them with. `composition.prune` + a thin `prune` CLI command.
+### DF-201 — OpenAI gateway (implemented, PR open)
+**The second-provider proof of the hexagonal port:** adding OpenAI changed **nothing** in
+`application/` (`git diff application/` empty). Mirrors the Anthropic adapter exactly. Gate green (380
+tests + 2 live-skipped); the live OpenAI test **passed against the real API** (gpt-4o-mini). loop unchanged.
+- `adapters/driven/providers/openai.py` — pure `to_wire`/`from_wire` + a thin `OpenAIGateway` (lazy SDK
+  import; `openai` stays an optional extra). Reuses `map_stop_reason("openai", …)` (unknown → `error`).
+- Three OpenAI-specific facts from SPIKE-001: tool results are **separate `role: tool` messages** (N
+  parallel → N messages); `function.arguments` is a **JSON string** parsed defensively (bad/truncated →
+  `arguments={}` + `malformed_arguments`, never raises — **mutation-checked**); no `is_error` flag, so a
+  tool error is encoded behind `OPENAI_ERROR_PREFIX`.
+- Recorded-shape fixtures for single/parallel/text/length/malformed. `provider: openai` wired into
+  `make_gateway` (composition, not application) with an `OPENAI_API_KEY` credential check; an end-to-end
+  CLI test runs a `provider: openai` suite against a recorded fixture.
 
 ---
 
@@ -42,18 +43,22 @@ tests + 1 live-skipped), loop unchanged.
 
 > Committed work, ready to start. Ordered by the EPIC-002 dependency graph (`EPIC-002.md`).
 
-1. **DF-201** — OpenAI gateway (independent; lifts SPIKE-001; `git diff application/` must be empty).
-   The second-provider proof of the port.
-2. **DF-206** retries — needs a new **Clock port** (surfaced in review) so backoff tests don't wait.
+1. **DF-206** retries — needs a new **Clock port** (surfaced in review) so backoff tests don't wait.
    When it lands, composition wiring becomes `Caching(Retrying(Real))` (order is load-bearing).
-3. Remaining: DF-207/208 assertions · DF-209 JUnit · DF-210 Action · DF-211 passthrough · DF-212
-   release. Two half-day spikes first: SPIKE-004 (passthrough), SPIKE-005 (JUnit).
+2. **DF-207/208** assertions (budget + extended) · **DF-209** JUnit · **DF-210** Action · **DF-211**
+   passthrough · **DF-212** release. Two half-day spikes first: SPIKE-004 (passthrough), SPIKE-005 (JUnit).
 
 ---
 
 ## Shipped
 
 > Working in the codebase. Committed and tested.
+
+### DF-205 — `prune` command (2026-08-01, PR #24)
+`dryfire prune` deletes orphaned or stale cassettes (dry-run by default, `--yes` to delete; exit 0
+either way). Classifies orphaned suite / orphaned case / stale schema_version; cleans emptied dirs.
+**Safety rule (mutation-checked):** a cassette whose suite failed to parse is never pruned. Closed the
+cassette workstream (DF-202→205). `_sanitise` promoted to public `sanitise`.
 
 ### DF-204 — CachingGateway decorator + four modes (2026-08-01, PR #23)
 Cassette record/replay as a **decorator over `ModelGateway`** with **`application/loop.py` byte-for-byte

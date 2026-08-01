@@ -96,6 +96,12 @@ def make_gateway(provider: str) -> ModelGateway:
         from dryfire.adapters.driven.providers.anthropic import AnthropicGateway
 
         return AnthropicGateway()
+    if provider == "openai":
+        if not os.environ.get("OPENAI_API_KEY"):
+            raise MissingCredentials("openai", "OPENAI_API_KEY")
+        from dryfire.adapters.driven.providers.openai import OpenAIGateway
+
+        return OpenAIGateway()
     raise ConfigError(f"unknown provider: {provider!r}")
 
 
