@@ -1,6 +1,6 @@
 # Progress
 
-**Last Updated:** 2026-08-02 · **Status:** v0.2 shipped — `dryfire 0.2.0` on PyPI
+**Last Updated:** 2026-08-02 · **Status:** v0.3 in development (EPIC-003) — v0.2.2 on PyPI
 
 ---
 
@@ -21,16 +21,26 @@ Update this file when work ships, phases change, or priorities shift.
 
 ## In Development
 
-> Nothing in flight — v0.2 is shipped.
+> **EPIC-003 (v0.3 — Judgment & Comparison).** Scoped in `EPIC-003.md` (inline test-table
+> tickets: SPIKE-006/007 → DF-301…310). Theme: measuring things that aren't boolean, without
+> regressing the deterministic/free/never-flaky core (a structural-only suite must run at v0.2
+> speed and cost).
+>
+> - **SPIKE-006 (async assertion seam) — DONE.** Verdict: **Model C** (judge as a pre-assertion
+>   enrichment stage), mirroring the DF-207 `price(trace, case)` seam but async + gateway-backed.
+>   Assertions stay pure and sync; `loop.py` unchanged; contract 3 kept. Reference impl +
+>   8 passing proof tests in `spikes/006_async_assertions/`. See its `FINDINGS.md` for the 5
+>   answers and the ARCHITECTURE §5.1 amendment.
+> - **Next:** DF-301 (judge domain model + rubric hashing + `Trace.judge_verdicts`, `SCHEMA_VERSION`→2),
+>   then DF-302 (`JudgeEnricher` in application/judging, wired beside `_make_price`).
 
 ---
 
 ## Up Next
 
-> No open work. Both epics are complete and **v0.2.0 is published to PyPI**.
-
-- **v0.3** (unscoped): `llm_judge`, `compare` (model/prompt matrix), a self-contained HTML report,
-  `repeat: N` flakiness, export to other languages. Still zero-infra — no server/database.
+- **v0.3 remaining** (per `EPIC-003.md`): DF-301→304 (llm_judge), SPIKE-007 + DF-305/306 (repeat),
+  DF-307/308 (compare), DF-309 (HTML report), DF-310 (docs + release). Still zero-infra — no
+  server/database.
 - **Housekeeping candidates:** bump release-workflow actions off deprecated Node 20; consider
   flipping `.github/workflows/example-usage.yml` from `workflow_dispatch` to `push`/`pull_request`
   now that `getdryfire/dryfire@v0.2.0` resolves.

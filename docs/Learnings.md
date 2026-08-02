@@ -701,3 +701,30 @@ env indirection is the standard injection-safe pattern. Design the action so JUn
 - Rejected for dryfire: service containers, SOPS/age secrets (no team, no server, the
   only secret is `ANTHROPIC_API_KEY` for live tests), production Dockerfile (ships to
   PyPI), migrations/alembic (no database — tripwire in ARCHITECTURE §11).
+
+### 2026-08-02 — EPIC-003 kickoff / SPIKE-006 (async assertion seam)
+- **Model C won, and the codebase already proves it.** The judged-assertion seam is not a new
+  invention — `composition._make_price` → `scheduler._process_case` (`trace = price(trace, case)`
+  between `run_case` and `_evaluate`) is the exact template. The judge enrichment is the same
+  callback, `await`ed and gateway-backed. Assertions stay pure/sync; `evaluate(trace)` is
+  unchanged; `loop.py` is not in the call graph at all (so it is NOT a DF-211-style loop
+  exception — the enrichment sits outside the loop).
+- **Two-file rule, resolved up-front:** `llm_judge` is the first assertion needing data the loop
+  doesn't compute, so the *feature* lands a one-time seam (verdict/rubric types + `Trace` field +
+  `JudgeEnricher` + scheduler/composition wiring) on top of the two-file assertion. Precedent is
+  DF-207 (`cost_under` first had to build the `price` seam). State it in the DF-303 PR as covered
+  by SPIKE-006, don't "confess" it.
+- **Judge failure = exit 3 (provider error), never exit 1.** A broken judge is infrastructure, not
+  an agent regression; conflating them sends the user to debug the wrong thing. Unparseable judge
+  output is a judge *error*, never a score of 0. No new exit code — 0/1/2/3 already has the bucket.
+- **Judge concurrency is a single shared semaphore** closed over by the enricher (built in
+  composition, like `_make_price` closes over the catalog) → bounds judge calls globally,
+  independent of case concurrency. Flat `gather`, never a nested pool.
+- **`Trace` gains additive optional fields** (`judge_verdicts={}`, later `judge_usage/cost`) →
+  structural-only traces serialise byte-identically. Bump `SCHEMA_VERSION` 1→2 as a *capability
+  signal* only (reader stays tolerant of 1); it is not a format break.
+- **Gotcha:** the epic's spike dir names start with a digit (`006_async_assertions`) → not a valid
+  Python package name, so `from .seam import ...` fails under pytest. Import via
+  `sys.path.insert(0, str(Path(__file__).parent))` + `from seam import ...`. Same fix awaits
+  SPIKE-007's `007_repeat/`. Spikes aren't collected by `make test` (`testpaths=["tests"]`) but
+  ARE linted by `ruff check .`, so keep spike code ruff-clean.
