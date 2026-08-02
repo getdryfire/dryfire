@@ -69,8 +69,16 @@ Update this file when work ships, phases change, or priorities shift.
 >   (warn, never refuse). Partial-cassette policy per mode (replay refuses to fabricate missing reps →
 >   exit 3). `repeat`×`compare` allowed+warned via DF-307's cost prompt (single source of truth). Full
 >   prototype + 34 tests in `spikes/007_repeat/`; see its `FINDINGS.md`.
-> - **Next:** DF-305 (`repeat: N` execution + pass rates) and DF-306 (repetition-aware cassette keys on
->   the real store — the must-have test: `repeat: 5` replay yields 5 DISTINCT responses).
+> - **DF-305 (`repeat: N` execution + pass rates) — DONE.** `repeat`/`require_pass_rate` resolve through
+>   the spec (case/suite/defaults precedence; positioned errors for `repeat<1` / `rate>1`). The scheduler
+>   expands each case into `repeat` units in the ONE worker pool (not a nested pool) and aggregates them —
+>   `repeat: 1` returns the sole result unchanged (byte-identical to v0.2). `CaseResult` gained optional
+>   `repetitions`/`require_pass_rate` + `passes`/`total`/`pass_rate` props; a case passes iff `k/N ≥
+>   require_pass_rate`. Terminal: `~` glyph + `k/N` + Wilson 95% CI for disagreeing cases only, wide-interval
+>   warning below N=5 (`domain/pass_rate.py`). JSON keeps all N traces (repeat:1 artifact byte-identical).
+>   18 new tests; 531 total.
+> - **Next:** DF-306 (SPIKE-007's keying on the real `FileCassetteStore` + `repeat_index` into the per-rep
+>   `CachingGateway`; must-have test: `repeat: 5` replay yields 5 DISTINCT responses).
 
 ---
 

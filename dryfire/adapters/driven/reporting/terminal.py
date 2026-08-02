@@ -19,6 +19,7 @@ from typing import Any, TextIO
 from dryfire.application.scheduler import CaseResult, RunResult, SuiteResult
 from dryfire.domain.assertions.base import AssertionResult
 from dryfire.domain.assertions.trajectory import render_failure
+from dryfire.domain.pass_rate import MIN_MEANINGFUL_REPEAT, wilson_interval
 
 # Layout constants pinned against SPEC §7.2 (verified byte-for-byte).
 _NAME_WIDTH = 36  # case name left-justified; metrics start at column 40
@@ -29,6 +30,7 @@ _PASS = "✓"
 _FAIL = "✗"
 _GREEN = "\x1b[32m"
 _RED = "\x1b[31m"
+_YELLOW = "\x1b[33m"  # the disagreement (flaky) marker on a repeated case (DF-305)
 _RESET = "\x1b[0m"
 
 
@@ -50,8 +52,34 @@ def _cost_str(cost: float | None) -> str:
     return "—" if cost is None else f"${cost:.4f}"
 
 
+def _repeat_glyph(case: CaseResult, *, color: bool) -> str:
+    """A disagreeing repeated case (0 < k < N) gets a distinct `~` — flakiness is the
+    finding, and it must not read as a plain pass or fail (DF-305). A uniform repeated
+    case (N/N or 0/N) keeps the normal pass/fail glyph."""
+    disagreeing = case.passes not in (0, case.total)
+    if not disagreeing:
+        return _glyph(case.passed, color=color)
+    return f"{_YELLOW}~{_RESET}" if color else "~"
+
+
+def _repeat_annotation(case: CaseResult) -> str:
+    """`k/N`, plus — only for a disagreeing case, where the uncertainty is
+    decision-relevant — the Wilson 95% interval, plus a wide-interval warning below the
+    recommended minimum N (SPIKE-007). Uniform and non-repeated cases stay terse."""
+    passes, total = case.passes, case.total
+    assert passes is not None and total is not None
+    parts = [f"{passes}/{total}"]
+    if passes not in (0, total):
+        lo, hi = wilson_interval(passes, total)
+        parts.append(f"95% CI {lo:.2f}–{hi:.2f}")
+    if total < MIN_MEANINGFUL_REPEAT:
+        parts.append(f"repeat<{MIN_MEANINGFUL_REPEAT}: wide interval")
+    return "   ".join(parts)
+
+
 def _case_line(case: CaseResult, *, color: bool) -> str:
-    glyph = _glyph(case.passed, color=color)
+    repeated = case.repetitions is not None
+    glyph = _repeat_glyph(case, color=color) if repeated else _glyph(case.passed, color=color)
     name = case.case_name
     if case.trace is None:
         # A case that raised before producing a trace — surface the error, no metrics.
@@ -60,8 +88,9 @@ def _case_line(case: CaseResult, *, color: bool) -> str:
     trace = case.trace
     turns = len(trace.turns)
     duration = trace.duration_ms / 1000
+    rate = f"{_repeat_annotation(case)}   " if repeated else ""
     line = (
-        f"  {glyph} {name:<{_NAME_WIDTH}}"
+        f"  {glyph} {name:<{_NAME_WIDTH}}{rate}"
         f"{turns} turns   {_tokens(case):,} tok   "
         f"{_cost_str(trace.total_cost_usd)}   {duration:.1f}s"
     )

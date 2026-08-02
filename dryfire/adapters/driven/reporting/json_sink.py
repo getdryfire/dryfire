@@ -39,7 +39,7 @@ def _iso_z(moment: datetime) -> str:
 
 
 def _case_dict(case: CaseResult) -> dict[str, Any]:
-    return {
+    doc: dict[str, Any] = {
         "suite_name": case.suite_name,
         "case_name": case.case_name,
         "passed": case.passed,
@@ -47,6 +47,21 @@ def _case_dict(case: CaseResult) -> dict[str, Any]:
         "assertions": [a.model_dump(mode="json") for a in case.assertions],
         "trace": None if case.trace is None else case.trace.model_dump(mode="json"),
     }
+    # Repetition fields appear ONLY for a repeated case (DF-305), so a `repeat: 1` case
+    # serialises byte-identically to v0.2. The artifact keeps every one of the N traces.
+    if case.repetitions is not None:
+        doc["pass_rate"] = case.pass_rate
+        doc["require_pass_rate"] = case.require_pass_rate
+        doc["repetitions"] = [
+            {
+                "passed": rep.passed,
+                "error": rep.error,
+                "assertions": [a.model_dump(mode="json") for a in rep.assertions],
+                "trace": None if rep.trace is None else rep.trace.model_dump(mode="json"),
+            }
+            for rep in case.repetitions
+        ]
+    return doc
 
 
 def _suite_dict(suite: SuiteResult) -> dict[str, Any]:

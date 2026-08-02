@@ -120,6 +120,10 @@ class Case(_StrictModel):
     max_turns: int | None = None
     temperature: float | None = None
     on_unmocked: OnUnmocked | None = None
+    # Repetition (DF-305): run this case N times and report k/N. `require_pass_rate` is
+    # the fraction that must pass for the build to pass (default 1.0 — all N).
+    repeat: int | None = Field(default=None, ge=1)
+    require_pass_rate: float | None = Field(default=None, ge=0.0, le=1.0)
 
 
 class Suite(_StrictModel):
@@ -139,6 +143,8 @@ class Suite(_StrictModel):
     max_turns: int | None = None
     temperature: float | None = None
     on_unmocked: OnUnmocked | None = None
+    repeat: int | None = Field(default=None, ge=1)
+    require_pass_rate: float | None = Field(default=None, ge=0.0, le=1.0)
     system: str | None = None
     tools: list[ToolSpec] = []
     mocks: dict[str, list[MockRule]] | None = None
@@ -154,6 +160,8 @@ class Defaults(_StrictModel):
     max_turns: int | None = None
     temperature: float | None = None
     on_unmocked: OnUnmocked | None = None
+    repeat: int | None = Field(default=None, ge=1)
+    require_pass_rate: float | None = Field(default=None, ge=0.0, le=1.0)
 
 
 class CassetteConfig(_StrictModel):

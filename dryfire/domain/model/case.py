@@ -29,6 +29,12 @@ class ResolvedCase(BaseModel):
     temperature: float
     on_unmocked: Literal["error", "null", "passthrough"]
 
+    # Repetition (DF-305): run the case `repeat` times and report a k/N pass rate;
+    # `require_pass_rate` is the fraction that must pass for the case to pass the build.
+    # Defaults keep a non-repeated case byte-identical to v0.2 (repeat 1, rate 1.0).
+    repeat: int = 1
+    require_pass_rate: float = 1.0
+
     # Case content the runner executes.
     system: str | None
     input: str | list[dict[str, Any]]
