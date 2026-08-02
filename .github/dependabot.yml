@@ -15,3 +15,11 @@ updates:
       github-actions:
         patterns: ["*"]
     open-pull-requests-limit: 5
+    ignore:
+      # dorny/test-reporter is a third-party action in the distributed action.yml
+      # (it runs in users' repos and isn't exercised by our CI). A major bump can
+      # change its inputs/behaviour, so bump it deliberately — with a changelog read
+      # and a throwaway-repo re-verify — not automatically. Patch/minor bumps (incl.
+      # SHA refreshes within v1) are still proposed.
+      - dependency-name: "dorny/test-reporter"
+        update-types: ["version-update:semver-major"]
