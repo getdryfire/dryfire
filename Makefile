@@ -68,6 +68,10 @@ spike-probe: ## SPIKE-001 adapter probe, offline canned payloads
 spike-errors: ## SPIKE-003 positioned spec errors demo (exits 2 by design)
 	uv run python spikes/render.py spikes/sample_broken.eval.yaml || true
 
+.PHONY: spike-passthrough
+spike-passthrough: ## SPIKE-004 passthrough execution model (17 tests)
+	uv run pytest spikes/004_passthrough/test_passthrough.py -q
+
 ## Dependencies
 .PHONY: add
 add: ## Add a runtime dep (usage: make add pkg=httpx)

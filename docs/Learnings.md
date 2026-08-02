@@ -634,6 +634,20 @@ validate data — that's jsonschema's job, forbidden in a lean pure domain. Comp
 domain-pure, and gives richer errors that cleanly separate "unparseable JSON" from "shape violation."
 Reframe the feature to the tool you already have rather than adding a dependency for the literal name.
 
+### A per-call timeout bounds the async *scheduler*, not the *thread* running a sync callable (SPIKE-004)
+Passthrough runs user code; sync impls go through `asyncio.to_thread` so they don't freeze the loop, and
+`asyncio.wait_for(..., timeout)` bounds them. But the bound is on the **await**, not the **work**: Python
+has no thread-kill, so a wedged sync impl runs to completion. The consequence is two-sided and easy to
+mismeasure: (1) *while the event loop lives*, `wait_for` returns control at the timeout and the other
+concurrent cases proceed — the scheduler is genuinely bounded; (2) *at loop shutdown*, `asyncio.run` calls
+`loop.shutdown_default_executor()`, which **joins** the abandoned thread, so the whole process pays the
+sync impl's full runtime once at the end. My first timeout test measured a single `asyncio.run(invoke(...))`
+and saw the *full sleep* (0.5 s, not the 0.1 s bound) — because the shutdown-join dominated, not because
+the timeout failed. Fix: measure elapsed **inside** the coroutine (control-return), and prove the real
+property — a fast neighbour completes on schedule while the hang is abandoned. Async impls have no such
+asymmetry: `wait_for` cancels the coroutine cleanly, nothing to join. When you assert "bounded," be exact
+about *which* boundary — event-loop progress vs. process wall-clock — they differ for threaded sync work.
+
 ## Session Notes
 
 ### 2026-07-30 — AC-001 + toolchain
