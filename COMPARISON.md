@@ -1,12 +1,9 @@
 # dryfire — features and positioning
 
-**Supersedes SPEC.md §1.4.** That table was written before verifying Promptfoo's current
-feature set and claimed trajectory assertions as a gap. That claim is false — Promptfoo
-ships a `trajectory:*` assertion family. Replace §1.4 with this document's content.
+This is the canonical, dated comparison; SPEC §1.4 points here.
 
-**AC-019 requires this comparison to be fair.** The "where X is better" sections are not
-optional politeness — an unfair table gets the project dismissed by exactly the audience
-whose opinion carries.
+**Keep it fair.** The "where X is better" sections are not optional politeness — an unfair
+table gets the project dismissed by exactly the audience whose opinion carries.
 
 **Last verified: 2026-08-02**, against [promptfoo.dev](https://www.promptfoo.dev) and
 [deepeval.com](https://deepeval.com). Both move fast (Promptfoo's roadmap is now OpenAI's);
