@@ -12,6 +12,9 @@ Docs-only patch (no code changes) to refresh the PyPI project page.
 
 - Removed a broken `docs/demo.gif` image reference from the README (the GIF was never recorded;
   it rendered as a broken image on PyPI and GitHub).
+- README documentation links are now absolute URLs so they resolve on the PyPI project page
+  (relative links 404 there). The CI-snippet example now points at `getdryfire/dryfire@v0.2.1`
+  and `actions/checkout@v5` — the current, non-Node-20-deprecated versions.
 
 ### Changed
 
