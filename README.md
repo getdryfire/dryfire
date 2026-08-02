@@ -128,37 +128,16 @@ dryfire is a pre-deployment unit test, and deliberately not more (SPEC §1.5):
 
 ## How it compares
 
-Being explicit about what other tools do better is the point, not politeness.
+dryfire is a **unit test for tool-selection behaviour** — deterministic, mocked, reproducible, with nothing to instrument. That's the whole distinction: agent-eval tools (Promptfoo, DeepEval) score a **built, instrumented agent's** real runs, often with LLM-as-judge metrics; dryfire runs the loop itself, mocks the tools, and asserts on the exact trajectory — so you can test a prompt-and-schema *design* before the agent exists, and every run is free and identical.
 
-### vs [Promptfoo](https://www.promptfoo.dev)
-
-Promptfoo also has trajectory assertions (`trajectory:tool-used`, `tool-sequence`, `tool-args-match`) — but they read **traces from an agent you've already built and instrumented**. dryfire runs the loop itself and mocks the tools, so there's nothing to instrument and nothing hits a real system.
-
-| | dryfire | Promptfoo |
-|---|---|---|
-| What's under test | a prompt + tool-schema **design** | your built, running agent |
-| How the trace is obtained | runs the loop, owns the trace | ingests OTLP traces you emit |
-| Instrumentation required | none | OTLP tracing setup |
-| Deterministic tool mocking | ✅ subset match, errors, sequences | ❌ real tools or a custom provider |
-| Runtime | Python (`uv`/`pip`) | Node (`npm`) |
-| Ecosystem, providers, assertions | small, new | large and mature |
-| Model comparison · LLM-as-judge | v0.3 | ✅ mature |
-| Red teaming (OWASP/NIST/MITRE) | ❌ never | ✅ a whole product |
-
-**Where Promptfoo is better:** it's mature, has dozens of providers and a far larger assertion library, ships model-comparison and LLM-as-judge today, and does security red-teaming — an entire capability dryfire will never have. **If you're testing a fully built agent end-to-end, or you need red-teaming, use Promptfoo.**
-
-**Where dryfire is different:** deterministic tool mocking makes trajectory tests reproducible and side-effect-free, there's nothing to instrument, and you can test tool-selection behaviour before the agent exists. It's a unit test for tool-selection; Promptfoo is an integration test for a built agent.
-
-### vs [Langfuse](https://langfuse.com)
-
-Complementary, not competing. Langfuse is production observability — a server, a database, and a UI over traces from **live traffic**, telling you what your agent _did_. dryfire is a pre-deployment CLI that stops a regression from ever shipping. A team could reasonably run both.
+Full, dated head-to-heads (Promptfoo, DeepEval): [`COMPARISON.md`](COMPARISON.md).
 
 ## Documentation
 
 - [`docs/ci.md`](docs/ci.md) — running dryfire in CI: exit codes, JUnit, the GitHub Action.
 - [`docs/cassettes.md`](docs/cassettes.md) — record/replay, and what invalidates a cassette.
 - [`docs/mocks.md`](docs/mocks.md) — mock rules, including passthrough (`impl:`) and its security note.
-- [`COMPARISON.md`](COMPARISON.md) — how dryfire compares to Promptfoo, DeepEval, and Langfuse.
+- [`COMPARISON.md`](COMPARISON.md) — how dryfire compares to Promptfoo and DeepEval.
 - [`SPEC.md`](SPEC.md) — product spec: domain model, YAML format, agent loop, assertions, exit codes.
 - [`ARCHITECTURE.md`](ARCHITECTURE.md) — how the code is shaped (hexagonal, three layers).
 - [`CHANGELOG.md`](CHANGELOG.md) · [`CONTRIBUTING.md`](CONTRIBUTING.md)
