@@ -28,6 +28,7 @@ from dryfire.adapters.driven.providers.caching import CachingGateway
 from dryfire.adapters.driven.providers.fake import FakeGateway
 from dryfire.adapters.driven.providers.retrying import RetryingGateway
 from dryfire.adapters.driven.reporting.json_sink import render_run, write_run
+from dryfire.adapters.driven.reporting.junit_sink import render_junit, write_junit
 from dryfire.adapters.driven.reporting.terminal import render_report, resolve_color
 from dryfire.adapters.driven.scaffold.writer import ScaffoldConflict, scaffold
 from dryfire.adapters.driven.spec.config import (
@@ -335,20 +336,26 @@ def _exit_code(run: RunResult) -> int:
 
 
 def _report(
-    run: RunResult, *, reporter: str, json_out: str | None, verbose: bool,
-    out: TextIO, now: datetime,
+    run: RunResult, *, reporter: str, json_out: str | None, junit_out: str | None,
+    verbose: bool, out: TextIO, now: datetime,
 ) -> None:
+    # `--reporter` picks the stdout format; `--json-out`/`--junit-out` are independent
+    # atomic file sinks that compose with any reporter (SPEC §7, DF-209).
     if reporter == "json":
         out.write(render_run(run, generated_at=now))
-        return
-    out.write(render_report(run, color=resolve_color(out)))
-    if verbose:  # -v: dump every turn of each failing case beneath the report
-        for suite in run.suites:
-            for case in suite.cases:
-                if not case.passed:
-                    out.write(_render_trace(case))
+    elif reporter == "junit":
+        out.write(render_junit(run, generated_at=now))
+    else:
+        out.write(render_report(run, color=resolve_color(out)))
+        if verbose:  # -v: dump every turn of each failing case beneath the report
+            for suite in run.suites:
+                for case in suite.cases:
+                    if not case.passed:
+                        out.write(_render_trace(case))
     if json_out is not None:
         write_run(run, Path(json_out), generated_at=now)
+    if junit_out is not None:
+        write_junit(run, Path(junit_out), generated_at=now)
 
 
 def _render_trace(case: CaseResult) -> str:
@@ -485,6 +492,7 @@ def run(
     fail_fast: bool = False,
     reporter: str = "terminal",
     json_out: str | None = None,
+    junit_out: str | None = None,
     cassette_mode: str | None = None,
     max_retries: int | None = None,
     verbose: bool = False,
@@ -542,8 +550,8 @@ def run(
             run_suites(runnable, default_gateway, price=_make_price(),
                        concurrency=concurrency or BUILTIN_CONCURRENCY, fail_fast=fail_fast)
         )
-        _report(result, reporter=reporter, json_out=json_out, verbose=verbose,
-                out=out, now=now or datetime.now(UTC))
+        _report(result, reporter=reporter, json_out=json_out, junit_out=junit_out,
+                verbose=verbose, out=out, now=now or datetime.now(UTC))
         return _exit_code(result)
     except ConfigError as exc:
         err.write(f"error: {exc}\n")

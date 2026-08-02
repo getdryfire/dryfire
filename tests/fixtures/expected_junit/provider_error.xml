@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites name="dryfire" tests="1" failures="0" errors="1" time="1.298">
+  <testsuite name="refunds" tests="1" failures="0" errors="1" time="1.298" timestamp="2026-07-31T12:00:00Z">
+    <testcase name="handles provider outage" classname="refunds" time="1.298">
+      <error message="provider error: connection reset by peer" type="provider_error">(provider_error)
+provider error: connection reset by peer</error>
+    </testcase>
+  </testsuite>
+</testsuites>

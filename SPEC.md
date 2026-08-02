@@ -568,6 +568,7 @@ dryfire export ...                  (v0.4)
 --cassette-mode MODE     auto|record|replay|off        (v0.2)
 --reporter NAME          terminal|json|junit           (junit in v0.2)
 --json-out PATH          write full traces as JSON
+--junit-out PATH         write JUnit XML to a file      (v0.2; composes with any reporter)
 --fail-fast              stop on first failing case
 -v/--verbose             print traces for failing cases
 ```
