@@ -113,6 +113,31 @@ def test_exit_2_on_spec_error() -> None:
     assert result.exit_code == 2
 
 
+def test_run_expands_a_glob_in_cli_paths(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # The GitHub Action and the docs use `evals/**/*.eval.yaml`; dryfire must
+    # resolve that glob itself (like a dryfire.yaml pattern), not depend on the
+    # shell — `**` here matches zero subdirs, exactly the throwaway-repo case.
+    _use_gateway(monkeypatch, _TextGateway("done"))
+    evals = tmp_path / "evals"
+    evals.mkdir()
+    (evals / "demo.eval.yaml").write_text(_PASS, encoding="utf-8")
+    monkeypatch.chdir(tmp_path)
+    result = runner.invoke(app, ["run", "evals/**/*.eval.yaml"])
+    assert result.exit_code == 0, result.output
+
+
+def test_run_glob_matching_nothing_is_a_clean_config_error(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    result = runner.invoke(app, ["run", "evals/**/*.eval.yaml"])
+    assert result.exit_code == 2
+    assert "no suite files matched" in result.output
+    assert "internal error" not in result.output  # not the scary "report a bug" path
+
+
 def test_exit_3_on_provider_error(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     _use_gateway(monkeypatch, _RaisingGateway())
     result = runner.invoke(app, ["run", _write(tmp_path, _PASS)])

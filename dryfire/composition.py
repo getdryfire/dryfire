@@ -12,6 +12,7 @@ unreachable.
 from __future__ import annotations
 
 import asyncio
+import glob
 import json
 import os
 from collections.abc import Callable, Sequence
@@ -131,6 +132,28 @@ class _Loaded:
         self.config_dir = config_dir  # cassette paths resolve relative to this
 
 
+def _glob_cli_paths(patterns: Sequence[str | Path], cwd: Path) -> list[Path]:
+    """Expand CLI suite arguments as globs, relative to `cwd`, so
+    `dryfire run "evals/**/*.eval.yaml"` resolves the same way a `dryfire.yaml`
+    pattern does — and does not depend on the shell to expand `**`. A literal path
+    that exists matches itself. Results are de-duplicated and ordered."""
+    found: list[Path] = []
+    for pattern in patterns:
+        pat = str(pattern)
+        if Path(pat).is_absolute():
+            found.extend(Path(m) for m in glob.glob(pat, recursive=True))
+        else:
+            found.extend(cwd / m for m in glob.glob(pat, root_dir=cwd, recursive=True))
+    seen: set[Path] = set()
+    ordered: list[Path] = []
+    for path in found:
+        resolved = path.resolve()
+        if resolved not in seen:
+            seen.add(resolved)
+            ordered.append(path)
+    return sorted(ordered, key=str)
+
+
 def _load(paths: Sequence[str | Path], *, cwd: Path) -> _Loaded:
     try:
         config_path = discover_config(cwd)
@@ -143,7 +166,11 @@ def _load(paths: Sequence[str | Path], *, cwd: Path) -> _Loaded:
     config_dir = config_path.parent if config_path else None
 
     if paths:
-        suite_paths = [Path(p) for p in paths]
+        suite_paths = _glob_cli_paths(paths, cwd)
+        if not suite_paths:
+            raise ConfigError(
+                "no suite files matched: " + ", ".join(str(p) for p in paths)
+            )
     elif config_path is not None and project is not None:
         suite_paths = glob_suites(config_path, project.suites)
     else:
