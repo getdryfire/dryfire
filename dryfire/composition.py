@@ -59,6 +59,11 @@ from dryfire.application.scheduler import (
     RunResult,
     run_suites,
 )
+from dryfire.application.usecases.compare import (
+    CompareResult,
+    estimate_runs,
+    run_compare,
+)
 from dryfire.domain.judging.verdict import JudgeVerdict
 from dryfire.domain.mocking.resolver import Passthrough, merge_mocks
 from dryfire.domain.model.case import ResolvedCase
@@ -743,6 +748,151 @@ def _find_case(
 
 def target_suite(case: PlannedCase) -> PlannedSuite:
     return PlannedSuite(name=case.case.suite_name, path=case.case.suite_path, cases=[case])
+
+
+COMPARE_CONFIRM_THRESHOLD = 25  # case-runs above which `compare` asks before spending
+
+
+async def _compare_run_one(
+    loaded: _Loaded, *, overrides: dict[str, Any], mode: CassetteMode,
+    store: ResponseCache | None, concurrency: int, max_retries: int, cwd: Path, out: TextIO,
+) -> RunResult:
+    """Run the loaded suites once for one column's overrides — the SAME plan → wrap →
+    `run_suites` path `run` uses, no second runner. Raising here (e.g. planning) makes it
+    a failed column upstream in `run_compare`."""
+    planned, _ = _plan(loaded, filter_text=None, tags=(), overrides=overrides)
+    if mode == "replay":
+        assert store is not None
+        runnable = _wrap_cases(
+            planned, inner_for=lambda pc: _NoLiveGateway(pc.case.provider),
+            store=store, mode=mode,
+        )
+        default_gateway: ModelGateway | None = None
+    else:
+        runnable, real_gateway = _partition_by_availability(planned, out=out)
+        default_gateway = (
+            RetryingGateway(real_gateway, clock=SystemClock(), max_retries=max_retries)
+            if real_gateway is not None else None
+        )
+        if store is not None and default_gateway is not None:
+            runnable = _wrap_cases(
+                runnable, inner_for=lambda pc: default_gateway, store=store, mode=mode,
+                exclude_passthrough=True, out=out,
+            )
+    judge = _make_judge() if _suites_use_judge(runnable) else None
+    return await run_suites(
+        runnable, default_gateway, price=_make_price(), concurrency=concurrency,
+        invoker=PassthroughInvoker(), judge=judge,
+    )
+
+
+def _compare_exit_code(result: CompareResult) -> int:
+    """Worst outcome across columns: a failed column or any provider error → 3, any
+    assertion failure → 1, else 0. Compare stays subject to the contractual codes."""
+    worst = EXIT_OK
+    for col in result.columns:
+        if col.run is None:  # failed column (raised)
+            worst = max(worst, EXIT_PROVIDER)
+            continue
+        worst = max(worst, _exit_code(col.run))
+    return worst
+
+
+def _render_compare_basic(result: CompareResult) -> str:
+    """A minimal per-column summary. DF-308 replaces this with the screenshot matrix; the
+    execution contract (numbers + exit code) is what DF-307 pins."""
+    lines = [f"compare by {result.axis}:"]
+    for col in result.columns:
+        if col.metrics is None:
+            lines.append(f"  {col.label}: FAILED — {col.error}")
+            continue
+        m = col.metrics
+        cost = "—" if m.total_cost_usd is None else f"${m.total_cost_usd:.4f}"
+        lines.append(
+            f"  {col.label}: {m.pass_rate:.0%} pass   {cost}   "
+            f"{m.mean_latency_ms:.0f}ms   {m.mean_turns:.1f} turns   ({m.cases} cases)"
+        )
+    return "\n".join(lines) + "\n"
+
+
+def compare(
+    paths: Sequence[str],
+    *,
+    models: Sequence[str] = (),
+    prompts: Sequence[str] = (),
+    concurrency: int | None = None,
+    cassette_mode: str | None = None,
+    max_retries: int | None = None,
+    yes: bool = False,
+    threshold: int = COMPARE_CONFIRM_THRESHOLD,
+    debug: bool = False,
+    out: TextIO,
+    err: TextIO,
+) -> int:
+    """Run one suite across N models (or N prompt variants) and print the matrix.
+    Orchestration over `run_suites` — a failing column never aborts the others."""
+    try:
+        if models and prompts:
+            raise ConfigError(
+                "compare takes one axis at a time: --models OR --prompts, not both (v0.3)"
+            )
+        if not models and not prompts:
+            raise ConfigError("compare needs --models a,b,c or --prompts file1,file2")
+
+        cwd = Path.cwd()
+        loaded = _load(paths, cwd=cwd)
+        if loaded.errors:
+            err.write(_render_errors(loaded.errors))
+            return EXIT_CONFIG
+
+        axis = "model" if models else "prompt"
+        labels = list(models) if models else list(prompts)
+
+        base, _ = _plan(loaded, filter_text=None, tags=(), overrides={})
+        case_runs = sum(pc.case.repeat for suite in base for pc in suite.cases)
+        total = estimate_runs(labels=len(labels), case_runs=case_runs)
+        mode, store = _resolve_cassettes(cassette_mode, loaded, cwd=cwd)
+
+        # Show the estimate before anything runs; above the threshold (and not free replay)
+        # require --yes, so nobody discovers the size of a 4-model × 50-case run from a bill.
+        out.write(
+            f"compare: {len(labels)} {axis}(s) × {case_runs} case-run(s) = {total} runs\n"
+        )
+        if total > threshold and mode != "replay" and not yes:
+            err.write(
+                f"error: {total} runs exceeds the confirmation threshold ({threshold}); "
+                "re-run with --yes to proceed (cost scales with the run count)\n"
+            )
+            return EXIT_CONFIG
+
+        def overrides_for(label: str) -> dict[str, Any]:
+            return {"model": label} if axis == "model" else {"system": _read_prompt(label)}
+
+        async def run_one(label: str) -> RunResult:
+            return await _compare_run_one(
+                loaded, overrides=overrides_for(label), mode=mode, store=store,
+                concurrency=concurrency or BUILTIN_CONCURRENCY,
+                max_retries=max_retries if max_retries is not None else BUILTIN_MAX_RETRIES,
+                cwd=cwd, out=out,
+            )
+
+        result = asyncio.run(run_compare(axis, labels, run_one))
+        out.write(_render_compare_basic(result))
+        return _compare_exit_code(result)
+    except ConfigError as exc:
+        err.write(f"error: {exc}\n")
+        return EXIT_CONFIG
+    except Exception as exc:  # noqa: BLE001 - unhandled → clean message, exit 2 (SPEC §7.1)
+        return _internal_error(exc, err=err, debug=debug)
+
+
+def _read_prompt(path: str) -> str:
+    """Load a prompt-variant file's text (the `--prompts` axis). A missing file is a
+    config error, surfaced with the path."""
+    try:
+        return Path(path).read_text(encoding="utf-8")
+    except OSError as exc:
+        raise ConfigError(f"cannot read prompt file {path!r}: {exc}") from exc
 
 
 def _internal_error(exc: Exception, *, err: TextIO, debug: bool) -> int:

@@ -98,7 +98,9 @@ def resolve(
             ov, "require_pass_rate", suite.require_pass_rate, case.require_pass_rate,
             project_defaults, BUILTIN_REQUIRE_PASS_RATE,
         ),
-        system=suite.system,
+        # `compare --prompts` overrides the system prompt per column (DF-307). Explicit
+        # membership check, not `_pick`, because a system prompt may legitimately be None.
+        system=ov["system"] if "system" in ov else suite.system,
         input=case.input,
         expect=case.expect,
         tools=[
