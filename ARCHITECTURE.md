@@ -206,6 +206,44 @@ That last one matters: domain functions return outcomes, they do not signal cont
 exception. `MockResolver` returns `UNMOCKED`. Assertions return `passed=False`. The loop
 returns a `Trace` with a `TerminationReason`. Exceptions are for programmer error only.
 
+### 4.4 The judging enrichment seam (v0.3)
+
+§4.3 says assertions are pure: `Trace` in, `AssertionResult` out, no I/O. One class of
+assertion — `llm_judge` — needs a value the loop does not compute: a model-graded verdict.
+SPIKE-006 settled how it fits **without** weakening §4.3 or making `evaluate()` async.
+
+The verdict is **Model C**: the application layer attaches the value to the trace *before*
+assertions run, via an injected callback — the same pattern `cost_under` already uses for
+cost (DF-207, `_make_price` → `scheduler._process_case`: `trace = price(trace, case)`). For
+judging the callback is **async** and gateway-backed (`JudgeEnricher`, in
+`application/judging/`), sitting in `_process_case` immediately after `price(...)` and before
+assertion evaluation. It reads the case's judged `expect` entries, issues judge calls through
+the existing `ModelGateway` (so they are cassette-backed and retried by the EPIC-002
+decorators for free), and populates `Trace.judge_verdicts`. The assertion itself stays pure
+and merely reads that field.
+
+Consequences, all binding:
+
+- **`domain/` acquires no I/O.** It gains only pure values (`JudgeVerdict`, `Rubric`) and one
+  additive, optional `Trace` field. Contract 3 is untouched.
+- **The `Assertion` protocol is unchanged** — still `evaluate(trace) -> AssertionResult`,
+  still sync. The six existing assertions do not move.
+- **`application/loop.py` is not in this call graph** and does not change. The enrichment
+  happens *outside* the loop, so this is **not** a second sanctioned loop exception like the
+  DF-211 passthrough seam — that distinction is deliberate.
+- **Structural-only suites take zero extra path**: an `if requests:` guard skips enrichment
+  exactly as `if price is not None` is skipped, so a suite with no judged assertion runs at
+  v0.2 speed and cost.
+- **Judge concurrency is bounded independently** of case concurrency by a single semaphore the
+  enricher closes over (built in composition beside `_make_price`).
+- **A judge failure is provider I/O**: it maps to exit 3 (provider error), never exit 1
+  (assertion failure) or a score of 0. Unparseable judge output is a judge *error*.
+
+Reference implementation and the full rationale (the five decision questions) live in
+`spikes/006_async_assertions/FINDINGS.md`. Adding a *second* judge-style assertion, once this
+seam exists, is again just the two files of §6.3 — the seam is a one-time cost, like the
+`price` seam was.
+
 ---
 
 ## 5. Ports

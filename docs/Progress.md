@@ -30,7 +30,7 @@ Update this file when work ships, phases change, or priorities shift.
 >   enrichment stage), mirroring the DF-207 `price(trace, case)` seam but async + gateway-backed.
 >   Assertions stay pure and sync; `loop.py` unchanged; contract 3 kept. Reference impl +
 >   8 passing proof tests in `spikes/006_async_assertions/`. See its `FINDINGS.md` for the 5
->   answers and the ARCHITECTURE §5.1 amendment.
+>   answers and the ARCHITECTURE §4.4 amendment.
 > - **Next:** DF-301 (judge domain model + rubric hashing + `Trace.judge_verdicts`, `SCHEMA_VERSION`→2),
 >   then DF-302 (`JudgeEnricher` in application/judging, wired beside `_make_price`).
 

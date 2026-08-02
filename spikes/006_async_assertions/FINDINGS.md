@@ -109,11 +109,11 @@ judge-aware artifact without probing for keys. Keep the reader tolerant of `1`. 
 is a minor, additive bump — not a format break — and the v0.1/v0.2 backward-compat CI
 test (DF-310) must continue to pass.
 
-## Amendment to ARCHITECTURE (§4.3 / §5.1)
+## Amendment to ARCHITECTURE (§4.4, new)
 
 §5.1 deferred `llm_judge` with *"do not design it in now, but do not make it
-impossible either."* This spike closes that deferral. Proposed addition (to land with
-DF-302, ARCHITECTURE §5.1 or a new §4.4):
+impossible either."* This spike closes that deferral. **Landed as a new §4.4 "The
+judging enrichment seam"** (the substance below; the committed wording is tightened):
 
 > **The judging enrichment seam.** Structural assertions are pure: `Trace` in,
 > `AssertionResult` out, no I/O (§4.3 unchanged). One class of assertion —
