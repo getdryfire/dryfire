@@ -62,7 +62,15 @@ Update this file when work ships, phases change, or priorities shift.
 >   ticket pins it. Terminal shows a separate `judge:` summary line, absent entirely for structural-only
 >   runs (never a phantom `$0.0000`); JSON artifact keeps the channels apart. 8 new tests; 513 total.
 >   **This closes the judge sub-track (DF-301→304); `llm_judge` is complete.**
-> - **Next:** SPIKE-007 (repeat + cassette keying + pass-rate statistics), then DF-305/306 (`repeat: N`).
+> - **SPIKE-007 (repeat keying + pass-rate stats) — DONE.** Verdict: **the repetition index lives in
+>   the storage key (`fp` for index 0, `fp#i` for i≥1), never in the hash** → `fingerprint()` is
+>   untouched, so all 19 SPIKE-002 tests pass by construction and `repeat: 1` is byte-identical. Wilson
+>   95% interval (`stats.py`, no dep) for `k/N`, shown only for disagreeing cases; recommended min N=5
+>   (warn, never refuse). Partial-cassette policy per mode (replay refuses to fabricate missing reps →
+>   exit 3). `repeat`×`compare` allowed+warned via DF-307's cost prompt (single source of truth). Full
+>   prototype + 34 tests in `spikes/007_repeat/`; see its `FINDINGS.md`.
+> - **Next:** DF-305 (`repeat: N` execution + pass rates) and DF-306 (repetition-aware cassette keys on
+>   the real store — the must-have test: `repeat: 5` replay yields 5 DISTINCT responses).
 
 ---
 
