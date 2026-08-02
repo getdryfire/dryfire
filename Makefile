@@ -72,6 +72,10 @@ spike-errors: ## SPIKE-003 positioned spec errors demo (exits 2 by design)
 spike-passthrough: ## SPIKE-004 passthrough execution model (17 tests)
 	uv run pytest spikes/004_passthrough/test_passthrough.py -q
 
+.PHONY: spike-junit
+spike-junit: ## SPIKE-005 JUnit mapping — offline-decidable facts (asserts)
+	uv run python spikes/005_junit/verify.py
+
 ## Dependencies
 .PHONY: add
 add: ## Add a runtime dep (usage: make add pkg=httpx)

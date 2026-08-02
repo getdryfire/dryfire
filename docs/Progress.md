@@ -23,29 +23,25 @@ Update this file when work ships, phases change, or priorities shift.
 
 > Actively building. Code is being written.
 
-### SPIKE-004 — Passthrough mock execution model (complete, PR open)
-Half-day spike settling the execution model for `impl: pkg.mod:func` passthrough mocks — the deliverable
-DF-211 implements. Prototype in `spikes/004_passthrough/` (`resolver.py`, `invoke.py`, `sample_impls.py`,
-17 proving tests via `make spike-passthrough`) + `FINDINGS.md` with the **Verdict** and answers to all five
-questions. Package untouched.
-- **Verdict:** resolve via `importlib` + `getattr` (CWD on `sys.path`; editable installs reduce to the
-  sys.path case) **at validate time** so a bad `impl:` is a positioned spec error (exit 2) before any API
-  spend. **Sync callables run in a thread** (`asyncio.to_thread`), async awaited natively — users never
-  forced to write async. A raise → `ToolResult(is_error=True)`, run continues. **Per-call timeout, default
-  30 s.** Calling convention `func(args: dict)` (JSON keys aren't valid identifiers, so no `**kwargs`).
-- **Load-bearing finding:** `asyncio.wait_for` bounds the *wait*, not the *work* — Python can't kill a
-  thread, so a wedged **sync** impl runs to completion. While the loop lives the scheduler is bounded (other
-  cases proceed); at loop shutdown `asyncio.run` joins the abandoned thread, so the *process* pays its full
-  runtime once. Async impls cancel cleanly (no thread). Both directions proven by tests. Documented as the
-  honest cost of the no-sandbox stance, not hidden.
-- **Q4 (cacheability):** confirmed **not cacheable** — a `create_ticket`/`now()` impl makes replay a lie;
-  a passthrough case is excluded from cassette *recording* with a visible note (DF-211 AC).
-- **Flagged for DF-211:** invocation is I/O → an adapter behind a new async `ToolInvoker` port; the domain
-  resolver stays pure by returning a `Passthrough` *marker*. This forces **one contained branch in
-  `application/loop.py`** (it's already `async`). That is **not** the epic's gateway "loop unchanged" rule
-  (DF-201/204 only) — but the prior session froze the loop for all EPIC-002 work, so DF-211 needs the
-  owner's explicit sign-off before touching it. Open surface question (where `impl:` attaches in YAML) left
-  to DF-211; recommend a per-tool rule field.
+### SPIKE-005 — JUnit XML mapping across CI consumers (complete, PR open)
+Half-day spike settling the suite→case→assertion (3 levels) → testsuite→testcase (2 levels) mapping DF-209
+implements. `spikes/005_junit/`: three candidate mappings + a zero-case file, `verify.py` (offline-decidable
+facts, all asserting via `make spike-junit`), `render_notes.md` (per-consumer matrix + live-capture kit),
+`FINDINGS.md` (Verdict + reference XML + Q1–Q5). Package untouched.
+- **Verdict: Candidate A** — case = `<testcase>`, **one `<failure>` per failing case**, all failed
+  assertions concatenated in the failure **text body**; `message` attribute = a one-line summary. This is
+  the shape `pytest --junitxml` emits (verified by generating it), refined. `A.xml` is the reference DF-209
+  matches. `<error>` (not `<failure>`) for `provider_error`/`unmocked_tool`; emit `name`/`classname`/`time`;
+  surface a zero-case run with a visible note so `failures="0"` can't read as green.
+- **What the losers lose:** B (assertion=testcase) fragments one scenario into N tests, inflates counts, and
+  forces a synthetic testcase for errored cases. C (N `<failure>` per testcase) **silently drops every
+  assertion after the first** on Ant/Surefire-schema parsers (Jenkins, likely dorny) — looks complete, isn't.
+- **Load-bearing offline finding (proven, parser-independent):** newlines **survive in `<failure>` text**
+  but **collapse to a space in the `message` attribute** (XML 1.0 §3.3.3) → the multi-line trajectory block
+  must live in the body. The `→` (U+2192) and `✗` survive as literal UTF-8; no ASCII fallback needed (Q5).
+- **Scope honesty:** the XML-decidable half is settled empirically; the live-UI half (dorny/GitLab/Jenkins
+  *rendering* — truncation thresholds, first-`<failure>`-only) needs a throwaway repo (owner's hands, ~30 min,
+  same as DF-210) — kit in `render_notes.md`. No fabricated screenshots.
 
 ---
 
@@ -53,15 +49,28 @@ questions. Package untouched.
 
 > Committed work, ready to start. Ordered by the EPIC-002 dependency graph (`EPIC-002.md`).
 
-1. **DF-211** (passthrough mocks) — SPIKE-004 settled the model; implement its verdict. · **SPIKE-005**
-   (JUnit mapping) → **DF-209**.
-2. **DF-210** GitHub Action (needs DF-209) · **DF-212** v0.2 release (needs all).
+1. **DF-211** (passthrough mocks) — SPIKE-004 settled the model; implement its verdict. · **DF-209**
+   (JUnit sink) — SPIKE-005 settled the mapping (Candidate A / `A.xml` reference).
+2. **DF-210** GitHub Action (needs DF-209) · **DF-212** v0.2 release (needs all). Both spikes' live-capture
+   steps (throwaway repo) fold into DF-210/DF-212.
 
 ---
 
 ## Shipped
 
 > Working in the codebase. Committed and tested.
+
+### SPIKE-004 — Passthrough mock execution model (2026-08-01, PR #29)
+Settled the execution model for `impl: pkg.mod:func` mocks (`spikes/004_passthrough/`, 17 tests, package
+untouched) — the verdict DF-211 implements. Resolve via `importlib`+`getattr` **at validate time** (bad
+`impl:` = spec error before any API spend); **sync callables run in a thread**, async awaited natively;
+raise → `ToolResult(is_error=True)`; **per-call 30 s timeout**; `func(args: dict)` convention; results
+**not cacheable** (excluded from recording). Load-bearing finding: `asyncio.wait_for` bounds the *wait*
+not the *work* — a wedged sync impl can't be killed, so the scheduler is bounded while the loop lives but
+the process joins the abandoned thread at shutdown. **Flagged for DF-211:** the clean shape (async
+`ToolInvoker` port + a `Passthrough` marker keeping the domain resolver pure) forces **one contained branch
+in `application/loop.py`** — not the gateway "loop unchanged" rule (DF-201/204 only), so it needs the
+owner's explicit sign-off.
 
 ### DF-208 — Extended assertions (`min_tool_calls`, `final_matches`, `final_json`) (2026-08-01, PR #28)
 Three assertions (SPEC §6.2), one new file (`domain/assertions/extended.py`) + one registry line; loop

@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Candidate B: assertion = testcase, case = testsuite. Each case becomes a
+     nested <testsuite>; each assertion becomes a <testcase>. This makes every
+     assertion individually addressable but FRAGMENTS one agent scenario into N
+     "tests" and loses the case as the unit of pass/fail: the failing case below
+     reads as "1 of 2 tests failed" and the case name only survives in classname.
+     A case that ERRORED has no assertions, so it has no natural testcase — here
+     it is forced into a single synthetic testcase, which is the tell that the
+     mapping does not fit. -->
+<testsuites name="dryfire" tests="5" failures="2" errors="1" time="4.512">
+  <testsuite name="refunds :: denies refund when policy check fails"
+             tests="2" failures="2" errors="0" time="1.234">
+    <testcase name="not_calls_tool: issue_refund"
+              classname="refunds.denies refund when policy check fails" time="0.000">
+      <failure message="issue_refund called at turn 3 with {&quot;amount&quot;: 500, &quot;reason&quot;: &quot;R&amp;D &lt;flagged&gt;&quot;}"
+               type="AssertionFailure">expected: issue_refund never called
+actual:   lookup_order → check_policy → issue_refund → (end_turn)</failure>
+    </testcase>
+    <testcase name="calls_tool: escalate_to_human"
+              classname="refunds.denies refund when policy check fails" time="0.000">
+      <failure message="escalate_to_human was never called"
+               type="AssertionFailure">expected: escalate_to_human to be called
+actual:   lookup_order → check_policy → issue_refund → (end_turn)</failure>
+    </testcase>
+  </testsuite>
+  <testsuite name="refunds :: issues refund on valid request"
+             tests="2" failures="0" errors="0" time="1.980">
+    <testcase name="calls_tool: issue_refund"
+              classname="refunds.issues refund on valid request" time="0.000"/>
+    <testcase name="final_matches: refunded"
+              classname="refunds.issues refund on valid request" time="0.000"/>
+  </testsuite>
+  <testsuite name="refunds :: handles provider outage"
+             tests="1" failures="0" errors="1" time="1.298">
+    <testcase name="(case errored before assertions)"
+              classname="refunds.handles provider outage" time="1.298">
+      <error message="provider_error: connection reset by peer"
+             type="provider_error">lookup_order → (provider_error)</error>
+    </testcase>
+  </testsuite>
+</testsuites>

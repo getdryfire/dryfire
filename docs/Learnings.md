@@ -648,6 +648,23 @@ property — a fast neighbour completes on schedule while the hang is abandoned.
 asymmetry: `wait_for` cancels the coroutine cleanly, nothing to join. When you assert "bounded," be exact
 about *which* boundary — event-loop progress vs. process wall-clock — they differ for threaded sync work.
 
+### JUnit XML: newlines collapse in an attribute but survive in text; multiple `<failure>` is lossy (SPIKE-005)
+Two findings that decide the JUnit mapping, both offline-provable (parser-independent per XML 1.0), so no
+live CI was needed to settle them. (1) **Attribute-value normalization eats newlines.** XML 1.0 §3.3.3
+replaces a literal newline in an *attribute* value with a space at parse time; *element text* is untouched.
+So a multi-line trajectory/failure block put in `<failure message="...">` arrives space-mushed in every
+consumer — it MUST go in the `<failure>` text body, with only a one-line summary in `message`. (pytest
+actually gets this "wrong" — it crams a multi-line message in and relies on the body for fidelity; our sink
+does better with a purpose-built summary.) (2) **Multiple `<failure>` per `<testcase>` is silently lossy.**
+The Ant/Surefire schema permits at most one; Jenkins and pytest emit one; consumers calibrated on that drop
+the extras. So "one `<failure>` per failed assertion" (candidate C) *looks* complete but drops every
+assertion after the first on the strictest parsers — worse than concatenating them into one body (candidate
+A). Verdict: **case = testcase, one concatenated `<failure>`** (= pytest's shape, refined). Corollary: when
+a spike's question is "how does consumer X render this," first separate what's decided by the XML spec
+(decidable offline, authoritative) from what's decided by the consumer's UI (needs live capture) — most of
+the JUnit question was the former. `<error>` (not `<failure>`) for `provider_error`/`unmocked_tool`: the
+case couldn't be *evaluated*, which consumers count and colour separately from a caught regression.
+
 ## Session Notes
 
 ### 2026-07-30 — AC-001 + toolchain
