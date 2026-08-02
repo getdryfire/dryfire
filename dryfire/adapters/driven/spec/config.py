@@ -32,6 +32,8 @@ BUILTIN_MAX_TURNS = 10
 BUILTIN_TEMPERATURE = 0.0
 BUILTIN_ON_UNMOCKED = "error"
 BUILTIN_CONCURRENCY = 4  # run-level; consumed by the scheduler (AC-012), not per-case
+BUILTIN_REPEAT = 1  # DF-305: no repetition by default → byte-identical to v0.2
+BUILTIN_REQUIRE_PASS_RATE = 1.0  # all N must pass unless the spec relaxes it
 
 
 def _pick(
@@ -90,6 +92,11 @@ def resolve(
             case.on_unmocked,
             project_defaults,
             BUILTIN_ON_UNMOCKED,
+        ),
+        repeat=_pick(ov, "repeat", suite.repeat, case.repeat, project_defaults, BUILTIN_REPEAT),
+        require_pass_rate=_pick(
+            ov, "require_pass_rate", suite.require_pass_rate, case.require_pass_rate,
+            project_defaults, BUILTIN_REQUIRE_PASS_RATE,
         ),
         system=suite.system,
         input=case.input,

@@ -82,10 +82,26 @@ class PlannedSuite:
 
 
 @dataclass(frozen=True)
+class Repetition:
+    """One run of a repeated case (DF-305): its Trace, assertions, and pass/fail. N of
+    these back a repeated `CaseResult`; the JSON artifact keeps them all."""
+
+    trace: Trace | None
+    assertions: list[AssertionResult]
+    passed: bool
+    error: str | None = None
+
+
+@dataclass(frozen=True)
 class CaseResult:
     """One case fully processed (ARCHITECTURE §6.1 `CaseCompleted`): its Trace, the
     evaluated assertions, and pass/fail. `trace` is None and `error` is set when the
-    case raised unexpectedly — isolated so the rest of the run continues."""
+    case raised unexpectedly — isolated so the rest of the run continues.
+
+    For a repeated case (DF-305, `repeat: N`), `repetitions` holds all N runs and
+    `passed` reflects whether the pass rate met `require_pass_rate`; `trace`/`assertions`
+    then carry the first *failing* repetition (what a reader wants to see). A non-repeated
+    case leaves `repetitions`/`require_pass_rate` None, so it is byte-identical to v0.2."""
 
     suite_name: str
     case_name: str
@@ -93,6 +109,26 @@ class CaseResult:
     assertions: list[AssertionResult]
     passed: bool
     error: str | None = None
+    repetitions: list[Repetition] | None = None
+    require_pass_rate: float | None = None
+
+    @property
+    def total(self) -> int | None:
+        """N, for a repeated case; None otherwise."""
+        return None if self.repetitions is None else len(self.repetitions)
+
+    @property
+    def passes(self) -> int | None:
+        """k (repetitions that passed), for a repeated case; None otherwise."""
+        return None if self.repetitions is None else sum(r.passed for r in self.repetitions)
+
+    @property
+    def pass_rate(self) -> float | None:
+        """k/N, for a repeated case; None otherwise."""
+        if self.repetitions is None:
+            return None
+        total = len(self.repetitions)
+        return sum(r.passed for r in self.repetitions) / total if total else 0.0
 
 
 @dataclass(frozen=True)
@@ -153,6 +189,30 @@ async def _process_case(
         return CaseResult(case.suite_name, case.case_name, None, [], False, error=repr(exc))
 
 
+def _aggregate(case: ResolvedCase, reps: list[CaseResult]) -> CaseResult:
+    """Fold the N repetition results of one case into a single CaseResult. For
+    `repeat: 1` this returns the sole result unchanged — the common case takes no repeat
+    code path in its output. For `repeat: N` the case passes iff the pass rate meets
+    `require_pass_rate`, and `trace`/`assertions` carry the first failing repetition
+    (what a reader wants to see) so the terminal's failing-trace view still works."""
+    if case.repeat == 1:
+        return reps[0]
+    repetitions = [Repetition(r.trace, r.assertions, r.passed, r.error) for r in reps]
+    passes = sum(r.passed for r in reps)
+    rate = passes / len(reps)
+    representative = next((r for r in reps if not r.passed), reps[0])
+    return CaseResult(
+        suite_name=reps[0].suite_name,
+        case_name=reps[0].case_name,
+        trace=representative.trace,
+        assertions=representative.assertions,
+        passed=rate >= case.require_pass_rate,
+        error=representative.error,
+        repetitions=repetitions,
+        require_pass_rate=case.require_pass_rate,
+    )
+
+
 def _group(
     suites: list[PlannedSuite], results: list[CaseResult | None]
 ) -> list[SuiteResult]:
@@ -190,28 +250,47 @@ async def run_suites(
     `fail_fast`: on the first case that does not pass, cancel every in-flight case
     and return only the results that already completed, with `complete=False`. A
     partial run is never presented as a full one."""
-    planned = [pc for suite in suites for pc in suite.cases]
-    results: list[CaseResult | None] = [None] * len(planned)
-    # A shared iterator is the whole pool discipline: workers pull the next index;
-    # `next()` has no await between pulls, so no two workers ever get the same one.
-    pending = iter(range(len(planned)))
+    cases = [pc for suite in suites for pc in suite.cases]
+    # Each case contributes `repeat` units to the SAME flat pool, so N repetitions run
+    # under the one worker set (not a nested pool) and the global concurrency bound spans
+    # all repetitions of all cases. `repeat: 1` contributes exactly one unit → the v0.2
+    # shape. A unit is just a case position; workers pull unit indices from one iterator.
+    units: list[int] = []
+    for pos, pc in enumerate(cases):
+        units.extend([pos] * pc.case.repeat)
+    rep_slots: list[list[CaseResult | None]] = [[None] * pc.case.repeat for pc in cases]
+    rep_filled = [0] * len(cases)
+    case_results: list[CaseResult | None] = [None] * len(cases)
+
+    pending = iter(range(len(units)))
     workers: list[asyncio.Task[None]] = []
 
     async def worker() -> None:
-        for i in pending:
-            result = await _process_case(planned[i], provider, price, invoker, judge)
-            results[i] = result
-            if on_progress is not None:
+        for ui in pending:
+            pos = units[ui]
+            rep = await _process_case(cases[pos], provider, price, invoker, judge)
+            # No await between here and the aggregate check → the slot bookkeeping is
+            # atomic per worker step, so concurrent repetitions of one case never race.
+            slot = rep_filled[pos]
+            rep_slots[pos][slot] = rep
+            rep_filled[pos] += 1
+            if rep_filled[pos] < cases[pos].case.repeat:
+                continue  # more repetitions of this case still to run
+            done = [r for r in rep_slots[pos] if r is not None]
+            result = _aggregate(cases[pos].case, done)
+            case_results[pos] = result
+            if on_progress is not None:  # once per fully-completed case, as in v0.2
                 on_progress(result)
             if fail_fast and not result.passed:
                 for other in workers:
                     if other is not asyncio.current_task():
-                        other.cancel()  # in-flight cases end with no result → dropped
+                        other.cancel()  # in-flight units end with no result → dropped
                 return
 
-    n_workers = min(concurrency, len(planned))
+    n_workers = min(concurrency, len(units))
     workers = [asyncio.create_task(worker()) for _ in range(n_workers)]
     # return_exceptions swallows the CancelledError raised in cancelled workers.
     await asyncio.gather(*workers, return_exceptions=True)
 
-    return RunResult(_group(suites, results), complete=all(r is not None for r in results))
+    return RunResult(_group(suites, case_results),
+                     complete=all(r is not None for r in case_results))

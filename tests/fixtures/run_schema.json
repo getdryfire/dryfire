@@ -34,7 +34,22 @@
         "passed": { "type": "boolean" },
         "error": { "type": ["string", "null"] },
         "assertions": { "type": "array", "items": { "$ref": "#/$defs/assertion" } },
-        "trace": { "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/trace" }] }
+        "trace": { "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/trace" }] },
+        "pass_rate": { "type": ["number", "null"] },
+        "require_pass_rate": { "type": ["number", "null"] },
+        "repetitions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["passed", "error", "assertions", "trace"],
+            "properties": {
+              "passed": { "type": "boolean" },
+              "error": { "type": ["string", "null"] },
+              "assertions": { "type": "array", "items": { "$ref": "#/$defs/assertion" } },
+              "trace": { "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/trace" }] }
+            }
+          }
+        }
       }
     },
     "assertion": {

@@ -830,3 +830,24 @@ env indirection is the standard injection-safe pattern. Design the action so JUn
   for disagreeing cases (0<k<N) so the merge-gate line stays clean. No dependency — it's arithmetic.
 - **`repeat`×`compare` decided ONCE here** (allowed+warned via DF-307's cost prompt), so DF-305 and
   DF-307 defer rather than each inventing a rule — closes the drift risk I flagged after DF-303.
+
+### 2026-08-02 — DF-305 (repeat: N execution + pass rates)
+- **Repetitions are units in the ONE worker pool, not a nested pool.** The scheduler expands each case
+  into `repeat` entries in the flat `units` list; the existing worker set pulls them, so the global
+  concurrency bound spans all repetitions of all cases. `repeat: 1` → one unit → v0.2 shape exactly.
+  Aggregation folds a case's N unit-results back into one CaseResult; `_aggregate` returns the sole
+  result UNCHANGED when repeat==1, so the common case takes no repeat code path in its output.
+- **Per-case slot bookkeeping is race-free because there's no await between the `await _process_case`
+  and the slot write/aggregate-check.** asyncio is cooperative — a worker step after its await runs to
+  completion before any other coroutine, so `rep_filled[pos] += 1` and the "all done?" check are atomic.
+- **CaseResult stayed additive:** `repetitions`/`require_pass_rate` optional (None for repeat:1), with
+  `passes`/`total`/`pass_rate` as computed properties. Every reporter/sink works unchanged for repeat:1;
+  json_sink only emits repetition keys when present (repeat:1 artifact byte-identical). run_schema's
+  `case` def is `additionalProperties:false`, so the new keys HAD to be added there explicitly.
+- **Disagreement is the finding, rendered distinctly:** a `~` glyph (not ✓/✗) for `0<k<N`, plus the
+  Wilson 95% CI shown ONLY for disagreeing cases (uniform 5/5 or 0/5 don't need it), plus a
+  `repeat<5: wide interval` warning below the recommended minimum — warn, never refuse (SPIKE-007 Q4).
+- **Known minor gap:** the run summary's total cost uses the representative rep's cost per repeated case
+  (undercounts the N reps). Advisory cost only; fold a proper sum into a later ticket if it matters.
+- `repeat`/`require_pass_rate` are overridable at case/suite/defaults via the same `_pick` chain as every
+  other setting; pydantic `Field(ge=1)` / `Field(ge=0,le=1)` give positioned spec errors for free.
