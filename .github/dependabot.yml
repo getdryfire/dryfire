@@ -1,0 +1,17 @@
+# Keeps GitHub Actions current — including the SHA-pinned third-party actions
+# (dorny/test-reporter in action.yml, pypa/gh-action-pypi-publish in release.yml):
+# Dependabot bumps both the pinned SHA and its trailing "# vX.Y.Z" comment, so the
+# pins stay immutable *and* maintained. All action updates are grouped into one
+# weekly PR to keep the noise down.
+version: 2
+updates:
+  - package-ecosystem: "github-actions"
+    directory: "/" # covers .github/workflows/* and the root composite action.yml
+    schedule:
+      interval: "weekly"
+    commit-message:
+      prefix: "ci"
+    groups:
+      github-actions:
+        patterns: ["*"]
+    open-pull-requests-limit: 5
