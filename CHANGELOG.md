@@ -4,6 +4,22 @@ All notable changes to dryfire are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.1] — 2026-08-02
+
+Docs-only patch (no code changes) to refresh the PyPI project page.
+
+### Fixed
+
+- Removed a broken `docs/demo.gif` image reference from the README (the GIF was never recorded;
+  it rendered as a broken image on PyPI and GitHub).
+
+### Changed
+
+- Slimmed the README's "How it compares" section to a positioning paragraph plus a link to
+  `COMPARISON.md`; dropped the Langfuse comparison (a different category — production
+  observability); removed the superseded SPEC §1.4 positioning table. `COMPARISON.md` keeps the
+  maintained, dated Promptfoo and DeepEval head-to-heads.
+
 ## [0.2.0] — 2026-08-02
 
 "CI-grade" (EPIC-002). dryfire is now built to live in your merge gate: a second provider,
@@ -87,5 +103,6 @@ First release: the v0.1 trajectory runner (EPIC-001). Anthropic-only, local-firs
   `compare`, and cost/latency assertions are planned for v0.2+.
 - Cost is advisory; stale pricing is an accepted, documented limitation.
 
+[0.2.1]: https://github.com/getdryfire/dryfire/releases/tag/v0.2.1
 [0.2.0]: https://github.com/getdryfire/dryfire/releases/tag/v0.2.0
 [0.1.0]: https://github.com/getdryfire/dryfire/releases/tag/v0.1.0

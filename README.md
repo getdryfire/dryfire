@@ -58,8 +58,6 @@ uvx dryfire init && uvx dryfire run
 
 `init` scaffolds a keyless example whose model turns are pre-scripted, so `run` goes green offline in seconds. Point a suite at a real provider when you're ready.
 
-![demo](docs/demo.gif)
-
 ---
 
 ## Install
