@@ -1,0 +1,105 @@
+name: "dryfire"
+description: "Run dryfire agent-trajectory tests in CI — offline replay by default; the exit code is the verdict."
+author: "dryfire"
+branding:
+  icon: "target"
+  color: "red"
+
+inputs:
+  suites:
+    description: "Space-separated glob(s) of suite files to run. Empty = the project default from dryfire.yaml."
+    required: false
+    default: ""
+  cassette-mode:
+    description: "auto | record | replay | off. Default replay: free, offline, and deterministic — no API key needed."
+    required: false
+    default: "replay"
+  reporter:
+    description: "terminal | json | junit — the stdout format for the job log. JUnit XML is always written to a file regardless."
+    required: false
+    default: "terminal"
+  fail-fast:
+    description: "Stop on the first failing case."
+    required: false
+    default: "false"
+  version:
+    description: "dryfire version to install from PyPI (e.g. 0.2.0). Empty installs the pinned action's own source — works before the PyPI publish."
+    required: false
+    default: ""
+
+outputs:
+  exit-code:
+    description: "dryfire's exit code — 0 pass, 1 assertion failure, 2 spec/config error, 3 provider error."
+    value: ${{ steps.run.outputs.exit-code }}
+  junit-file:
+    description: "Path to the JUnit XML report this action wrote."
+    value: "dryfire-junit.xml"
+
+runs:
+  using: "composite"
+  steps:
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: "3.12"
+
+    - name: Install dryfire
+      shell: bash
+      env:
+        VERSION: ${{ inputs.version }}
+        ACTION_PATH: ${{ github.action_path }}
+      run: |
+        if [ -n "$VERSION" ]; then
+          python -m pip install --quiet "dryfire==$VERSION"
+        else
+          # No version pinned → install the action's own checkout (pinned by the
+          # `uses: …@ref`). Works before dryfire is published to PyPI.
+          python -m pip install --quiet "$ACTION_PATH"
+        fi
+
+    - name: Run dryfire
+      id: run
+      shell: bash
+      env:
+        SUITES: ${{ inputs.suites }}
+        CASSETTE_MODE: ${{ inputs.cassette-mode }}
+        REPORTER: ${{ inputs.reporter }}
+        FAIL_FAST: ${{ inputs.fail-fast }}
+      run: |
+        set +e -f  # +e: capture the exit code; -f: don't let bash expand globs — dryfire resolves them
+        args=()
+        [ -n "$SUITES" ] && args+=($SUITES)
+        [ "$FAIL_FAST" = "true" ] && args+=(--fail-fast)
+        dryfire run "${args[@]}" \
+          --cassette-mode "$CASSETTE_MODE" \
+          --reporter "$REPORTER" \
+          --junit-out dryfire-junit.xml
+        code=$?
+        echo "dryfire exit code: $code"
+        echo "exit-code=$code" >> "$GITHUB_OUTPUT"
+
+    - name: Upload JUnit report
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: dryfire-junit
+        path: dryfire-junit.xml
+        if-no-files-found: warn
+
+    - name: Surface JUnit as a check
+      if: always()
+      uses: dorny/test-reporter@v1
+      with:
+        name: dryfire
+        path: dryfire-junit.xml
+        reporter: java-junit
+        fail-on-error: false  # dryfire's exit code is the single source of pass/fail
+
+    - name: Enforce dryfire exit code
+      if: always()
+      shell: bash
+      env:
+        CODE: ${{ steps.run.outputs.exit-code }}
+      run: |
+        echo "dryfire exited $CODE (0 pass · 1 assertion · 2 spec/config · 3 provider)"
+        exit "$CODE"

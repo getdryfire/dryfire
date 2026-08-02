@@ -683,6 +683,23 @@ structural constraint, not a detail you can decorate around. (This is distinct f
 "loop unchanged" rule, which holds precisely because caching/retrying are async decorators over an already
 -async `complete()` — no new yield point is introduced.)
 
+### A composite action can install its own package from `github.action_path` — no PyPI needed (DF-210)
+The dryfire GitHub Action must install dryfire, but the PyPI publish is deferred, so
+`pip install dryfire==<v>` can't work yet. The unlock: a composite action's steps run with
+`${{ github.action_path }}` pointing at the action's own checked-out repo (already pinned by the
+consumer's `uses: owner/repo@ref`). Since that repo *is* the Python package, `pip install
+"$ACTION_PATH"` installs dryfire from source, version-pinned to the action ref, with zero PyPI
+dependency — so the Action is verifiable in a throwaway repo today. Keep a `version` input that,
+when set, installs from PyPI instead, for after the publish. Two more CI-authoring notes worth
+keeping: (1) an **example workflow committed under `.github/workflows/` will auto-run in your own
+repo** — if it pins a not-yet-existing release tag (`owner/repo@v0.2.0`) it fails on every PR, so
+gate it with `on: workflow_dispatch` (a documented example, not part of your real `ci.yml`), and
+tell users to switch the trigger. (2) Pass every action input into `run:` via `env:`, never inline
+`${{ inputs.x }}` in the script body — inputs are attacker-controllable in the general case, and the
+env indirection is the standard injection-safe pattern. Design the action so JUnit is always written
+(`--junit-out`, independent of `--reporter`) and the upload/report/enforce-exit steps use
+`if: always()`, so a *failing* run still renders its report before the job goes red.
+
 ## Session Notes
 
 ### 2026-07-30 — AC-001 + toolchain

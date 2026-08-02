@@ -1,0 +1,33 @@
+# A copy-pasteable reference for running dryfire in CI — NOT part of dryfire's own
+# gate (that's ci.yml). The `jobs:` block below is the README snippet, verbatim.
+#
+# The trigger here is `workflow_dispatch` (manual) on purpose: this file lives in
+# dryfire's own repo, and it pins `csmatar/dryfire@v0.2.0` (the tag lands with the
+# release), so it must not auto-run here. IN YOUR REPO, replace the trigger with:
+#
+#   on:
+#     pull_request:
+#     push:
+#       branches: [main]
+#
+# Replay mode (the default) needs no API key: cassettes serve every model turn, so
+# the run is free, offline, and deterministic. `provider: fake` suites need no key
+# either. `permissions: checks: write` lets the JUnit result render as a PR check;
+# without it the artifact still uploads and the exit code still gates.
+name: dryfire
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  checks: write
+
+jobs:
+  dryfire:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: csmatar/dryfire@v0.2.0
+        with:
+          suites: "evals/**/*.eval.yaml"
