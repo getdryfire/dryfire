@@ -11,6 +11,12 @@ from __future__ import annotations
 from pydantic import BaseModel, ConfigDict
 
 from dryfire.domain.judging.rubric import Rubric
+from dryfire.domain.model.message import Usage
+
+# A shared zero-usage sentinel: Usage is frozen (immutable), so one instance is safe as
+# both a field default and a factory default — and a name in a default keeps ruff's
+# no-call-in-defaults rule (B008) happy.
+_ZERO_USAGE = Usage(input_tokens=0, output_tokens=0)
 
 
 class JudgeVerdict(BaseModel):
@@ -36,30 +42,36 @@ class JudgeVerdict(BaseModel):
     rubric_hash: str  # required — provenance, not optional
     threshold: float
     error: str | None = None
+    # The tokens this judge call cost, so the enrichment stage can total judge cost as
+    # a separate channel (DF-304). Zero when the provider failed before responding.
+    usage: Usage = _ZERO_USAGE
 
     @classmethod
     def from_score(
         cls, *, score: float, reasoning: str, rubric: Rubric,
         judge_model: str, judge_model_version: str,
+        usage: Usage = _ZERO_USAGE,
     ) -> JudgeVerdict:
         """A successful judgement. `passed` follows the rubric threshold, computed in
         one place so it can never disagree with `score`/`threshold`."""
         return cls(
             score=score, passed=score >= rubric.threshold, reasoning=reasoning,
             judge_model=judge_model, judge_model_version=judge_model_version,
-            rubric_hash=rubric.hash(), threshold=rubric.threshold,
+            rubric_hash=rubric.hash(), threshold=rubric.threshold, usage=usage,
         )
 
     @classmethod
     def from_error(
         cls, *, reasoning: str, rubric: Rubric, judge_model: str,
         judge_model_version: str, error: str,
+        usage: Usage = _ZERO_USAGE,
     ) -> JudgeVerdict:
         """A judge malfunction. `passed` is False and `score` is 0.0, but `error` is
         what actually matters — it routes the result to exit 3 (provider error), not
-        exit 1 (assertion failure)."""
+        exit 1 (assertion failure). `usage` may be non-zero (an unparseable response
+        was still billed) — its cost still belongs to the judge channel."""
         return cls(
             score=0.0, passed=False, reasoning=reasoning, judge_model=judge_model,
             judge_model_version=judge_model_version, rubric_hash=rubric.hash(),
-            threshold=rubric.threshold, error=error,
+            threshold=rubric.threshold, error=error, usage=usage,
         )

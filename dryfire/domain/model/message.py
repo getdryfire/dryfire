@@ -1,5 +1,6 @@
 """Provider-neutral conversation and response types (SPEC §3)."""
 
+from collections.abc import Iterable
 from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict
@@ -18,6 +19,21 @@ class Usage(BaseModel):
     output_tokens: int
     cache_read_tokens: int = 0
     cache_write_tokens: int = 0
+
+
+def sum_usage(usages: Iterable[Usage]) -> Usage:
+    """Field-wise total of several usages — used to total the judge cost channel
+    (DF-304). The agent loop keeps its own private summing; this is the reusable one
+    for callers above the loop."""
+    total = Usage(input_tokens=0, output_tokens=0)
+    for u in usages:
+        total = Usage(
+            input_tokens=total.input_tokens + u.input_tokens,
+            output_tokens=total.output_tokens + u.output_tokens,
+            cache_read_tokens=total.cache_read_tokens + u.cache_read_tokens,
+            cache_write_tokens=total.cache_write_tokens + u.cache_write_tokens,
+        )
+    return total
 
 
 class Message(BaseModel):

@@ -59,14 +59,20 @@ class Trace(BaseModel):
     # ARCHITECTURE §4.4). Additive and optional: a structural-only trace carries an
     # empty dict and serialises byte-identically to v0.2. The loop never sets this.
     judge_verdicts: dict[str, JudgeVerdict] = {}
+    # Judge token usage and cost as a SEPARATE channel from `total_usage` /
+    # `total_cost_usd` (DF-304). Judging must never inflate the case's cost, or
+    # `cost_under` starts failing for reasons unrelated to the agent under test. A
+    # structural-only trace leaves these at zero / None. Set by the enrichment stage.
+    judge_usage: Usage = Usage(input_tokens=0, output_tokens=0)
+    judge_cost: float | None = None
 
-    @field_validator("total_cost_usd")
+    @field_validator("total_cost_usd", "judge_cost")
     @classmethod
     def _cost_must_be_finite(cls, v: float | None) -> float | None:
         # A non-finite cost would serialise to Infinity/NaN and break v0.2
         # fingerprinting (allow_nan=False). Reject it at the boundary.
         if v is not None and not math.isfinite(v):
-            raise ValueError("total_cost_usd must be finite")
+            raise ValueError("cost must be finite")
         return v
 
     def tool_calls(self) -> list[ToolCall]:

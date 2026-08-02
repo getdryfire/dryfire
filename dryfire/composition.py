@@ -18,6 +18,7 @@ import os
 from collections.abc import Callable, Sequence
 from dataclasses import replace
 from datetime import UTC, datetime
+from decimal import Decimal
 from pathlib import Path
 from typing import Any, TextIO, cast
 
@@ -58,9 +59,10 @@ from dryfire.application.scheduler import (
     RunResult,
     run_suites,
 )
+from dryfire.domain.judging.verdict import JudgeVerdict
 from dryfire.domain.mocking.resolver import Passthrough, merge_mocks
 from dryfire.domain.model.case import ResolvedCase
-from dryfire.domain.model.message import ModelResponse
+from dryfire.domain.model.message import ModelResponse, sum_usage
 from dryfire.domain.model.trace import Trace
 from dryfire.domain.pricing.calculator import calculate
 
@@ -383,20 +385,43 @@ def _suites_use_judge(suites: list[PlannedSuite]) -> bool:
     return any(collect_judge_requests(pc.case) for suite in suites for pc in suite.cases)
 
 
+def _price_judge(
+    verdicts: dict[str, JudgeVerdict], provider: str, catalog: BundledPricingCatalog
+) -> float | None:
+    """Total judge cost from each verdict's own tokens, priced by its own judge model
+    (advisory, like case cost). None when nothing could be priced — never a fabricated
+    $0.0000. Kept entirely apart from case cost (DF-304)."""
+    total = Decimal(0)
+    priced_any = False
+    for verdict in verdicts.values():
+        cost = calculate(verdict.usage, catalog.rates(provider, verdict.judge_model))
+        if cost is not None:
+            total += cost.total
+            priced_any = True
+    return float(total) if priced_any else None
+
+
 def _make_judge(*, concurrency: int = DEFAULT_JUDGE_CONCURRENCY) -> JudgeTrace:
     """The judging enrichment callback for the scheduler (ARCHITECTURE §4.4). Closes
     over ONE semaphore so judge concurrency is bounded across the whole run, and grades
     each case through the case's own gateway — the CachingGateway in cassette modes — so
     judge calls are cassette-backed and retried exactly like agent calls, with no second
-    client. Judge cost stays a separate channel (DF-304)."""
+    client. Judge usage and cost are totalled onto their OWN trace channel, never folded
+    into the case's cost (DF-304), so `cost_under` stays blind to them."""
     sem = asyncio.Semaphore(concurrency)
+    catalog = BundledPricingCatalog()
 
     async def judge(trace: Trace, case: ResolvedCase, gateway: ModelGateway) -> Trace:
         requests = collect_judge_requests(case)
-        if not requests:  # structural-only case: never touch the gateway
+        if not requests:  # structural-only case: never touch the gateway, no judge channel
             return trace
         verdicts = await JudgeEvaluator(gateway=gateway, sem=sem).evaluate(trace, requests)
-        return trace.model_copy(update={"judge_verdicts": verdicts, "model": case.model})
+        return trace.model_copy(update={
+            "judge_verdicts": verdicts,
+            "model": case.model,
+            "judge_usage": sum_usage(v.usage for v in verdicts.values()),
+            "judge_cost": _price_judge(verdicts, case.provider, catalog),
+        })
 
     return judge
 

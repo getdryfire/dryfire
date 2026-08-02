@@ -115,14 +115,16 @@ class JudgeEvaluator:
             data = _extract_json(response.text or "")
             score = float(data["score"])
         except (json.JSONDecodeError, KeyError, TypeError, ValueError) as exc:
+            # An unparseable answer was still a billed call — keep its usage so the
+            # judge cost channel stays accurate.
             return JudgeVerdict.from_error(
                 reasoning="", rubric=request.rubric, judge_model=request.model,
-                judge_model_version=version,
+                judge_model_version=version, usage=response.usage,
                 error=f"unparseable judge response: {exc!r}",
             )
         return JudgeVerdict.from_score(
             score=score, reasoning=str(data.get("reasoning", "")), rubric=request.rubric,
-            judge_model=request.model, judge_model_version=version,
+            judge_model=request.model, judge_model_version=version, usage=response.usage,
         )
 
 

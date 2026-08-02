@@ -791,3 +791,24 @@ env indirection is the standard injection-safe pattern. Design the action so JUn
 - **Offline e2e without monkeypatching `make_gateway`:** a `provider: fake` case whose `script:` lists
   the agent turn(s) THEN the judge's JSON — the judge consumes the next script entry from the same fake
   gateway. Remember `provider` is SUITE-level, `script`/`model` are case-level (bit me first try).
+
+### 2026-08-02 — DF-304 (separate judge cost accounting)
+- **cost_under/latency_under_ms are blind to judge cost BY CONSTRUCTION, not by a filter.** Judge
+  calls happen in the enrichment stage, outside `run_case`, so they never become `trace.turns` and
+  never enter `trace.total_usage`/`duration_ms`. `cost_under` reads `total_cost_usd`, `latency_under_ms`
+  sums `turn.response.latency_ms` — both already exclude judging. DF-304 just adds the separate channel
+  and the regression test that pins it (case cost 0.001, judge cost 1.0, limit 0.01 → cost_under passes).
+- **Judge cost is priced per verdict by its OWN judge model**, then summed — because different judged
+  assertions can name different judge models. Advisory like case cost (None when nothing prices), never
+  a fabricated $0.0000.
+- **Ruff B008 bites frozen-model defaults in function signatures.** `usage: Usage = Usage(...)` as a
+  *parameter* default trips "no function call in argument defaults" even though Usage is immutable. Fix:
+  a module-level `_ZERO_USAGE = Usage(...)` sentinel used as the default (a name, not a call). Class-body
+  field defaults (`usage: Usage = _ZERO_USAGE`) are fine either way.
+- **`asyncio.run` + a `Callable[..., Awaitable[T]]` fails mypy --strict** ("expected Coroutine, got
+  Awaitable"). Driving a `JudgeTrace` callback in a test needs a tiny `async def go(): return await cb(...)`
+  wrapper so `asyncio.run(go())` gets a real Coroutine. (An `async def` method like `evaluate` is already
+  a Coroutine, so DF-302's tests didn't hit this.)
+- **Didn't touch loop.py to reuse its `_sum_usage`.** Added a public `sum_usage` in `message.py` for
+  callers above the loop; the loop keeps its private one. The tiny duplication is cheaper than a diff to
+  the frozen loop.
