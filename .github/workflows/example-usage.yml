@@ -27,7 +27,7 @@ jobs:
   dryfire:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - uses: getdryfire/dryfire@v0.2.1
         with:
           suites: "evals/**/*.eval.yaml"
