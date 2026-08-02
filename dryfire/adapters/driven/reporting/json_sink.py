@@ -26,7 +26,11 @@ from dryfire.application.scheduler import CaseResult, RunResult, SuiteResult
 from dryfire.domain.assertions.base import AssertionResult
 from dryfire.domain.model.trace import Trace
 
-SCHEMA_VERSION = 1
+# v2 (DF-301): the Trace may now carry `judge_verdicts` (and, from DF-304, a separate
+# judge cost/usage channel). The additions are optional with empty/None defaults, so a
+# structural-only run is byte-identical to v1; the bump is a capability signal only, and
+# readers stay tolerant of v1 (SPIKE-006 Q5).
+SCHEMA_VERSION = 2
 
 
 def _iso_z(moment: datetime) -> str:

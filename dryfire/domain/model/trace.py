@@ -6,6 +6,7 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, field_validator
 
+from dryfire.domain.judging.verdict import JudgeVerdict
 from dryfire.domain.model.message import Message, ModelResponse, Usage
 from dryfire.domain.model.tooling import ToolCall, ToolResult
 
@@ -53,6 +54,11 @@ class Trace(BaseModel):
     # the loop does not set it, so pricing stays out of the loop. `cost_under`
     # names it when pricing is unavailable.
     model: str | None = None
+    # Judge verdicts keyed by the assertion that requested them, attached by the
+    # judging enrichment stage *after* the loop and *before* assertions (DF-301,
+    # ARCHITECTURE §4.4). Additive and optional: a structural-only trace carries an
+    # empty dict and serialises byte-identically to v0.2. The loop never sets this.
+    judge_verdicts: dict[str, JudgeVerdict] = {}
 
     @field_validator("total_cost_usd")
     @classmethod

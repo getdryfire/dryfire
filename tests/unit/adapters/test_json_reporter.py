@@ -99,7 +99,7 @@ def test_output_validates_against_committed_schema() -> None:
     doc = json.loads(render_run(_run(), generated_at=_AT))
     schema = json.loads(_SCHEMA.read_text(encoding="utf-8"))
     jsonschema.validate(doc, schema)  # raises on mismatch
-    assert doc["schema_version"] == SCHEMA_VERSION == 1
+    assert doc["schema_version"] == SCHEMA_VERSION == 2
 
 
 def test_timestamp_is_iso8601_utc_with_explicit_z() -> None:
