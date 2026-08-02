@@ -23,19 +23,22 @@ Update this file when work ships, phases change, or priorities shift.
 
 > Actively building. Code is being written.
 
-### DF-207 — Budget assertions (`cost_under`, `latency_under_ms`) (implemented, PR open)
-Two new assertions (SPEC §6.2), added the OCP way — **one file + one registry line** (`domain/
-assertions/budget.py`). Gate green (396 tests + 2 live-skipped), loop unchanged.
-- **`cost_under`** fails **loudly** on an unpriced model: an unknown model has no cost, and cost is
-  advisory (SPEC §3.2), so a cost gate it can't satisfy fails and *names the model* — a green check that
-  proves nothing is worse than a red one. `latency_under_ms` sums **per-turn model latency** (excludes
-  mock resolution and retry backoff; under replay it's the recorded latency).
-- **Enabling infra:** cost was attached post-hoc in `composition._price`, *after* assertions ran, so
-  `cost_under` would have seen `None`. Moved pricing into the scheduler: `run_suites` gains an injected
-  `price` callback that the composition builds (over `BundledPricingCatalog`); `_process_case` prices
-  the trace (sets `total_cost_usd` + the new `Trace.model` field) **before** `_evaluate`. The loop still
-  never prices — `Trace.model` defaults None and is set only by the pricing step, so `loop.py` is
-  unchanged. End-to-end: `cost_under` passes for a priced model and fails for an unknown one.
+### DF-208 — Extended assertions (`min_tool_calls`, `final_matches`, `final_json`) (implemented, PR open)
+Three assertions (SPEC §6.2), one new file (`domain/assertions/extended.py`) + one registry line. Gate
+green (409 tests + 2 live-skipped), loop unchanged.
+- **`min_tool_calls`** `{tool, count}` — at least N calls (the retry-recovery assertion; end-to-end test
+  against a `sequence` error-then-success mock). **`final_matches`** — a regex on the final text,
+  **compiled at validate time** (an invalid pattern is a positioned spec error, exit 2, before any run).
+- **`final_json` is pydantic-native** (design decision): a lightweight shape (`required` keys +
+  `fields: {name: type}`) is compiled to a `pydantic.create_model` and validated — **no new dependency**,
+  strictly domain-pure, and pydantic's structured errors cleanly distinguish *unparseable JSON* from a
+  *shape violation*. Documented as a JSON *shape*, not full JSON Schema (SPEC §6.2 amended). We chose this
+  over adding `jsonschema` as a core dep on a package whose pitch is a lean, fast install.
+- **`final_matches` is uncapped by design** (design decision): hard-capping a catastrophic regex is
+  impossible in-process — stdlib `re` holds the GIL during a match, so thread/signal timeouts never fire
+  (discovered when the thread-timeout attempt hung), and an input cap is useless (exponential in tiny
+  inputs). So a pathological pattern is the user's own regex in their own suite — the same no-sandbox
+  stance dryfire takes on passthrough mocks (SPIKE-004). Documented, not hidden.
 
 ---
 
@@ -43,16 +46,21 @@ assertions/budget.py`). Gate green (396 tests + 2 live-skipped), loop unchanged.
 
 > Committed work, ready to start. Ordered by the EPIC-002 dependency graph (`EPIC-002.md`).
 
-1. **DF-208** extended assertions — `min_tool_calls`, `final_matches` (regex, compiled at validate
-   time), `final_json_schema`. Independent of the remaining spikes.
-2. **DF-209** JUnit (after SPIKE-005) · **DF-210** Action · **DF-211** passthrough (after SPIKE-004) ·
-   **DF-212** release. Two half-day spikes remain: SPIKE-004 (passthrough), SPIKE-005 (JUnit).
+1. **SPIKE-004** (passthrough execution model) → **DF-211** · **SPIKE-005** (JUnit mapping) → **DF-209**.
+   Two half-day spikes, then their tickets.
+2. **DF-210** GitHub Action (needs DF-209) · **DF-212** v0.2 release (needs all).
 
 ---
 
 ## Shipped
 
 > Working in the codebase. Committed and tested.
+
+### DF-207 — Budget assertions (2026-08-01, PR #27)
+`cost_under` (fails loudly + names the model on an unpriced model — advisory cost, SPEC §3.2) and
+`latency_under_ms` (sums per-turn model latency; excludes mock/backoff). Added the OCP way (budget.py +
+one registry line). **Enabling infra:** moved pricing into the scheduler (injected `price` callback +
+new `Trace.model`) so assertions see cost **before** evaluation; `loop.py` unchanged.
 
 ### DF-206 — RetryingGateway + Clock port (2026-08-01, PR #26)
 Transient-failure retries as a decorator over `ModelGateway`, `loop.py` unchanged — a retried call is

@@ -618,6 +618,22 @@ it *before* evaluation, not in a post-hoc reporting pass. And keep the fail-loud
 `cost_under` on an unpriced model **fails** (naming the model), because a green check that proves
 nothing is worse than a red one.
 
+### You cannot time-box a catastrophic regex in-process; pydantic beats jsonschema in a pure domain (DF-208)
+Two findings from the extended assertions. (1) **Regex bounding is impossible in-process.** CPython's
+`re` engine holds the GIL for the whole match and never yields, so a catastrophic pattern in a worker
+thread starves the main thread — `thread.join(timeout)` never returns (I found this the hard way: the
+test hung). `signal`-based timeouts fail for the same reason, and an input-length cap is useless because
+backtracking is exponential in tiny inputs (40 chars already hangs). The only things that actually work
+are a subprocess-with-kill (heavy, I/O in a "pure" assertion) or the third-party `regex` module (a dep).
+We chose **neither**: compile at validate time (catch invalid patterns early), run uncapped, and
+document that a pathological pattern is the user's own regex — the same no-sandbox stance the project
+already took for passthrough mocks (SPIKE-004). Don't promise a bound you can't deliver. (2) **For
+`final_json`, pydantic > jsonschema in domain.** Pydantic *emits* JSON Schema but can't *consume* one to
+validate data — that's jsonschema's job, forbidden in a lean pure domain. Compiling a lightweight shape
+(`required` + `fields:{name:type}`) into `pydantic.create_model` needs no new dependency, stays
+domain-pure, and gives richer errors that cleanly separate "unparseable JSON" from "shape violation."
+Reframe the feature to the tool you already have rather than adding a dependency for the literal name.
+
 ## Session Notes
 
 ### 2026-07-30 — AC-001 + toolchain
