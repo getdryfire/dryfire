@@ -48,8 +48,9 @@ def run(
     model: str = typer.Option(None, "--model", help="Override the model for this run."),
     concurrency: int = typer.Option(None, "--concurrency", help="Concurrent cases (default 4)."),
     fail_fast: bool = typer.Option(False, "--fail-fast", help="Stop on first failing case."),
-    reporter: str = typer.Option("terminal", "--reporter", help="terminal | json."),
+    reporter: str = typer.Option("terminal", "--reporter", help="terminal | json | junit."),
     json_out: str = typer.Option(None, "--json-out", help="Write full traces as JSON to PATH."),
+    junit_out: str = typer.Option(None, "--junit-out", help="Write JUnit XML to PATH (for CI)."),
     cassette_mode: str = typer.Option(
         None, "--cassette-mode", help="auto | record | replay | off (default off)."
     ),
@@ -69,6 +70,7 @@ def run(
         fail_fast=fail_fast,
         reporter=reporter,
         json_out=json_out,
+        junit_out=junit_out,
         cassette_mode=cassette_mode,
         max_retries=max_retries,
         verbose=verbose,

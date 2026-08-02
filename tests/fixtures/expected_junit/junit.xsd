@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- A faithful JUnit schema covering the elements/attributes the ecosystem
+     (Ant/Surefire, Jenkins, GitLab, dorny) agrees on. Deliberately permissive on
+     optional attributes because consumers disagree; strict on structure so DF-209's
+     output is proven standard-shaped, not just well-formed. -->
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
+
+  <xs:element name="testsuites">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element ref="testsuite" minOccurs="0" maxOccurs="unbounded"/>
+      </xs:sequence>
+      <xs:attribute name="name" type="xs:string"/>
+      <xs:attribute name="tests" type="xs:nonNegativeInteger"/>
+      <xs:attribute name="failures" type="xs:nonNegativeInteger"/>
+      <xs:attribute name="errors" type="xs:nonNegativeInteger"/>
+      <xs:attribute name="time" type="xs:decimal"/>
+    </xs:complexType>
+  </xs:element>
+
+  <xs:element name="testsuite">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element name="properties" minOccurs="0">
+          <xs:complexType>
+            <xs:sequence>
+              <xs:element name="property" minOccurs="0" maxOccurs="unbounded">
+                <xs:complexType>
+                  <xs:attribute name="name" type="xs:string" use="required"/>
+                  <xs:attribute name="value" type="xs:string" use="required"/>
+                </xs:complexType>
+              </xs:element>
+            </xs:sequence>
+          </xs:complexType>
+        </xs:element>
+        <xs:element ref="testcase" minOccurs="0" maxOccurs="unbounded"/>
+        <xs:element name="system-out" type="xs:string" minOccurs="0"/>
+        <xs:element name="system-err" type="xs:string" minOccurs="0"/>
+      </xs:sequence>
+      <xs:attribute name="name" type="xs:string" use="required"/>
+      <xs:attribute name="tests" type="xs:nonNegativeInteger"/>
+      <xs:attribute name="failures" type="xs:nonNegativeInteger"/>
+      <xs:attribute name="errors" type="xs:nonNegativeInteger"/>
+      <xs:attribute name="skipped" type="xs:nonNegativeInteger"/>
+      <xs:attribute name="time" type="xs:decimal"/>
+      <xs:attribute name="timestamp" type="xs:string"/>
+      <xs:attribute name="hostname" type="xs:string"/>
+      <xs:attribute name="id" type="xs:string"/>
+      <xs:attribute name="package" type="xs:string"/>
+    </xs:complexType>
+  </xs:element>
+
+  <xs:element name="testcase">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element name="skipped" minOccurs="0">
+          <xs:complexType>
+            <xs:simpleContent>
+              <xs:extension base="xs:string">
+                <xs:attribute name="message" type="xs:string"/>
+              </xs:extension>
+            </xs:simpleContent>
+          </xs:complexType>
+        </xs:element>
+        <xs:element name="failure" type="failureType" minOccurs="0" maxOccurs="unbounded"/>
+        <xs:element name="error" type="failureType" minOccurs="0" maxOccurs="unbounded"/>
+        <xs:element name="system-out" type="xs:string" minOccurs="0"/>
+        <xs:element name="system-err" type="xs:string" minOccurs="0"/>
+      </xs:sequence>
+      <xs:attribute name="name" type="xs:string" use="required"/>
+      <xs:attribute name="classname" type="xs:string"/>
+      <xs:attribute name="time" type="xs:decimal"/>
+      <xs:attribute name="assertions" type="xs:nonNegativeInteger"/>
+      <xs:attribute name="status" type="xs:string"/>
+      <xs:attribute name="file" type="xs:string"/>
+      <xs:attribute name="line" type="xs:nonNegativeInteger"/>
+    </xs:complexType>
+  </xs:element>
+
+  <xs:complexType name="failureType">
+    <xs:simpleContent>
+      <xs:extension base="xs:string">
+        <xs:attribute name="message" type="xs:string"/>
+        <xs:attribute name="type" type="xs:string"/>
+      </xs:extension>
+    </xs:simpleContent>
+  </xs:complexType>
+
+</xs:schema>

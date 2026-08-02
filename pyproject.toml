@@ -39,6 +39,7 @@ dev = [
     "mypy>=1.13",
     "import-linter>=2.1",
     "jsonschema>=4.26.0",
+    "xmlschema>=3.4",
 ]
 
 [project.scripts]

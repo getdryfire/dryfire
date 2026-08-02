@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites name="dryfire" tests="1" failures="1" errors="0" time="1.234">
+  <testsuite name="refunds" tests="1" failures="1" errors="0" time="1.234" timestamp="2026-07-31T12:00:00Z">
+    <testcase name="denies refund when policy check fails" classname="refunds" time="1.234">
+      <failure message="2 assertions failed: not_calls_tool: issue_refund; calls_tool: escalate_to_human" type="AssertionFailure">✗ not_calls_tool: issue_refund
+    expected: issue_refund never called
+    actual:   lookup_order → check_policy → issue_refund → (end_turn)
+              issue_refund called at turn 3 with {"amount": 500, "reason": "R&amp;D &lt;flagged&gt;"}
+✗ calls_tool: escalate_to_human
+    expected: escalate_to_human to be called
+    actual:   lookup_order → check_policy → issue_refund → (end_turn)
+              escalate_to_human was never called</failure>
+    </testcase>
+  </testsuite>
+</testsuites>

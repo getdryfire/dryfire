@@ -23,25 +23,26 @@ Update this file when work ships, phases change, or priorities shift.
 
 > Actively building. Code is being written.
 
-### SPIKE-005 — JUnit XML mapping across CI consumers (complete, PR open)
-Half-day spike settling the suite→case→assertion (3 levels) → testsuite→testcase (2 levels) mapping DF-209
-implements. `spikes/005_junit/`: three candidate mappings + a zero-case file, `verify.py` (offline-decidable
-facts, all asserting via `make spike-junit`), `render_notes.md` (per-consumer matrix + live-capture kit),
-`FINDINGS.md` (Verdict + reference XML + Q1–Q5). Package untouched.
-- **Verdict: Candidate A** — case = `<testcase>`, **one `<failure>` per failing case**, all failed
-  assertions concatenated in the failure **text body**; `message` attribute = a one-line summary. This is
-  the shape `pytest --junitxml` emits (verified by generating it), refined. `A.xml` is the reference DF-209
-  matches. `<error>` (not `<failure>`) for `provider_error`/`unmocked_tool`; emit `name`/`classname`/`time`;
-  surface a zero-case run with a visible note so `failures="0"` can't read as green.
-- **What the losers lose:** B (assertion=testcase) fragments one scenario into N tests, inflates counts, and
-  forces a synthetic testcase for errored cases. C (N `<failure>` per testcase) **silently drops every
-  assertion after the first** on Ant/Surefire-schema parsers (Jenkins, likely dorny) — looks complete, isn't.
-- **Load-bearing offline finding (proven, parser-independent):** newlines **survive in `<failure>` text**
-  but **collapse to a space in the `message` attribute** (XML 1.0 §3.3.3) → the multi-line trajectory block
-  must live in the body. The `→` (U+2192) and `✗` survive as literal UTF-8; no ASCII fallback needed (Q5).
-- **Scope honesty:** the XML-decidable half is settled empirically; the live-UI half (dorny/GitLab/Jenkins
-  *rendering* — truncation thresholds, first-`<failure>`-only) needs a throwaway repo (owner's hands, ~30 min,
-  same as DF-210) — kit in `render_notes.md`. No fabricated screenshots.
+### DF-209 — JUnit XML sink (implemented, PR open)
+Implements SPIKE-005's Candidate A verdict as an event-sink module (`adapters/driven/reporting/junit_sink.py`,
+mirroring `json_sink.py`): `render_junit` for `--reporter junit` (stdout) + atomic `write_junit` for the new
+`--junit-out PATH` file sink. **Loop, scheduler, and terminal reporter untouched** (AC + `git diff` empty).
+- **Mapping:** suite → `<testsuite>`, case → `<testcase>`, **one `<failure>` per failing case** with all
+  failed assertions concatenated in the failure text body + a one-line `message` summary; `<error>` (not
+  `<failure>`) for `provider_error`/`unmocked_tool`. `name`/`classname`/`time` emitted; `→`/`✗` survive as
+  literal UTF-8. Reuses `domain/assertions/trajectory.render_failure` for the body (no reimplementation).
+- **CLI surface (public-contract addition):** added `--junit-out PATH`, parallel to `--json-out`, so
+  `--reporter` picks the stdout format while `--json-out`/`--junit-out` are independent atomic file sinks —
+  terminal + JUnit file + JSON file all compose in one run. SPEC §7 flag list updated.
+- **Tests:** golden byte-for-byte fixtures (all-pass · one failure/three assertions · provider_error · a
+  zero-case run) + validation against a bundled JUnit **XSD** (new `xmlschema` dev dep — no stdlib XSD
+  validator) + parsed-content escaping assertions + atomic-write. Gate green (428 tests + 2 live-skipped),
+  `-W error` clean, dogfood OK, end-to-end smoke on a real fake-provider suite produced valid JUnit (incl.
+  the `provider_error` case as `<error>`).
+- **Zero-case parity:** a run matching no cases prints "no cases matched" (exit 0) and writes no file —
+  same early-return as `--json-out`; the empty-run golden is covered at the `render_junit` unit level.
+- **Owner's-hands remainder:** the "verified in a real GitHub Actions run + screenshot" AC needs a live
+  pipeline — folds into DF-210 (which builds the Action). Not fabricated here.
 
 ---
 
@@ -49,16 +50,26 @@ facts, all asserting via `make spike-junit`), `render_notes.md` (per-consumer ma
 
 > Committed work, ready to start. Ordered by the EPIC-002 dependency graph (`EPIC-002.md`).
 
-1. **DF-211** (passthrough mocks) — SPIKE-004 settled the model; implement its verdict. · **DF-209**
-   (JUnit sink) — SPIKE-005 settled the mapping (Candidate A / `A.xml` reference).
-2. **DF-210** GitHub Action (needs DF-209) · **DF-212** v0.2 release (needs all). Both spikes' live-capture
-   steps (throwaway repo) fold into DF-210/DF-212.
+1. **DF-211** (passthrough mocks) — SPIKE-004 settled the model. **Owner's decision: keep `loop.py`
+   frozen** — realize invocation without editing the loop, or re-raise with the owner.
+2. **DF-210** GitHub composite Action (needs DF-209; now unblocked) · **DF-212** v0.2 release (needs all).
+   Both spikes' + DF-209's live-CI capture steps (throwaway repo) fold into DF-210/DF-212.
 
 ---
 
 ## Shipped
 
 > Working in the codebase. Committed and tested.
+
+### SPIKE-005 — JUnit XML mapping across CI consumers (2026-08-01, PR #30)
+Settled the suite→case→assertion → testsuite→testcase mapping DF-209 implements (`spikes/005_junit/`,
+`make spike-junit`, package untouched). **Verdict: Candidate A** — case = `<testcase>`, one `<failure>` per
+failing case, failed assertions concatenated in the text body + a one-line `message` summary (= pytest's
+shape, refined); `<error>` for `provider_error`/`unmocked_tool`. Load-bearing offline finding: newlines
+survive in `<failure>` text but collapse to a space in the `message` attribute (XML 1.0 §3.3.3); `→`/`✗`
+survive as literal UTF-8. Candidate C (N `<failure>` per testcase) silently drops assertions after the
+first on Ant/Surefire parsers. The live-UI half (rendering/truncation) has a throwaway-repo capture kit in
+`render_notes.md` (owner's hands, folds into DF-210).
 
 ### SPIKE-004 — Passthrough mock execution model (2026-08-01, PR #29)
 Settled the execution model for `impl: pkg.mod:func` mocks (`spikes/004_passthrough/`, 17 tests, package
