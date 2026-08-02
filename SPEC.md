@@ -36,14 +36,8 @@ one decision.
 
 ### 1.4 Positioning
 
-| | Approach | dryfire's difference |
-|---|---|---|
-| Promptfoo | Single-turn prompt evals, string/judge assertions | Trajectory assertions, tool mocking |
-| Langfuse | Hosted-first observability + prompt mgmt | Local-first, no server, no account, CI-shaped |
-| LangSmith | Closed, LangChain-coupled | Framework-agnostic, raw SDK level |
-| Braintrust / Vellum | Commercial platforms, dataset-centric | MIT, files-in-git, zero infra |
-
-Design commitments that follow from this positioning and must not be traded away:
+How dryfire compares to other tools (Promptfoo, DeepEval) lives in `COMPARISON.md`. The design
+commitments that positioning implies — and that must not be traded away:
 
 1. **No server, no database, no account.** Everything is files on disk.
 2. **Everything is git-diffable.** Specs are YAML, traces are JSON, cassettes are JSON.
