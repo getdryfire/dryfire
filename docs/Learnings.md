@@ -665,6 +665,24 @@ a spike's question is "how does consumer X render this," first separate what's d
 the JUnit question was the former. `<error>` (not `<failure>`) for `provider_error`/`unmocked_tool`: the
 case couldn't be *evaluated*, which consumers count and colour separately from a caught regression.
 
+### "Freeze the loop" and "non-blocking concurrent passthrough" are mutually exclusive (DF-211)
+Passthrough mocks run real user code as a tool result. The instinct was to keep `application/loop.py`
+untouched (it was treated as EPIC-002's load-bearing invariant). But the loop resolves tools with a
+**synchronous** call — `resolved = resolver.resolve(call)` — and the scheduler runs every case as an
+asyncio task on **one shared event loop**. So to invoke a passthrough callable *without* freezing all the
+other concurrent cases, the invocation must `await` (yield the loop) — and the only place that can happen
+is the resolve seam, which means editing the loop. Keeping the loop sync forces blocking invocation, which
+serialises every concurrent case (one blocking call stalls the single loop thread). The two goals cannot
+both hold; there is no clever seam around it (a gateway/pre-execution hook can't help — the tool args only
+exist mid-loop, and blocking inside a sync `resolve()` stalls the shared loop regardless of where the I/O
+physically lives). Resolution: a **one-branch** loop change (`if isinstance(resolved, Passthrough):
+resolved = await invoker.invoke(...)`), with the domain resolver staying pure by returning a `Passthrough`
+marker and a new async `ToolInvoker` port doing the I/O. Lesson: before promising "this layer never
+changes," check whether a required *concurrency* property forces a yield point there — sync-vs-async is a
+structural constraint, not a detail you can decorate around. (This is distinct from the gateway
+"loop unchanged" rule, which holds precisely because caching/retrying are async decorators over an already
+-async `complete()` — no new yield point is introduced.)
+
 ## Session Notes
 
 ### 2026-07-30 — AC-001 + toolchain

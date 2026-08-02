@@ -42,7 +42,20 @@ class Sequence:
     steps: tuple[Return | Error, ...]
 
 
-Outcome = Return | Error | Sequence
+@dataclass(frozen=True)
+class Passthrough:
+    """Deliver a tool result by invoking a real Python callable named by `target`
+    (``pkg.mod:func``) with the tool arguments (SPEC §4.4, DF-211).
+
+    The resolver stays pure: it returns this **marker**, never a ToolResult —
+    importing and calling real code is I/O, owned by the application's
+    `ToolInvoker` port. `timeout_s` overrides the invoker's default when set."""
+
+    target: str
+    timeout_s: float | None = None
+
+
+Outcome = Return | Error | Sequence | Passthrough
 
 
 @dataclass(frozen=True)
@@ -105,8 +118,9 @@ class MockResolver:
         self._mocks = mocks
         self._sequence_pos: dict[tuple[str, int], int] = {}
 
-    def resolve(self, call: ToolCall) -> ToolResult | Unmocked:
-        """Return a ToolResult for the first matching rule, or UNMOCKED."""
+    def resolve(self, call: ToolCall) -> ToolResult | Passthrough | Unmocked:
+        """Return a ToolResult for the first matching rule, a `Passthrough` marker
+        for a passthrough rule (the loop realizes it via the invoker), or UNMOCKED."""
         for index, rule in enumerate(self._mocks.get(call.name, [])):
             if self._matches(rule, call):
                 return self._result(call, rule, index)
@@ -121,8 +135,10 @@ class MockResolver:
             return False
         return matches_subset(rule.when, call.arguments)
 
-    def _result(self, call: ToolCall, rule: MockRule, index: int) -> ToolResult:
+    def _result(self, call: ToolCall, rule: MockRule, index: int) -> ToolResult | Passthrough:
         outcome = rule.outcome
+        if isinstance(outcome, Passthrough):
+            return outcome  # the loop hands this to the ToolInvoker port
         if isinstance(outcome, Sequence):
             key = (call.name, index)
             pos = self._sequence_pos.get(key, 0)

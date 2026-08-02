@@ -21,7 +21,8 @@ from dryfire.application.ports.model_gateway import (
     ModelGateway,
     ModelParams,
 )
-from dryfire.domain.mocking.resolver import UNMOCKED, MockResolver
+from dryfire.application.ports.tool_invoker import ToolInvoker
+from dryfire.domain.mocking.resolver import UNMOCKED, MockResolver, Passthrough
 from dryfire.domain.model.case import ResolvedCase
 from dryfire.domain.model.message import Message, ModelResponse, Usage
 from dryfire.domain.model.tooling import ToolResult
@@ -66,6 +67,8 @@ async def run_case(
     resolved_case: ResolvedCase,
     provider: ModelGateway,
     resolver: MockResolver,
+    *,
+    invoker: ToolInvoker | None = None,
 ) -> Trace:
     case = resolved_case
     messages = _initial_messages(case.input)  # the loop's own list; never the case's
@@ -116,6 +119,16 @@ async def run_case(
         unmocked_error = False
         for call in response.tool_calls:
             resolved = resolver.resolve(call)
+            if isinstance(resolved, Passthrough):
+                # A passthrough rule delivers its result by running real code — I/O,
+                # so the pure resolver only produced a marker; the injected port
+                # realizes it. A raise/timeout becomes an error result (SPIKE-004).
+                if invoker is None:
+                    raise RuntimeError(
+                        f"passthrough tool {call.name!r} needs a ToolInvoker "
+                        f"but none was wired into run_case"
+                    )
+                resolved = await invoker.invoke(resolved, call)
             if resolved is UNMOCKED:
                 if case.on_unmocked == "error":
                     unmocked_error = True

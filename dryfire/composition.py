@@ -23,6 +23,7 @@ from typing import Any, TextIO, cast
 from dryfire.adapters.driven.cache.file_store import FileCassetteStore, sanitise
 from dryfire.adapters.driven.cache.prune import find_prunable, remove_empty_dirs
 from dryfire.adapters.driven.clock.system import SystemClock
+from dryfire.adapters.driven.mocking.passthrough import PassthroughInvoker
 from dryfire.adapters.driven.pricing.bundled import BundledPricingCatalog
 from dryfire.adapters.driven.providers.caching import CachingGateway
 from dryfire.adapters.driven.providers.fake import FakeGateway
@@ -53,7 +54,7 @@ from dryfire.application.scheduler import (
     RunResult,
     run_suites,
 )
-from dryfire.domain.mocking.resolver import merge_mocks
+from dryfire.domain.mocking.resolver import Passthrough, merge_mocks
 from dryfire.domain.model.case import ResolvedCase
 from dryfire.domain.model.message import ModelResponse
 from dryfire.domain.model.trace import Trace
@@ -283,25 +284,47 @@ def _resolve_cassettes(
     return mode, FileCassetteStore(base / dirname)
 
 
+def _uses_passthrough(planned: PlannedCase) -> bool:
+    """True if any of the case's mocks delivers its result by invoking real code."""
+    return any(
+        isinstance(rule.outcome, Passthrough)
+        for rules in planned.mocks.values()
+        for rule in rules
+    )
+
+
 def _wrap_cases(
-    suites: list[PlannedSuite], *, inner_for: Any, store: ResponseCache, mode: CassetteMode
+    suites: list[PlannedSuite], *, inner_for: Any, store: ResponseCache, mode: CassetteMode,
+    exclude_passthrough: bool = False, out: TextIO | None = None,
 ) -> list[PlannedSuite]:
     """Wrap every real-provider case (one with no per-case gateway) in a
     CachingGateway. `inner_for(case)` supplies the wrapped gateway; fake cases,
-    which already carry their scripted gateway, are left untouched."""
-    out: list[PlannedSuite] = []
+    which already carry their scripted gateway, are left untouched.
+
+    `exclude_passthrough` (recording modes) leaves a case that uses passthrough
+    mocks UNwrapped — a real callable can have side effects and non-deterministic
+    output, so recording it would make replay a lie (SPIKE-004 Q4). The exclusion
+    is announced on `out`, never silent."""
+    wrapped: list[PlannedSuite] = []
     for suite in suites:
         cases: list[PlannedCase] = []
         for planned in suite.cases:
             if planned.gateway is None:
-                caching = CachingGateway(
-                    inner_for(planned), store, mode=mode,
-                    suite=suite.name, case=planned.case.case_name,
-                )
-                planned = replace(planned, gateway=caching)
+                if exclude_passthrough and _uses_passthrough(planned):
+                    if out is not None:
+                        out.write(
+                            f"note: {suite.name}::{planned.case.case_name} uses passthrough "
+                            f"mocks — excluded from cassette recording (results aren't cacheable)\n"
+                        )
+                else:
+                    caching = CachingGateway(
+                        inner_for(planned), store, mode=mode,
+                        suite=suite.name, case=planned.case.case_name,
+                    )
+                    planned = replace(planned, gateway=caching)
             cases.append(planned)
-        out.append(replace(suite, cases=cases))
-    return out
+        wrapped.append(replace(suite, cases=cases))
+    return wrapped
 
 
 # -- Cost attachment + exit code --------------------------------------------
@@ -544,11 +567,13 @@ def run(
             if store is not None and default_gateway is not None:  # auto / record
                 runnable = _wrap_cases(
                     runnable, inner_for=lambda pc: default_gateway, store=store, mode=mode,
+                    exclude_passthrough=True, out=out,
                 )
 
         result = asyncio.run(
             run_suites(runnable, default_gateway, price=_make_price(),
-                       concurrency=concurrency or BUILTIN_CONCURRENCY, fail_fast=fail_fast)
+                       concurrency=concurrency or BUILTIN_CONCURRENCY, fail_fast=fail_fast,
+                       invoker=PassthroughInvoker())
         )
         _report(result, reporter=reporter, json_out=json_out, junit_out=junit_out,
                 verbose=verbose, out=out, now=now or datetime.now(UTC))

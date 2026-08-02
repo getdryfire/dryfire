@@ -408,9 +408,11 @@ wins**. A rule is:
   sequence:               # consumed one entry per matching call, in order.
     - error: "..."        # Last entry repeats if calls exceed sequence length.
     - return: {...}
+  # OR
+  impl: pkg.mod:func      # (v0.2) passthrough — invoke real Python code. See §4.4a.
 ```
 
-Exactly one of `return` / `error` / `sequence` per rule. `sequence` is what makes
+Exactly one of `return` / `error` / `sequence` / `impl` per rule. `sequence` is what makes
 error-recovery testing possible and is a first-class feature, not an edge case.
 
 Case-level `mocks` **merge over** suite-level mocks per tool name (whole tool's rule list
@@ -420,7 +422,22 @@ is replaced, not appended).
 - `error` (default) — terminate the trace with `termination: unmocked_tool` and fail the
   case with a message naming the tool and its arguments. Loud by design.
 - `null` — return empty content, continue.
-- `passthrough` — (v0.2) resolve via a real Python callable given as `impl: pkg.mod:func`.
+
+(A per-tool `impl:` rule is the v0.2 way to invoke real code — see §4.4a. A global
+`on_unmocked: passthrough` fallback is reserved, not implemented in v0.2.)
+
+#### 4.4a Passthrough mocks (`impl:`) — v0.2
+
+A mock rule may carry `impl: package.module:function` instead of `return`/`error`/`sequence`.
+dryfire imports the callable and invokes it with the tool arguments as **one positional dict**
+(`func(args)`, never `**kwargs` — JSON keys aren't guaranteed valid identifiers); the return
+value becomes the tool result. Sync callables run off the event loop (a thread) so they don't
+serialise concurrent cases; async callables are awaited natively. A raise becomes an error
+result and the run continues; each call is bounded by a timeout (default 30 s, or per-rule
+`timeout_s`). `impl:` is resolved at **validate** time — a bad target is a positioned spec
+error (exit 2) before any API spend — and importing the module runs its top-level code.
+Passthrough results are **never cached**; a case using one is excluded from cassette recording
+with a visible note. Full behaviour and the security posture: `docs/mocks.md`.
 
 **Env interpolation** — `${VAR}` anywhere in a string value resolves from the environment
 at load time. Missing var is a spec error, not an empty string.

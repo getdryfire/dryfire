@@ -22,6 +22,7 @@ from typing import Any
 
 from dryfire.application.loop import run_case
 from dryfire.application.ports.model_gateway import ModelGateway
+from dryfire.application.ports.tool_invoker import ToolInvoker
 from dryfire.domain.assertions.base import AssertionResult, safe_evaluate
 from dryfire.domain.assertions.registry import build
 from dryfire.domain.mocking.resolver import MockResolver, MockRule
@@ -114,7 +115,8 @@ def _evaluate(expect: list[dict[str, Any]], trace: Trace) -> list[AssertionResul
 
 
 async def _process_case(
-    planned: PlannedCase, provider: ModelGateway | None, price: PriceTrace | None
+    planned: PlannedCase, provider: ModelGateway | None, price: PriceTrace | None,
+    invoker: ToolInvoker | None = None,
 ) -> CaseResult:
     case = planned.case
     try:
@@ -126,7 +128,7 @@ async def _process_case(
         # A fresh resolver per case: AC-008 sequence state must not bleed across
         # concurrently-running cases.
         resolver = MockResolver(dict(planned.mocks))
-        trace = await run_case(case, gateway, resolver)
+        trace = await run_case(case, gateway, resolver, invoker=invoker)
         # Price the trace BEFORE assertions so cost_under (DF-207) can read it.
         if price is not None:
             trace = price(trace, case)
@@ -163,6 +165,7 @@ async def run_suites(
     fail_fast: bool = False,
     on_progress: ProgressCallback | None = None,
     price: PriceTrace | None = None,
+    invoker: ToolInvoker | None = None,
 ) -> RunResult:
     """Run every case concurrently (bounded to `concurrency`) and return results in
     spec order regardless of completion order.
@@ -183,7 +186,7 @@ async def run_suites(
 
     async def worker() -> None:
         for i in pending:
-            result = await _process_case(planned[i], provider, price)
+            result = await _process_case(planned[i], provider, price, invoker)
             results[i] = result
             if on_progress is not None:
                 on_progress(result)

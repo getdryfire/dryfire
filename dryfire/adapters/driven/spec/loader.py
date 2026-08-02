@@ -27,6 +27,7 @@ from typing import Any
 from pydantic import ValidationError
 from ruamel.yaml.comments import CommentedMap, CommentedSeq
 
+from dryfire.adapters.driven.mocking.passthrough import ImplResolutionError, resolve_impl
 from dryfire.adapters.driven.spec.errors import PYDANTIC_MESSAGES, SpecError
 from dryfire.adapters.driven.spec.models import Suite
 from dryfire.adapters.driven.spec.positions import Position, load_positioned, locate
@@ -186,6 +187,51 @@ def check_assertion_kinds(root: Any, path: Path, errors: list[SpecError]) -> Non
                 )
 
 
+# -- Pre-pass 3: passthrough `impl:` resolution -----------------------------
+
+
+def check_passthrough_impls(root: Any, path: Path, errors: list[SpecError]) -> None:
+    """Resolve every passthrough `impl: pkg.mod:func` at validate time so a bad one
+    is a positioned spec error (exit 2) before any API spend (DF-211). Importing the
+    module runs its top-level code — inherent to Python import, documented in the
+    security note — but dryfire itself makes no network call."""
+    if not isinstance(root, CommentedMap):
+        return
+    _check_impls(root.get("mocks"), path, errors, ("mocks",))
+    cases = root.get("cases")
+    if isinstance(cases, CommentedSeq):
+        for ci, case in enumerate(cases):
+            if isinstance(case, CommentedMap):
+                _check_impls(case.get("mocks"), path, errors, ("cases", ci, "mocks"))
+
+
+def _check_impls(
+    mocks: Any, path: Path, errors: list[SpecError], loc: tuple[Any, ...]
+) -> None:
+    if not isinstance(mocks, CommentedMap):
+        return
+    for tool, rules in mocks.items():
+        if not isinstance(rules, CommentedSeq):
+            continue
+        for ri, rule in enumerate(rules):
+            if not isinstance(rule, CommentedMap) or "impl" not in rule:
+                continue
+            target = rule.get("impl")
+            if not isinstance(target, str):
+                continue  # a non-string impl is a pydantic type error, reported there
+            try:
+                resolve_impl(target)
+            except ImplResolutionError as exc:
+                errors.append(
+                    SpecError(
+                        path=path,
+                        loc=loc + (tool, ri, "impl"),
+                        message=str(exc),
+                        position=Position.from_lc(rule.lc.value("impl")),
+                    )
+                )
+
+
 # -- Main pass + orchestration ----------------------------------------------
 
 
@@ -215,6 +261,7 @@ def load_suite(path: Path) -> tuple[Suite | None, list[SpecError]]:
     root = resolve_refs(root, path.parent, path, errors)  # pre-pass 1a
     interpolate_env(root, path, errors)  # pre-pass 1b
     check_assertion_kinds(root, path, errors)  # pre-pass 2
+    check_passthrough_impls(root, path, errors)  # pre-pass 3
 
     # A node whose $ref failed was replaced by a placeholder; any pydantic error
     # beneath that loc is a cascade artefact, not a user mistake — suppress it.
