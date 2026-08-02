@@ -88,7 +88,9 @@ runs:
 
     - name: Surface JUnit as a check
       if: always()
-      uses: dorny/test-reporter@v1
+      # Third-party action pinned to a full commit SHA (not a mutable tag) so a
+      # moved tag can't inject code into every consumer's CI. Bump deliberately.
+      uses: dorny/test-reporter@31a54ee7ebcacc03a09ea97a7e5465a47b84aea5 # v1.9.1
       with:
         name: dryfire
         path: dryfire-junit.xml
