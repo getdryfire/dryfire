@@ -9,33 +9,29 @@ agent suites, executes the full tool-calling loop with deterministic mocked tool
 asserts on the **trajectory** (ordered tool calls), not the final text. Local-first: no
 server, no database, no account; exit codes are the API.
 
-## Current state: v0.1 shipped (EPIC-001 complete); EPIC-002 (v0.2) in progress
+## Current state: v0.2 shipped — `dryfire 0.2.0` on PyPI (repo: `getdryfire/dryfire`)
 
-v0.1 is **code-complete on `main` at version `0.1.0`** — provider (Anthropic + a scriptable
-fake), YAML spec + positioned-error loader, the tool-calling loop, deterministic mocks
+Both epics are complete. **v0.1** was the local-first trajectory runner: Anthropic + a scriptable
+fake, YAML spec + positioned-error loader, the tool-calling loop, deterministic mocks
 (subset/errors/sequences), the six structural assertions, terminal + JSON reporters, advisory
-cost, the full `init`/`validate`/`run`/`trace` CLI, and a dogfood suite in CI. The PyPI
-**publish is deliberately deferred** (owner's call); the release scaffolding (README, changelog,
-Trusted-Publishing workflow) is in place.
+cost, and the full `init`/`validate`/`run`/`trace` CLI. **v0.2 ("CI-grade")** added the OpenAI
+adapter, cassette record/replay, retries, budget + extra assertions, the JUnit reporter, a GitHub
+Action, and passthrough mocks — with a v0.1→v0.2 backward-compat test in CI.
 
-**Now building EPIC-002 (v0.2, "CI-grade"):** OpenAI adapter, cassette record/replay, retries,
-budget + extra assertions, JUnit reporter, a GitHub Action, passthrough mocks. The one
-architectural rule of this epic: **caching and retrying are decorators over `ModelGateway`;
-`application/loop.py` does not change.** EPIC-001 tickets use the `AC-` prefix; EPIC-002 uses
-`DF-`.
+**The load-bearing architectural rule** (governs all future work): caching and retrying are
+decorators over `ModelGateway`; **`application/loop.py` does not change**. The one sanctioned
+exception was the DF-211 passthrough seam — a single `await invoker.invoke(...)` branch, signed
+off explicitly because non-blocking concurrent passthrough required a yield point there.
 
 - **Authoritative docs** — read in this order when context is needed:
   1. `SPEC.md` — product spec: domain model, YAML spec format, agent loop, assertions, CLI, exit codes
   2. `ARCHITECTURE.md` — how code must be shaped (supersedes SPEC §8's package layout; migration table in its §12)
-  3. `EPIC-001.md` (v0.1, shipped) and `EPIC-002.md` (v0.2, shipped — DF-201…DF-212 written inline as test tables)
 - **Living docs** (keep these current):
-  - `docs/Progress.md` — what's in flight / up next / shipped / on ice. Update when work ships or priorities shift.
+  - `docs/Progress.md` — what's shipped / up next / on ice. Update when work ships or priorities shift.
   - `docs/Learnings.md` — session-discovered pitfalls and patterns. Read before starting work; append when you hit something non-obvious.
-- **Spike prototypes** (`spikes/`) — frozen reference implementations that were lifted into the
-  package, not throwaway code. Excluded from ruff:
-  - SPIKE-001 (provider normalization): `neutral.py`, `adapters.py`, `probe.py`
-  - SPIKE-002 (cassette fingerprint): `fingerprint.py`, `test_stability.py`
-  - SPIKE-003 (spec error UX): `locate.py`, `render.py`, `sample_broken.eval.yaml`, `escalate_to_human.json`
+
+(The v0.1/v0.2 epic + ticket definitions and the spike prototypes were historical planning
+artifacts, pruned after v0.2 shipped; they live in git history if ever needed.)
 
 ## Commands
 
@@ -48,7 +44,6 @@ make test             # offline test suite (tests/ only; never needs an API key)
 make lint / lint-fix / format / typecheck / arch
 make test-live        # @pytest.mark.live tests; needs ANTHROPIC_API_KEY (pre-release only)
 make add pkg=X / add-dev pkg=X / remove pkg=X / lock / sync
-make spike-tests / spike-probe / spike-errors
 ```
 
 Single test: `uv run pytest tests/unit/test_about.py -k <name>`. CLI: `uv run dryfire --help`.
@@ -64,9 +59,6 @@ make docker-shell     # bash inside the container
 
 The image keeps its venv at `/opt/venv` (`UV_PROJECT_ENVIRONMENT`) so the bind mount of
 the repo can't shadow it with the host's macOS `.venv` — don't "simplify" that away.
-
-The SPIKE-001 live probe (`uv run python spikes/probe.py --provider anthropic`) is still
-outstanding and must run before AC-007.
 
 PRs use `.github/pull_request_template.md` — fill every checklist (quality gate, scope
 discipline, public contracts, docs) honestly; it mirrors the rules in this file.
@@ -115,8 +107,8 @@ Key rules that recur across tickets:
 
 ## Scope discipline
 
-v0.1 is Anthropic-only. Explicitly deferred (EPIC-001 §4): OpenAI adapter, cassettes, JUnit,
-GitHub Action, retries, `llm_judge`, `compare`, HTML report, `repeat`, export, `passthrough`
-mocks, streaming, any server or database. If a ticket seems to need one of these, stop and
-flag it instead of building forward. v0.1 source target is ~3,500–4,500 lines; ARCHITECTURE
-§11 lists tripwires (repository classes, event buses, DI containers, …) that mean delete something.
+Deferred to v0.3+ (not built): `llm_judge`, `compare` (model/prompt matrix), a self-contained
+HTML report, `repeat: N` flakiness measurement, export to other languages, streaming, and any
+server, database, or hosted/account features — dryfire stays a zero-infra local CLI. If a change
+seems to need one of these, stop and flag it instead of building forward. ARCHITECTURE §11 lists
+tripwires (repository classes, event buses, DI containers, …) that mean delete something.

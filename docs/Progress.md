@@ -1,6 +1,6 @@
 # Progress
 
-**Last Updated:** 2026-08-02 · **Active epic:** EPIC-002 (v0.2, CI-grade) — final ticket (DF-212)
+**Last Updated:** 2026-08-02 · **Status:** v0.2 shipped — `dryfire 0.2.0` on PyPI
 
 ---
 
@@ -11,9 +11,9 @@ Global tracker for dryfire. Answers three questions without digging through the 
 2. What's shipped and working?
 3. What's next?
 
-**Epic reference:** `EPIC-001.md` (v0.1, **shipped** — AC-001…AC-019) and `EPIC-002.md` (v0.2,
-**code-complete** — DF-201…DF-212 all implemented). `main` is at version `0.2.0`; the PyPI publish +
-`v0.2.0` tag are deliberately deferred to the owner's trigger.
+**Version:** `main` is at `0.2.0`, **published to PyPI** and tagged `v0.2.0`. Both epics (v0.1
+AC-001…019, v0.2 DF-201…212) are complete; their ticket/spike planning docs were pruned after
+release and live in git history.
 
 Update this file when work ships, phases change, or priorities shift.
 
@@ -21,42 +21,31 @@ Update this file when work ships, phases change, or priorities shift.
 
 ## In Development
 
-> Actively building. Code is being written.
-
-### DF-212 — Docs and v0.2.0 release (implemented, PR open)
-The final EPIC-002 ticket. Version bumped to **0.2.0** (`dryfire/__about__.py`). No breaking changes to the
-v0.1 spec — a frozen `tests/fixtures/v0_1_compat.eval.yaml` (every v0.1 feature) validates + runs green,
-guarded by `tests/acceptance/test_backward_compat_v01.py` in CI.
-- **README** gains an "In CI" section (the <10-line workflow, above the feature list; jobs block verbatim
-  from `example-usage.yml`), and a Documentation list pointing at the new pages.
-- **`docs/cassettes.md`** (new): record/replay, the modes, key composition, invalidation — including **why a
-  tool's description is part of the key** (sensitivity wins; a description is part of the prompt).
-- **`docs/ci.md`** (from DF-210): exit codes, replay, JUnit, Action inputs.
-- **`COMPARISON.md` re-verified 2026-08-02** against promptfoo.dev and deepeval.com: the OpenAI→Promptfoo
-  acquisition (March 2026) **confirmed true** (kept, not dropped); **added a `vs DeepEval` section** (the
-  fair contrast: DeepEval is pytest-native and evaluates trajectories/tool-calls too, but via LLM-as-judge
-  metrics on an instrumented agent — dryfire's differentiator is determinism + no judge + no instrumentation).
-- **CHANGELOG** `[0.2.0]` complete, leading with "OpenAI landed with zero changes to the loop."
-- **Owner-gated (not done here):** the actual **PyPI publish** and **`git tag v0.2.0`** (owner's triggers);
-  the `uvx dryfire@0.2.0` AC depends on the publish. Gate green (462 tests + 2 live-skipped).
+> Nothing in flight — v0.2 is shipped.
 
 ---
 
 ## Up Next
 
-> All EPIC-002 tickets are implemented. What remains is **owner-gated**, not buildable here:
+> No open work. Both epics are complete and **v0.2.0 is published to PyPI**.
 
-1. **Publish v0.2.0 to PyPI** and **`git tag v0.2.0 && git push origin v0.2.0`** (the release scaffolding —
-   Trusted-Publishing workflow, CHANGELOG, version — is in place). This satisfies the `uvx dryfire@0.2.0` AC.
-2. **v0.1 PyPI publish** is still deferred (owner's call) — v0.1/v0.2 both ship together whenever the owner
-   pulls the trigger.
-
-**Done (owner-verified):** the DF-210 throwaway-repo run — cold-start ~7 s (< 20 s), keyless replay green,
-a failing case red with the JUnit failure rendered in the PR check (also the SPIKE-005/DF-209 live capture).
+- **v0.3** (unscoped): `llm_judge`, `compare` (model/prompt matrix), a self-contained HTML report,
+  `repeat: N` flakiness, export to other languages. Still zero-infra — no server/database.
+- **Housekeeping candidates:** bump release-workflow actions off deprecated Node 20; consider
+  flipping `.github/workflows/example-usage.yml` from `workflow_dispatch` to `push`/`pull_request`
+  now that `getdryfire/dryfire@v0.2.0` resolves.
 
 ---
 
 ## Shipped
+
+### v0.2.0 released to PyPI (2026-08-02) — EPIC-002 complete
+`dryfire 0.2.0` published via Trusted Publishing (`release.yml`) and tagged `v0.2.0`; verified with
+`uvx dryfire@0.2.0`. DF-212 landed the docs (README "In CI" section, `docs/cassettes.md`,
+`docs/ci.md`), the `COMPARISON.md` re-verification (Promptfoo acquisition confirmed; DeepEval section
+added), the `[0.2.0]` CHANGELOG (leading with "OpenAI landed with zero changes to the loop"), and a
+v0.1→v0.2 backward-compat test. The publish itself hit one transient ghcr.io image-pull timeout;
+re-running the failed job fixed it (nothing double-published).
 
 ### Repo → `getdryfire/dryfire` (2026-08-02) — pre-release
 Canonical home moved from the personal `csmatar/dryfire` to the **`getdryfire` org** (`dryfire` was taken)
@@ -97,8 +86,8 @@ Loop/scheduler/terminal untouched. SPEC §7 updated.
 > Working in the codebase. Committed and tested.
 
 ### SPIKE-005 — JUnit XML mapping across CI consumers (2026-08-01, PR #30)
-Settled the suite→case→assertion → testsuite→testcase mapping DF-209 implements (`spikes/005_junit/`,
-`make spike-junit`, package untouched). **Verdict: Candidate A** — case = `<testcase>`, one `<failure>` per
+Settled the suite→case→assertion → testsuite→testcase mapping DF-209 implements (spike prototype since
+pruned). **Verdict: Candidate A** — case = `<testcase>`, one `<failure>` per
 failing case, failed assertions concatenated in the text body + a one-line `message` summary (= pytest's
 shape, refined); `<error>` for `provider_error`/`unmocked_tool`. Load-bearing offline finding: newlines
 survive in `<failure>` text but collapse to a space in the `message` attribute (XML 1.0 §3.3.3); `→`/`✗`
@@ -107,8 +96,8 @@ first on Ant/Surefire parsers. The live-UI half (rendering/truncation) has a thr
 `render_notes.md` (owner's hands, folds into DF-210).
 
 ### SPIKE-004 — Passthrough mock execution model (2026-08-01, PR #29)
-Settled the execution model for `impl: pkg.mod:func` mocks (`spikes/004_passthrough/`, 17 tests, package
-untouched) — the verdict DF-211 implements. Resolve via `importlib`+`getattr` **at validate time** (bad
+Settled the execution model for `impl: pkg.mod:func` mocks (spike prototype since pruned; 17 tests) —
+the verdict DF-211 implements. Resolve via `importlib`+`getattr` **at validate time** (bad
 `impl:` = spec error before any API spend); **sync callables run in a thread**, async awaited natively;
 raise → `ToolResult(is_error=True)`; **per-call 30 s timeout**; `func(args: dict)` convention; results
 **not cacheable** (excluded from recording). Load-bearing finding: `asyncio.wait_for` bounds the *wait*
@@ -356,7 +345,7 @@ exposes every library built so far. TDD, gate green (270 tests + 1 live-skipped,
 
 ### Spikes 001–003 (pre-scaffold)
 - SPIKE-001 provider normalization, SPIKE-002 cassette fingerprint (19 tests),
-  SPIKE-003 positioned spec errors — reference code in `spikes/` (lifted into the package)
+  SPIKE-003 positioned spec errors — prototypes lifted into the package, then pruned
 
 ---
 

@@ -1,9 +1,0 @@
-{
-  "name": "escalate_to_human",
-  "description": "Escalate the conversation to a human agent.",
-  "input_schema": {
-    "type": "object",
-    "properties": {"reason": {"type": "string"}},
-    "required": ["reason"]
-  }
-}
