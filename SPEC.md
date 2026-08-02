@@ -535,7 +535,7 @@ the actual ordered tool-call sequence. Example required output:
 
 ### 6.2 Later assertions
 
-- v0.2: `cost_under: float`, `latency_under_ms: int`, `min_tool_calls`, `final_matches` (regex), `final_json_schema`
+- v0.2: `cost_under: float`, `latency_under_ms: int`, `min_tool_calls`, `final_matches` (regex), `final_json` (pydantic-validated JSON shape)
 - v0.3: `llm_judge: {rubric, model?, threshold?}`
 
 ### 6.3 Registry
@@ -745,7 +745,8 @@ SDK. A missing extra produces an actionable error naming the exact install comma
 - **Reporters:** JUnit XML (for CI test reporting), JSON.
 - **GitHub Action** at `.github/actions/dryfire` + a documented workflow snippet.
 - **Assertions:** `cost_under`, `latency_under_ms`, `min_tool_calls`, `final_matches`,
-  `final_json_schema`.
+  `final_json` (a pydantic-validated JSON shape — required keys + per-field types — not full
+  JSON Schema, chosen to avoid a runtime `jsonschema` dependency in the pure domain; DF-208).
 - **Retries:** exponential backoff on 429/5xx, `--max-retries` (default 3), retries never
   counted as turns.
 - **`passthrough` mocks** via `impl: pkg.mod:func`.

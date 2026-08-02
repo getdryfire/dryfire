@@ -267,6 +267,42 @@ def test_missing_key_skips_the_case_with_a_note_not_a_failure(
     assert "ANTHROPIC_API_KEY" in result.output
 
 
+def test_invalid_regex_in_final_matches_is_a_positioned_spec_error(tmp_path: Path) -> None:
+    # Compiled at validate time (DF-208): a bad pattern is a positioned spec error,
+    # exit 2, before any run — not a runtime surprise.
+    suite = (
+        "name: r\ncases:\n  - name: c\n    input: hi\n"
+        '    expect:\n      - final_matches: "(unclosed"\n'
+    )
+    result = runner.invoke(app, ["validate", _write(tmp_path, suite)])
+    assert result.exit_code == 2
+    assert "-->" in result.output  # positioned caret output
+
+
+def test_min_tool_calls_against_a_sequence_mock_end_to_end(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # SPEC §4.3's recovers_from_tool_error: a sequence mock fails once then succeeds,
+    # the agent calls the tool twice, and min_tool_calls: count 2 passes. Keyless.
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    suite = (
+        "name: retry\nprovider: fake\n"
+        "tools:\n  - name: issue_refund\n    input_schema: {type: object}\n"
+        "mocks:\n  issue_refund:\n    - sequence:\n"
+        "        - error: gateway timeout\n        - return: {refund_id: R-2}\n"
+        "cases:\n  - name: recovers\n    input: refund A-100\n"
+        "    script:\n"
+        "      - tool_call: {name: issue_refund, arguments: {}}\n"
+        "      - tool_call: {name: issue_refund, arguments: {}}\n"
+        '      - text: "Refunded after a retry."\n'
+        "    expect:\n"
+        "      - min_tool_calls: {tool: issue_refund, count: 2}\n"
+        '      - final_matches: "[Rr]efund"\n'
+    )
+    result = runner.invoke(app, ["run", _write(tmp_path, suite)])
+    assert result.exit_code == 0, result.output
+
+
 def test_cost_under_passes_for_a_priced_model(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
