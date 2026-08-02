@@ -77,6 +77,44 @@ def test_verdict_round_trips_through_json_with_no_loss() -> None:
     assert restored == verdict
 
 
+# -- Factories: passed follows the threshold; errors are distinct (DF-302) --
+
+
+def test_from_score_computes_passed_from_threshold() -> None:
+    rubric = Rubric(text="Grade politeness.", threshold=0.7)
+    above = JudgeVerdict.from_score(
+        score=0.8, reasoning="ok", rubric=rubric,
+        judge_model="claude-opus-4-8", judge_model_version="claude-opus-4-8-20260115",
+    )
+    below = JudgeVerdict.from_score(
+        score=0.6, reasoning="meh", rubric=rubric,
+        judge_model="claude-opus-4-8", judge_model_version="claude-opus-4-8-20260115",
+    )
+    assert above.passed is True
+    assert below.passed is False
+    assert above.rubric_hash == rubric.hash()
+    assert above.threshold == 0.7
+    assert above.error is None
+
+
+def test_from_error_is_distinct_from_a_genuine_zero() -> None:
+    rubric = Rubric(text="Grade politeness.", threshold=0.7)
+    errored = JudgeVerdict.from_error(
+        reasoning="", rubric=rubric, judge_model="claude-opus-4-8",
+        judge_model_version="claude-opus-4-8", error="429 rate limit",
+    )
+    genuine_zero = JudgeVerdict.from_score(
+        score=0.0, reasoning="wrong", rubric=rubric,
+        judge_model="claude-opus-4-8", judge_model_version="claude-opus-4-8-20260115",
+    )
+    assert errored.error == "429 rate limit"
+    assert errored.passed is False
+    assert genuine_zero.error is None  # a real 0 is not an error
+    assert genuine_zero.passed is False
+    # Both fail, but only one is a judge malfunction — the field distinguishes them.
+    assert (errored.error is not None) != (genuine_zero.error is not None)
+
+
 # -- Rubric hashing (AC2, AC3) ----------------------------------------------
 
 

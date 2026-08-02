@@ -748,3 +748,24 @@ env indirection is the standard injection-safe pattern. Design the action so JUn
 - **Scope call:** kept `JudgeVerdict` to DF-301's 7 provenance fields; the `error` state (judge failure
   ≠ score 0, per SPIKE-006 Q3) lands in DF-302 when the enricher can actually produce one — no point
   adding a field no code path sets yet.
+
+### 2026-08-02 — DF-302 (judge evaluator)
+- **The verdict `error` field lands where the error can happen.** DF-301 kept `JudgeVerdict` to 7
+  provenance fields; DF-302 added `error: str | None` + `from_score`/`from_error` factories, because
+  this is the ticket where a judge can actually fail. `error is None` ⇔ genuine score; a provider
+  exception or unparseable response → `from_error` (score 0.0, passed False, error set). Never let a
+  judge malfunction masquerade as a real 0 — it would silently fail good cases.
+- **`float(json_value)` under mypy --strict:** a parser typed `dict[str, object]` breaks
+  `float(data["score"])` (object isn't SupportsFloat). Type parsed-JSON as `dict[str, Any]` (repo
+  style — `extended.py` does the same); the runtime `except (…, TypeError, ValueError)` still catches a
+  non-numeric score → judge error.
+- **Real judges wrap JSON in ```json fences despite instructions.** `_extract_json` strips a leading
+  fence + finds the outermost `{…}`, so fenced or prose-wrapped output still parses; only genuinely
+  absent JSON raises → recorded as a judge error, not a false score.
+- **Concurrency observed by the test double, not the production object.** ARCHITECTURE bans test-only
+  methods on production classes, so the semaphore lives in `JudgeEvaluator` while the *fake gateway*
+  counts its own in-flight calls and asserts `max_in_flight == bound`. Same pattern will fit DF-305's
+  `repeat` concurrency test.
+- **`asyncio.Semaphore()` created outside the loop is fine in 3.12** — it binds lazily on first
+  `await`, so building the evaluator in composition (before `asyncio.run`) and using it inside works,
+  mirroring how `_make_price` is built before the run.
