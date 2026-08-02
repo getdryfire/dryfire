@@ -164,21 +164,3 @@ quality, answer relevance, faithfulness — use DeepEval.**
 > DeepEval scores how good your built agent's answers are, with a rich judge-based metric
 > library. dryfire is a deterministic, keyless gate on tool-selection behaviour you can run on
 > every commit before the agent exists.
-
----
-
-## vs Langfuse
-
-A cleaner separation — these are complementary, not competing.
-
-| | dryfire | Langfuse |
-|---|---|---|
-| Phase | Pre-deployment | Production |
-| Shape | CLI, no server | Server + database + web UI |
-| Input | Cases you wrote deliberately | Traces from live traffic |
-| Requires instrumentation | No | Yes, SDK |
-| Primary job | Stop a regression from shipping | Show what happened after it shipped |
-| Team features | None | Dashboards, prompt management, datasets |
-
-Langfuse tells you what your agent did. dryfire stops it from doing the wrong thing in
-the first place. A team could reasonably run both.
