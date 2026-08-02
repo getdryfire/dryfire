@@ -267,6 +267,31 @@ def test_missing_key_skips_the_case_with_a_note_not_a_failure(
     assert "ANTHROPIC_API_KEY" in result.output
 
 
+def test_max_retries_zero_disables_retries(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # The gateway is wrapped in RetryingGateway; with --max-retries 0 a retryable
+    # failure is not retried, so the provider is called exactly once (exit 3).
+    class _RetryableGateway:
+        name = "anthropic"
+
+        def __init__(self) -> None:
+            self.calls = 0
+
+        async def complete(self, request: Any) -> ModelResponse:
+            self.calls += 1
+            raise RuntimeError("transient")
+
+        def is_retryable(self, exc: Exception) -> bool:
+            return True
+
+    gateway = _RetryableGateway()
+    _use_gateway(monkeypatch, gateway)
+    result = runner.invoke(app, ["run", _write(tmp_path, _PASS), "--max-retries", "0"])
+    assert result.exit_code == 3
+    assert gateway.calls == 1  # no retries
+
+
 def test_provider_openai_runs_end_to_end(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     # A `provider: openai` suite, driven by a REAL recorded OpenAI payload parsed
     # by the adapter's from_wire — proves the second provider wires end to end.

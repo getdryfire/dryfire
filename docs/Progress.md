@@ -23,19 +23,21 @@ Update this file when work ships, phases change, or priorities shift.
 
 > Actively building. Code is being written.
 
-### DF-201 — OpenAI gateway (implemented, PR open)
-**The second-provider proof of the hexagonal port:** adding OpenAI changed **nothing** in
-`application/` (`git diff application/` empty). Mirrors the Anthropic adapter exactly. Gate green (380
-tests + 2 live-skipped); the live OpenAI test **passed against the real API** (gpt-4o-mini). loop unchanged.
-- `adapters/driven/providers/openai.py` — pure `to_wire`/`from_wire` + a thin `OpenAIGateway` (lazy SDK
-  import; `openai` stays an optional extra). Reuses `map_stop_reason("openai", …)` (unknown → `error`).
-- Three OpenAI-specific facts from SPIKE-001: tool results are **separate `role: tool` messages** (N
-  parallel → N messages); `function.arguments` is a **JSON string** parsed defensively (bad/truncated →
-  `arguments={}` + `malformed_arguments`, never raises — **mutation-checked**); no `is_error` flag, so a
-  tool error is encoded behind `OPENAI_ERROR_PREFIX`.
-- Recorded-shape fixtures for single/parallel/text/length/malformed. `provider: openai` wired into
-  `make_gateway` (composition, not application) with an `OPENAI_API_KEY` credential check; an end-to-end
-  CLI test runs a `provider: openai` suite against a recorded fixture.
+### DF-206 — RetryingGateway + Clock port (implemented, PR open)
+Transient-failure retries as a **decorator over `ModelGateway`**, `application/loop.py` **unchanged** —
+**a retried call is still one turn** (SPEC §5 invariant). Gate green (389 tests + 2 live-skipped), dogfood
+green.
+- **Clock port** (prerequisite, surfaced in review): `application/ports/clock.py` (`async sleep`) +
+  `adapters/driven/clock/system.py` (`SystemClock`). A test `FrozenClock` records requested delays and
+  returns instantly, so backoff is asserted in microseconds.
+- `adapters/driven/providers/retrying.py` — `RetryingGateway` (exponential backoff + jitter, injectable
+  for deterministic tests; `--max-retries`, default 3; honours `Retry-After`; exhausted → the original
+  exception propagates → loop records `provider_error`). Retry **classification** lives in the provider
+  adapter (`is_retryable` added to the port; Anthropic/OpenAI share a duck-typed `default_retryable` —
+  429/5xx/connection/timeout, never 4xx-other; Fake/Caching return False). The decorator only *asks*.
+- Composition order is now **`Caching(Retrying(Real))`** — retries wrap only live calls; a cache hit
+  returns before the retry layer; replay never retries. `RetryingGateway` tolerates an inner without
+  `is_retryable` (getattr-default) so unrelated test doubles don't retry.
 
 ---
 
@@ -43,16 +45,22 @@ tests + 2 live-skipped); the live OpenAI test **passed against the real API** (g
 
 > Committed work, ready to start. Ordered by the EPIC-002 dependency graph (`EPIC-002.md`).
 
-1. **DF-206** retries — needs a new **Clock port** (surfaced in review) so backoff tests don't wait.
-   When it lands, composition wiring becomes `Caching(Retrying(Real))` (order is load-bearing).
-2. **DF-207/208** assertions (budget + extended) · **DF-209** JUnit · **DF-210** Action · **DF-211**
-   passthrough · **DF-212** release. Two half-day spikes first: SPIKE-004 (passthrough), SPIKE-005 (JUnit).
+1. **DF-207/208** assertions — budget (`cost_under`, `latency_under_ms`) + extended (`min_tool_calls`,
+   `final_matches`, `final_json_schema`). Independent of the remaining spikes.
+2. **DF-209** JUnit (after SPIKE-005) · **DF-210** Action · **DF-211** passthrough (after SPIKE-004) ·
+   **DF-212** release. Two half-day spikes remain: SPIKE-004 (passthrough), SPIKE-005 (JUnit).
 
 ---
 
 ## Shipped
 
 > Working in the codebase. Committed and tested.
+
+### DF-201 — OpenAI gateway (2026-08-01, PR #25)
+The second-provider proof of the hexagonal port: adding OpenAI changed **nothing** in `application/`.
+Pure `to_wire`/`from_wire` + a thin lazy-SDK `OpenAIGateway`, mirroring Anthropic. SPIKE-001 facts:
+separate `role: tool` messages, defensively-parsed JSON-string arguments (mutation-checked),
+`OPENAI_ERROR_PREFIX` for is_error. Live test **passed against real gpt-4o-mini**.
 
 ### DF-205 — `prune` command (2026-08-01, PR #24)
 `dryfire prune` deletes orphaned or stale cassettes (dry-run by default, `--yes` to delete; exit 0

@@ -22,9 +22,11 @@ from typing import Any, TextIO, cast
 
 from dryfire.adapters.driven.cache.file_store import FileCassetteStore, sanitise
 from dryfire.adapters.driven.cache.prune import find_prunable, remove_empty_dirs
+from dryfire.adapters.driven.clock.system import SystemClock
 from dryfire.adapters.driven.pricing.bundled import BundledPricingCatalog
 from dryfire.adapters.driven.providers.caching import CachingGateway
 from dryfire.adapters.driven.providers.fake import FakeGateway
+from dryfire.adapters.driven.providers.retrying import RetryingGateway
 from dryfire.adapters.driven.reporting.json_sink import render_run, write_run
 from dryfire.adapters.driven.reporting.terminal import render_report, resolve_color
 from dryfire.adapters.driven.scaffold.writer import ScaffoldConflict, scaffold
@@ -54,6 +56,8 @@ from dryfire.domain.mocking.resolver import merge_mocks
 from dryfire.domain.model.case import ResolvedCase
 from dryfire.domain.model.message import ModelResponse
 from dryfire.domain.pricing.calculator import calculate
+
+BUILTIN_MAX_RETRIES = 3  # DF-206; overridable via --max-retries
 
 EXIT_OK = 0
 EXIT_ASSERTION = 1
@@ -482,6 +486,7 @@ def run(
     reporter: str = "terminal",
     json_out: str | None = None,
     cassette_mode: str | None = None,
+    max_retries: int | None = None,
     verbose: bool = False,
     debug: bool = False,
     out: TextIO,
@@ -515,9 +520,19 @@ def run(
             )
             default_gateway: ModelGateway | None = None
         else:
-            runnable, default_gateway = _partition_by_availability(planned, out=out)
+            runnable, real_gateway = _partition_by_availability(planned, out=out)
             if not runnable:  # every case was skipped for want of credentials
                 return EXIT_OK
+            # Retries wrap the live gateway; order is Caching(Retrying(Real)) — a
+            # cache hit returns before the retry layer, and retries apply only live.
+            default_gateway = (
+                RetryingGateway(
+                    real_gateway, clock=SystemClock(),
+                    max_retries=max_retries if max_retries is not None else BUILTIN_MAX_RETRIES,
+                )
+                if real_gateway is not None
+                else None
+            )
             if store is not None and default_gateway is not None:  # auto / record
                 runnable = _wrap_cases(
                     runnable, inner_for=lambda pc: default_gateway, store=store, mode=mode,

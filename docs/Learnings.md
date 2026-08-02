@@ -591,6 +591,20 @@ fingerprint must be computed over the request **with `raw` stripped** (the provi
 carries non-reproducible ids that would make every key unstable). Mutation-check the airgap: delete the
 replay guard and the `CassetteMiss` test must fail (a miss falls through to a live call).
 
+### Retries as a decorator + a Clock port; a runtime_checkable Protocol method ripples (DF-206)
+Retries land like caching — a `RetryingGateway` decorator over `ModelGateway`, `loop.py` unchanged, so
+**a retried call is still one turn** (the loop sees one `complete()`). Two design points: (1) route the
+only wall-clock wait through a **Clock port** so a `FrozenClock` records the backoff *sequence* and the
+tests run in microseconds — never let production `asyncio.sleep` into a unit test. (2) Retry
+**classification** belongs in the provider adapter (`is_retryable` on the port; the decorator only asks),
+so the decorator grows no vendor knowledge — Anthropic/OpenAI share one duck-typed policy
+(`status_code` 429/5xx + connection/timeout by class name, no SDK import). **Gotcha:** adding a method to
+a `@runtime_checkable` Protocol changes what `isinstance(x, ModelGateway)` accepts — every shipped
+gateway (Fake, Anthropic, OpenAI, Caching) and every stub that asserts conformance must gain the method,
+or its check silently starts failing. And make the decorator tolerate an inner *without* the method
+(getattr-default → not retryable) so unrelated test doubles wrapped by composition don't blow up.
+Composition order is fixed `Caching(Retrying(Real))`: cache hits skip retries; retries apply only live.
+
 ## Session Notes
 
 ### 2026-07-30 — AC-001 + toolchain
