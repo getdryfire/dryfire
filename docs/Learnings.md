@@ -728,3 +728,23 @@ env indirection is the standard injection-safe pattern. Design the action so JUn
   `sys.path.insert(0, str(Path(__file__).parent))` + `from seam import ...`. Same fix awaits
   SPIKE-007's `007_repeat/`. Spikes aren't collected by `make test` (`testpaths=["tests"]`) but
   ARE linted by `ruff check .`, so keep spike code ruff-clean.
+
+### 2026-08-02 — DF-301 (judge domain model)
+- **Two unrelated `SCHEMA_VERSION` constants — don't conflate.** `json_sink.SCHEMA_VERSION` (the
+  `--json-out` artifact shape) and `fingerprint.SCHEMA_VERSION` (the cassette hash payload) are
+  independent. DF-301 bumps only the artifact one (1→2 for `judge_verdicts`); the cassette version
+  must NOT move or every v0.2 cassette invalidates. Bumping the artifact version has a fixed ripple:
+  `tests/unit/adapters/test_json_reporter.py` (pins `== N`) + `tests/fixtures/run_schema.json`
+  (`schema_version.const` + title). Grep both before bumping.
+- **The artifact round-trip is free for additive Trace fields.** `json_sink` dumps
+  `trace.model_dump(mode="json")` and rebuilds via `Trace.model_validate` (`deserialize_run`), so a
+  new optional `Trace` field round-trips with zero sink code — only the version const changes. The
+  `run_schema.json` `trace` def has no `additionalProperties:false`, so it already tolerated the new
+  field; I added an explicit `judge_verdicts`/`model` shape for documentation, not necessity.
+- **Rubric hash = reuse, not reinvent.** `Rubric.hash()` is `sha256(canonical_json(payload))` reusing
+  `domain/fingerprint.py`'s canonicaliser — sorted keys (stable across dict key order) but NFC-only on
+  strings (whitespace preserved → sensitive to reformatting). Writing a second hasher here would be
+  the classic judge-drift bug the ticket exists to prevent.
+- **Scope call:** kept `JudgeVerdict` to DF-301's 7 provenance fields; the `error` state (judge failure
+  ≠ score 0, per SPIKE-006 Q3) lands in DF-302 when the enricher can actually produce one — no point
+  adding a field no code path sets yet.

@@ -1,11 +1,11 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "dryfire run artifact (schema_version 1)",
+  "title": "dryfire run artifact (schema_version 2)",
   "type": "object",
   "required": ["schema_version", "generated_at", "complete", "suites"],
   "additionalProperties": false,
   "properties": {
-    "schema_version": { "const": 1 },
+    "schema_version": { "const": 2 },
     "generated_at": {
       "type": "string",
       "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$"
@@ -67,7 +67,28 @@
         "total_usage": { "$ref": "#/$defs/usage" },
         "total_cost_usd": { "type": ["number", "null"] },
         "duration_ms": { "type": "integer" },
-        "error": { "type": ["string", "null"] }
+        "error": { "type": ["string", "null"] },
+        "model": { "type": ["string", "null"] },
+        "judge_verdicts": {
+          "type": "object",
+          "additionalProperties": { "$ref": "#/$defs/judge_verdict" }
+        }
+      }
+    },
+    "judge_verdict": {
+      "type": "object",
+      "required": [
+        "score", "passed", "reasoning", "judge_model",
+        "judge_model_version", "rubric_hash", "threshold"
+      ],
+      "properties": {
+        "score": { "type": "number" },
+        "passed": { "type": "boolean" },
+        "reasoning": { "type": "string" },
+        "judge_model": { "type": "string" },
+        "judge_model_version": { "type": "string" },
+        "rubric_hash": { "type": "string" },
+        "threshold": { "type": "number" }
       }
     },
     "usage": {
