@@ -53,6 +53,9 @@ def run(
     cassette_mode: str = typer.Option(
         None, "--cassette-mode", help="auto | record | replay | off (default off)."
     ),
+    max_retries: int = typer.Option(
+        None, "--max-retries", help="Retries on transient provider errors (default 3)."
+    ),
     verbose: bool = typer.Option(False, "-v", "--verbose", help="Print traces for failing cases."),
     debug: bool = typer.Option(False, "--debug", help="Show tracebacks on internal errors."),
 ) -> None:
@@ -67,6 +70,7 @@ def run(
         reporter=reporter,
         json_out=json_out,
         cassette_mode=cassette_mode,
+        max_retries=max_retries,
         verbose=verbose,
         debug=debug,
         out=sys.stdout,

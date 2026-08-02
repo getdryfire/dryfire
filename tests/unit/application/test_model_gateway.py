@@ -28,6 +28,9 @@ class FakeGateway:
             raw={},
         )
 
+    def is_retryable(self, exc: Exception) -> bool:
+        return False
+
 
 def _accepts(gateway: ModelGateway) -> ModelGateway:
     # Structural-typing site: mypy --strict rejects a non-conforming argument here.

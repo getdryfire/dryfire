@@ -96,6 +96,10 @@ class FakeGateway:
         """Every request received, in order — how tests assert what the loop sent."""
         return self._requests
 
+    def is_retryable(self, exc: Exception) -> bool:
+        # Scripted `fails()` outcomes are deterministic, not transient — never retry.
+        return False
+
     async def complete(self, request: CompletionRequest) -> ModelResponse:
         self._requests.append(request)
         if self._calls_made >= len(self._entries):

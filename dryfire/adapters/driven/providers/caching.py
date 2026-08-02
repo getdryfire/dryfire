@@ -98,6 +98,11 @@ class CachingGateway:
         # real provider, not a "caching" pseudo-provider.
         self.name: str = inner.name
 
+    def is_retryable(self, exc: Exception) -> bool:
+        # Caching is the OUTERMOST decorator (Caching(Retrying(Real))), so this is
+        # never consulted; retries live below it. Present only for port conformance.
+        return False
+
     async def complete(self, request: CompletionRequest) -> ModelResponse:
         if self._mode == "off":
             return await self._inner.complete(request)

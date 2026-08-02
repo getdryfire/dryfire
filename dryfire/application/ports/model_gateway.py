@@ -47,3 +47,9 @@ class ModelGateway(Protocol):
     name: str
 
     async def complete(self, request: CompletionRequest) -> ModelResponse: ...
+
+    def is_retryable(self, exc: Exception) -> bool:
+        """Whether a failed `complete()` should be retried (DF-206). Classification
+        is per-provider and lives here, in the adapter — the RetryingGateway
+        decorator only asks; it never grows vendor knowledge of its own."""
+        ...

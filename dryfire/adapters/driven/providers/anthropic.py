@@ -148,3 +148,8 @@ class AnthropicGateway:
         raw = (await self._client.messages.create(**payload)).model_dump()
         latency_ms = int((time.monotonic() - start) * 1000)
         return from_wire(raw, latency_ms)
+
+    def is_retryable(self, exc: Exception) -> bool:
+        from dryfire.adapters.driven.providers.retrying import default_retryable
+
+        return default_retryable(exc)
