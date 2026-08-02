@@ -1,6 +1,6 @@
 # Progress
 
-**Last Updated:** 2026-08-01 · **Active epic:** EPIC-002 (v0.2, CI-grade)
+**Last Updated:** 2026-08-02 · **Active epic:** EPIC-002 (v0.2, CI-grade) — final ticket (DF-212)
 
 ---
 
@@ -12,8 +12,8 @@ Global tracker for dryfire. Answers three questions without digging through the 
 3. What's next?
 
 **Epic reference:** `EPIC-001.md` (v0.1, **shipped** — AC-001…AC-019) and `EPIC-002.md` (v0.2,
-active — DF-201…DF-212, tickets inline in that file). v0.1 is code-complete on `main` at version
-`0.1.0`; the PyPI publish is deliberately deferred (owner's call).
+**code-complete** — DF-201…DF-212 all implemented). `main` is at version `0.2.0`; the PyPI publish +
+`v0.2.0` tag are deliberately deferred to the owner's trigger.
 
 Update this file when work ships, phases change, or priorities shift.
 
@@ -23,64 +23,68 @@ Update this file when work ships, phases change, or priorities shift.
 
 > Actively building. Code is being written.
 
-### DF-210 — GitHub composite Action (implemented, PR open)
-Composite Action (`action.yml`) + documented workflow (`.github/workflows/example-usage.yml`) +
-`docs/ci.md`. Inputs `suites`/`cassette-mode`(default **replay**)/`reporter`/`fail-fast`/`version`;
-outputs `exit-code`/`junit-file`. Steps: setup-python → install → run → upload JUnit artifact → surface
-as a check (dorny/test-reporter, `fail-on-error: false`) → enforce dryfire's exit code last. JUnit is
-always written via `--junit-out` (independent of `reporter`) and later steps use `if: always()` so the
-report renders even on failure; inputs pass through `env:` (no `${{ }}` in `run:` bodies — injection-safe).
-- **Install without PyPI:** `version` empty → `pip install "$GITHUB_ACTION_PATH"` (the action's own pinned
-  checkout), so it works **before the deferred PyPI publish**; a set `version` installs `dryfire==<v>` from
-  PyPI. Composite (not Docker) for instant cold start.
-- **Statically validated + locally smoke-tested:** both YAMLs parse; structural asserts (composite, replay
-  default, all inputs, injection-safe, JUnit-always, exit-enforced-last); the exact `dryfire run … --junit-out`
-  the action issues works in replay against a fake suite (exit 0 + valid JUnit). README snippet (the `jobs:`
-  block) is 8 lines (< 10).
-- **`example-usage.yml` is `workflow_dispatch`-only** so it never auto-runs in dryfire's own repo (it pins
-  `csmatar/dryfire@v0.2.0`, a tag that lands with DF-212); the comment tells users to switch to
-  `push`/`pull_request`. dryfire's real gate stays `ci.yml`.
-- **Owner's-hands remainder (all four live ACs):** verified in a **throwaway repo**, cold-start < 20 s
-  measured, failing cases fail the job + JUnit renders in the PR check, keyless replay demo — these need a
-  real Actions run and can't be produced here. The action is built and ready to point a throwaway repo at
-  `csmatar/dryfire@df-210-github-action` (or `@main` post-merge). Not fabricated.
-
-### DF-211 — Passthrough mocks (`impl: pkg.mod:func`) (2026-08-02, PR #32)
-A mock rule can carry `impl: pkg.mod:func` (a fourth one-of); dryfire imports the callable and invokes it
-with the tool args, the return becomes the tool result. **Loop seam (Option A, owner-approved):** domain
-resolver returns a pure `Passthrough` marker; the loop adds one `await invoker.invoke(...)` branch (+14/−1)
-via a new async `ToolInvoker` port + `PassthroughInvoker` adapter — NOT the gateway "loop unchanged" rule.
-Sync callables run off the loop (proven non-serialising), async native; raise/timeout → error result;
-per-call 30 s timeout; validate-time positioned error for a bad `impl:`; passthrough cases excluded from
-cassette recording. Docs: `docs/mocks.md` + SPEC §4.4/§4.4a. Reserved-but-unimplemented: `on_unmocked: passthrough`.
-
-### DF-209 — JUnit XML sink (2026-08-02, PR #31)
-SPIKE-005's Candidate A as an event-sink module (`junit_sink.py`, mirroring `json_sink.py`): `render_junit`
-for `--reporter junit` (stdout) + atomic `write_junit` for a new `--junit-out PATH` file sink (parallel to
-`--json-out`; terminal + JUnit file + JSON file compose in one run). Suite → `<testsuite>`, case →
-`<testcase>`, one `<failure>` per failing case (failed assertions concatenated in the text body + one-line
-`message`); `<error>` for `provider_error`/`unmocked_tool`; `→`/`✗` literal UTF-8. Golden byte-for-byte
-fixtures + JUnit **XSD** validation (new `xmlschema` dev dep). Loop/scheduler/terminal untouched. SPEC §7
-updated. Live GitHub-Actions screenshot AC folds into DF-210.
+### DF-212 — Docs and v0.2.0 release (implemented, PR open)
+The final EPIC-002 ticket. Version bumped to **0.2.0** (`dryfire/__about__.py`). No breaking changes to the
+v0.1 spec — a frozen `tests/fixtures/v0_1_compat.eval.yaml` (every v0.1 feature) validates + runs green,
+guarded by `tests/acceptance/test_backward_compat_v01.py` in CI.
+- **README** gains an "In CI" section (the <10-line workflow, above the feature list; jobs block verbatim
+  from `example-usage.yml`), and a Documentation list pointing at the new pages.
+- **`docs/cassettes.md`** (new): record/replay, the modes, key composition, invalidation — including **why a
+  tool's description is part of the key** (sensitivity wins; a description is part of the prompt).
+- **`docs/ci.md`** (from DF-210): exit codes, replay, JUnit, Action inputs.
+- **`COMPARISON.md` re-verified 2026-08-02** against promptfoo.dev and deepeval.com: the OpenAI→Promptfoo
+  acquisition (March 2026) **confirmed true** (kept, not dropped); **added a `vs DeepEval` section** (the
+  fair contrast: DeepEval is pytest-native and evaluates trajectories/tool-calls too, but via LLM-as-judge
+  metrics on an instrumented agent — dryfire's differentiator is determinism + no judge + no instrumentation).
+- **CHANGELOG** `[0.2.0]` complete, leading with "OpenAI landed with zero changes to the loop."
+- **Owner-gated (not done here):** the actual **PyPI publish** and **`git tag v0.2.0`** (owner's triggers);
+  the `uvx dryfire@0.2.0` AC depends on the publish. Gate green (462 tests + 2 live-skipped).
 
 ---
 
 ## Up Next
 
-> Committed work, ready to start. Ordered by the EPIC-002 dependency graph (`EPIC-002.md`).
+> All EPIC-002 tickets are implemented. What remains is **owner-gated**, not buildable here:
 
-1. **DF-212** v0.2 release (the last EPIC-002 ticket; needs all): README CI section (lift the <10-line
-   snippet verbatim), `docs/cassettes.md`, finalize `docs/ci.md`, re-verify `COMPARISON.md` vs
-   Promptfoo/DeepEval, backward-compat test, tag v0.2.0. **Blocks on the deferred PyPI publish** for the
-   `uvx dryfire@0.2.0` AC (owner's call).
+1. **Publish v0.2.0 to PyPI** and **`git tag v0.2.0 && git push origin v0.2.0`** (the release scaffolding —
+   Trusted-Publishing workflow, CHANGELOG, version — is in place). This satisfies the `uvx dryfire@0.2.0` AC.
+2. **v0.1 PyPI publish** is still deferred (owner's call) — v0.1/v0.2 both ship together whenever the owner
+   pulls the trigger.
 
-**Owner's-hands queue (live verification deferred across tickets):** DF-210 throwaway-repo run
-(cold-start < 20 s, keyless replay, PR-check render) — which also captures SPIKE-005/DF-209's live JUnit
-rendering. Fold into the DF-212 release checklist.
+**Done (owner-verified):** the DF-210 throwaway-repo run — cold-start ~7 s (< 20 s), keyless replay green,
+a failing case red with the JUnit failure rendered in the PR check (also the SPIKE-005/DF-209 live capture).
 
 ---
 
 ## Shipped
+
+### DF-210 — GitHub composite Action (2026-08-02, PR #33) — **owner-verified in a throwaway repo**
+Composite `action.yml` (install from `github.action_path`, works pre-PyPI) + `example-usage.yml` + `docs/ci.md`.
+Replay default, JUnit-always via `--junit-out`, `if: always()` so the report renders on failure, exit-code
+enforced last, inputs via `env:` (injection-safe), dorny/test-reporter pinned to a commit SHA. **Verified
+live** by the owner: separate repo, cold-start ~7 s, failing case fails the job, JUnit renders in the PR check,
+keyless replay.
+
+### fix — `dryfire run` globs its CLI suite paths (2026-08-02, PR #34)
+Surfaced by DF-210's throwaway-repo run: `dryfire run "evals/**/*.eval.yaml"` treated the glob as a literal
+path (exit 2, "internal error"). `_load` now globs CLI paths (relative to cwd, `**` recursive), consistent
+with `dryfire.yaml`; a non-matching pattern is a clean config error.
+
+### DF-211 — Passthrough mocks (`impl: pkg.mod:func`) (2026-08-02, PR #32)
+A mock rule can carry `impl: pkg.mod:func`; dryfire imports the callable and invokes it with the tool args.
+**Loop seam (Option A, owner-approved):** domain resolver returns a pure `Passthrough` marker; the loop adds
+one `await invoker.invoke(...)` branch (+14/−1) via a new async `ToolInvoker` port + `PassthroughInvoker`
+adapter. Sync off-loop (non-serialising), async native; raise/timeout → error result; per-call 30 s timeout;
+validate-time positioned error; passthrough cases excluded from cassette recording. `docs/mocks.md` + SPEC
+§4.4/§4.4a. Reserved-but-unimplemented: `on_unmocked: passthrough`.
+
+### DF-209 — JUnit XML sink (2026-08-02, PR #31)
+SPIKE-005's Candidate A as an event-sink module (`junit_sink.py`): `render_junit` (`--reporter junit`) +
+atomic `write_junit` (`--junit-out PATH`, parallel to `--json-out`). One `<failure>` per failing case (failed
+assertions concatenated in the text body + one-line `message`); `<error>` for `provider_error`/`unmocked_tool`;
+`→`/`✗` literal UTF-8. Golden byte-for-byte fixtures + JUnit XSD validation (new `xmlschema` dev dep).
+Loop/scheduler/terminal untouched. SPEC §7 updated.
+
 
 > Working in the codebase. Committed and tested.
 
