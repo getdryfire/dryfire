@@ -325,12 +325,26 @@ def _uses_passthrough(planned: PlannedCase) -> bool:
     )
 
 
+def _caching_factory(
+    inner: ModelGateway, store: ResponseCache, mode: CassetteMode, suite: str, case: str
+) -> Callable[[int], ModelGateway]:
+    """A per-repetition CachingGateway builder (DF-306). Each repetition gets a fresh
+    gateway carrying its `repeat_index`, so `repeat: N` records/replays N distinct
+    cassettes; the shared `inner` is reused (a real provider is safe to share). At
+    `repeat: 1` this is called once with index 0 → the v0.2 key, byte-for-byte."""
+    def build(repeat_index: int) -> ModelGateway:
+        return CachingGateway(
+            inner, store, mode=mode, suite=suite, case=case, repeat_index=repeat_index
+        )
+    return build
+
+
 def _wrap_cases(
     suites: list[PlannedSuite], *, inner_for: Any, store: ResponseCache, mode: CassetteMode,
     exclude_passthrough: bool = False, out: TextIO | None = None,
 ) -> list[PlannedSuite]:
-    """Wrap every real-provider case (one with no per-case gateway) in a
-    CachingGateway. `inner_for(case)` supplies the wrapped gateway; fake cases,
+    """Give every real-provider case (one with no per-case gateway) a per-repetition
+    CachingGateway factory. `inner_for(case)` supplies the wrapped gateway; fake cases,
     which already carry their scripted gateway, are left untouched.
 
     `exclude_passthrough` (recording modes) leaves a case that uses passthrough
@@ -349,11 +363,10 @@ def _wrap_cases(
                             f"mocks — excluded from cassette recording (results aren't cacheable)\n"
                         )
                 else:
-                    caching = CachingGateway(
-                        inner_for(planned), store, mode=mode,
-                        suite=suite.name, case=planned.case.case_name,
+                    factory = _caching_factory(
+                        inner_for(planned), store, mode, suite.name, planned.case.case_name
                     )
-                    planned = replace(planned, gateway=caching)
+                    planned = replace(planned, gateway_factory=factory)
             cases.append(planned)
         wrapped.append(replace(suite, cases=cases))
     return wrapped

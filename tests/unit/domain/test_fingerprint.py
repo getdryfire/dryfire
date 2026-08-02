@@ -22,7 +22,7 @@ from typing import Any
 
 import pytest
 
-from dryfire.domain.fingerprint import fingerprint
+from dryfire.domain.fingerprint import fingerprint, parse_storage_key, storage_key
 
 BASE: dict[str, Any] = dict(
     provider="anthropic",
@@ -265,3 +265,30 @@ def test_stable_across_a_real_three_turn_conversation() -> None:
     first = fp(messages=convo("toolu_aaa111", "toolu_bbb222"))
     second = fp(messages=convo("toolu_zzz999", "toolu_yyy888"))
     assert first == second
+
+
+# ==========================================================================
+# DF-306 — repetition-aware storage key (the hash above is untouched)
+# ==========================================================================
+
+
+def test_storage_key_repeat_zero_is_the_bare_fingerprint() -> None:
+    # repeat: 1 / index 0 keys byte-for-byte as v0.2, so existing cassettes stay valid.
+    assert storage_key(BASELINE, 0) == BASELINE
+
+
+def test_storage_key_is_distinct_per_repetition() -> None:
+    keys = [storage_key(BASELINE, i) for i in range(5)]
+    assert len(set(keys)) == 5
+    assert keys[0] == BASELINE
+    assert all(k.startswith(BASELINE + "#") for k in keys[1:])
+
+
+def test_storage_key_round_trips() -> None:
+    for i in range(4):
+        assert parse_storage_key(storage_key(BASELINE, i)) == (BASELINE, i)
+
+
+def test_storage_key_rejects_negative_index() -> None:
+    with pytest.raises(ValueError):
+        storage_key(BASELINE, -1)

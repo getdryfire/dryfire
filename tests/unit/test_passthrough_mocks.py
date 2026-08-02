@@ -173,9 +173,11 @@ def test_passthrough_case_is_excluded_from_cassette_recording(tmp_path: Path) ->
     )
 
     got = {c.case.case_name: c for c in wrapped[0].cases}
-    # The passthrough case is NOT wrapped in a CachingGateway — nothing is recorded.
-    assert not isinstance(got["pass_through"].gateway, CachingGateway)
-    # A normal case still gets cached as usual.
-    assert isinstance(got["plain"].gateway, CachingGateway)
+    # The passthrough case is NOT given a caching factory — nothing is recorded (DF-306:
+    # cassette wrapping is now a per-repetition gateway factory, not a single gateway).
+    assert got["pass_through"].gateway_factory is None
+    # A normal case still gets a caching factory that yields a CachingGateway.
+    assert got["plain"].gateway_factory is not None
+    assert isinstance(got["plain"].gateway_factory(0), CachingGateway)
     # The exclusion is visible, not silent.
     assert "pass_through" in out.getvalue() and "passthrough" in out.getvalue().lower()
