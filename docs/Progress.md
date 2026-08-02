@@ -23,30 +23,36 @@ Update this file when work ships, phases change, or priorities shift.
 
 > Actively building. Code is being written.
 
-### DF-211 — Passthrough mocks (`impl: pkg.mod:func`) (implemented, PR open)
-Implements SPIKE-004's verdict. A mock rule can carry `impl: pkg.mod:func` (a fourth one-of alongside
-`return`/`error`/`sequence`); dryfire imports the callable and invokes it with the tool args, and the
-return becomes the tool result. Full vertical slice, TDD'd layer by layer, gate green (458 tests + 2
-live-skipped), `-W error` clean, dogfood OK. End-to-end smoke: a real CWD-resolved impl ran through the
-loop and passed its assertions; a bad `impl:` gave a positioned `validate` error (line:col + caret).
-- **The loop decision (Option A, owner-approved 2026-08-02):** "keep `loop.py` frozen" and DF-211's
-  "concurrent passthroughs don't serialise" AC are mutually exclusive — the loop resolves tools with a
-  **sync** `resolver.resolve(call)` on one shared event loop, so non-blocking async invocation *requires*
-  an `await` at that seam. Approved the **one-branch** change: domain resolver returns a `Passthrough`
-  marker (stays pure); the loop adds `if isinstance(resolved, Passthrough): resolved = await
-  invoker.invoke(resolved, call)` via a new async **`ToolInvoker` port** + driven `PassthroughInvoker`
-  adapter. `loop.py` diff is +14/−1; this is NOT the gateway "loop unchanged" rule (DF-201/204 only).
-- **Execution model (SPIKE-004):** sync callables run off the loop (`asyncio.to_thread`, proven not to
-  serialise 4 concurrent), async awaited natively; raise/timeout → error result, run continues; per-call
-  30 s timeout (per-rule `timeout_s`); `func(args: dict)` convention.
-- **Validate-time resolution:** new loader pre-pass 3 (`check_passthrough_impls`) resolves every `impl:`
-  and reports a bad one as a positioned spec error (exit 2), zero network — mirrors the assertion-kind check.
-- **Cassette exclusion:** `_wrap_cases(exclude_passthrough=True)` leaves a passthrough case unwrapped by the
-  CachingGateway (results aren't cacheable — SPIKE-004 Q4) and prints a visible note.
-- **Docs:** new `docs/mocks.md` (with SPIKE-004's security paragraph); SPEC §4.4 + new §4.4a.
-- **Loose end flagged for owner:** `on_unmocked: passthrough` (a *global* fallback) is a reserved enum
-  value but NOT implemented — the per-tool `impl:` rule is the surface (SPIKE-004's recommended option b).
-  Documented as reserved; not a silent trap beyond the existing null-fallback behaviour.
+### DF-210 — GitHub composite Action (implemented, PR open)
+Composite Action (`action.yml`) + documented workflow (`.github/workflows/example-usage.yml`) +
+`docs/ci.md`. Inputs `suites`/`cassette-mode`(default **replay**)/`reporter`/`fail-fast`/`version`;
+outputs `exit-code`/`junit-file`. Steps: setup-python → install → run → upload JUnit artifact → surface
+as a check (dorny/test-reporter, `fail-on-error: false`) → enforce dryfire's exit code last. JUnit is
+always written via `--junit-out` (independent of `reporter`) and later steps use `if: always()` so the
+report renders even on failure; inputs pass through `env:` (no `${{ }}` in `run:` bodies — injection-safe).
+- **Install without PyPI:** `version` empty → `pip install "$GITHUB_ACTION_PATH"` (the action's own pinned
+  checkout), so it works **before the deferred PyPI publish**; a set `version` installs `dryfire==<v>` from
+  PyPI. Composite (not Docker) for instant cold start.
+- **Statically validated + locally smoke-tested:** both YAMLs parse; structural asserts (composite, replay
+  default, all inputs, injection-safe, JUnit-always, exit-enforced-last); the exact `dryfire run … --junit-out`
+  the action issues works in replay against a fake suite (exit 0 + valid JUnit). README snippet (the `jobs:`
+  block) is 8 lines (< 10).
+- **`example-usage.yml` is `workflow_dispatch`-only** so it never auto-runs in dryfire's own repo (it pins
+  `csmatar/dryfire@v0.2.0`, a tag that lands with DF-212); the comment tells users to switch to
+  `push`/`pull_request`. dryfire's real gate stays `ci.yml`.
+- **Owner's-hands remainder (all four live ACs):** verified in a **throwaway repo**, cold-start < 20 s
+  measured, failing cases fail the job + JUnit renders in the PR check, keyless replay demo — these need a
+  real Actions run and can't be produced here. The action is built and ready to point a throwaway repo at
+  `csmatar/dryfire@df-210-github-action` (or `@main` post-merge). Not fabricated.
+
+### DF-211 — Passthrough mocks (`impl: pkg.mod:func`) (2026-08-02, PR #32)
+A mock rule can carry `impl: pkg.mod:func` (a fourth one-of); dryfire imports the callable and invokes it
+with the tool args, the return becomes the tool result. **Loop seam (Option A, owner-approved):** domain
+resolver returns a pure `Passthrough` marker; the loop adds one `await invoker.invoke(...)` branch (+14/−1)
+via a new async `ToolInvoker` port + `PassthroughInvoker` adapter — NOT the gateway "loop unchanged" rule.
+Sync callables run off the loop (proven non-serialising), async native; raise/timeout → error result;
+per-call 30 s timeout; validate-time positioned error for a bad `impl:`; passthrough cases excluded from
+cassette recording. Docs: `docs/mocks.md` + SPEC §4.4/§4.4a. Reserved-but-unimplemented: `on_unmocked: passthrough`.
 
 ### DF-209 — JUnit XML sink (2026-08-02, PR #31)
 SPIKE-005's Candidate A as an event-sink module (`junit_sink.py`, mirroring `json_sink.py`): `render_junit`
@@ -63,10 +69,14 @@ updated. Live GitHub-Actions screenshot AC folds into DF-210.
 
 > Committed work, ready to start. Ordered by the EPIC-002 dependency graph (`EPIC-002.md`).
 
-1. **DF-210** GitHub composite Action (needs DF-209; unblocked). Must be tested in a throwaway repo
-   (owner's hands) — that run also captures the SPIKE-005/DF-209 live JUnit rendering.
-2. **DF-212** v0.2 release (needs all): README CI section, `docs/cassettes.md`, `docs/ci.md`, re-verify
-   `COMPARISON.md`, tag v0.2.0.
+1. **DF-212** v0.2 release (the last EPIC-002 ticket; needs all): README CI section (lift the <10-line
+   snippet verbatim), `docs/cassettes.md`, finalize `docs/ci.md`, re-verify `COMPARISON.md` vs
+   Promptfoo/DeepEval, backward-compat test, tag v0.2.0. **Blocks on the deferred PyPI publish** for the
+   `uvx dryfire@0.2.0` AC (owner's call).
+
+**Owner's-hands queue (live verification deferred across tickets):** DF-210 throwaway-repo run
+(cold-start < 20 s, keyless replay, PR-check render) — which also captures SPIKE-005/DF-209's live JUnit
+rendering. Fold into the DF-212 release checklist.
 
 ---
 
