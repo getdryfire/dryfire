@@ -2,7 +2,7 @@
 # gate (that's ci.yml). The `jobs:` block below is the README snippet, verbatim.
 #
 # The trigger here is `workflow_dispatch` (manual) on purpose: this file lives in
-# dryfire's own repo, and it pins `csmatar/dryfire@v0.2.0` (the tag lands with the
+# dryfire's own repo, and it pins `getdryfire/dryfire@v0.2.0` (the tag lands with the
 # release), so it must not auto-run here. IN YOUR REPO, replace the trigger with:
 #
 #   on:
@@ -28,6 +28,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: csmatar/dryfire@v0.2.0
+      - uses: getdryfire/dryfire@v0.2.0
         with:
           suites: "evals/**/*.eval.yaml"

@@ -87,5 +87,5 @@ First release: the v0.1 trajectory runner (EPIC-001). Anthropic-only, local-firs
   `compare`, and cost/latency assertions are planned for v0.2+.
 - Cost is advisory; stale pricing is an accepted, documented limitation.
 
-[0.2.0]: https://github.com/csmatar/dryfire/releases/tag/v0.2.0
-[0.1.0]: https://github.com/csmatar/dryfire/releases/tag/v0.1.0
+[0.2.0]: https://github.com/getdryfire/dryfire/releases/tag/v0.2.0
+[0.1.0]: https://github.com/getdryfire/dryfire/releases/tag/v0.1.0

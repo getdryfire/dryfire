@@ -1,6 +1,6 @@
 # dryfire
 
-[![CI](https://github.com/csmatar/dryfire/actions/workflows/ci.yml/badge.svg)](https://github.com/csmatar/dryfire/actions/workflows/ci.yml)
+[![CI](https://github.com/getdryfire/dryfire/actions/workflows/ci.yml/badge.svg)](https://github.com/getdryfire/dryfire/actions/workflows/ci.yml)
 
 **Regression testing for LLM agents. Assert on the _trajectory_ — the ordered tool calls — not the final text.**
 
@@ -86,7 +86,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: csmatar/dryfire@v0.2.0
+      - uses: getdryfire/dryfire@v0.2.0
         with:
           suites: "evals/**/*.eval.yaml"
 ```

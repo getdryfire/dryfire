@@ -58,6 +58,14 @@ a failing case red with the JUnit failure rendered in the PR check (also the SPI
 
 ## Shipped
 
+### Repo → `getdryfire/dryfire` (2026-08-02) — pre-release
+Canonical home moved from the personal `csmatar/dryfire` to the **`getdryfire` org** (`dryfire` was taken)
+so the public Action reference reads `uses: getdryfire/dryfire@v0.2.0`, not a username. Owner **created the
+org and transferred the repo**; the 8 active references were updated (README badge + snippet, `docs/ci.md`,
+`example-usage.yml`, `pyproject.toml` Repository, CHANGELOG tag links) and the working remote repointed to
+`getdryfire/dryfire`. **Still owner-gated:** repoint PyPI Trusted Publishing at `getdryfire/dryfire` before
+publishing. The historical rename note below (`csmatar/dryfire`, PR #19) is left intact as accurate record.
+
 ### DF-210 — GitHub composite Action (2026-08-02, PR #33) — **owner-verified in a throwaway repo**
 Composite `action.yml` (install from `github.action_path`, works pre-PyPI) + `example-usage.yml` + `docs/ci.md`.
 Replay default, JUnit-always via `--junit-out`, `if: always()` so the report renders on failure, exit-code
