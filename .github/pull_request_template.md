@@ -4,8 +4,8 @@ Briefly describe what changed and why.
 
 ## Scope
 
-- Ticket / spec reference: <!-- e.g. AC-002 · SPEC.md §3 · EPIC-001 -->
-- Layer(s) touched: <!-- domain / application / adapters / spikes / docs / toolchain -->
+- Ticket / spec reference: <!-- e.g. SPEC.md §3 · #issue -->
+- Layer(s) touched: <!-- domain / application / adapters / docs / toolchain -->
 - Out of scope:
 
 ## Changes
@@ -34,7 +34,7 @@ make docker-check   # optional: same gate in a clean Linux container
 
 ## Scope discipline
 
-- [ ] Nothing from EPIC-001 §4 (out of scope: OpenAI, cassettes, retries, judge, compare, export, …) was built
+- [ ] Nothing deferred to v0.3+ (llm_judge, compare, HTML report, repeat, export, streaming, any server/DB) was built
 - [ ] No ARCHITECTURE §11 tripwires introduced (repository class, event bus, DI container, ABC-where-Protocol-works, …)
 
 ## Public contracts

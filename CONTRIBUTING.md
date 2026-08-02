@@ -44,8 +44,8 @@ CI runs `checks` (Python 3.12 and 3.13) and a separate `dogfood` job. All three 
   `if kind == …` chains.
 - **Test doubles only at port boundaries** (`FakeGateway`, …); never mock a domain object,
   construct it.
-- **Scope discipline.** v0.1 is Anthropic-only; OpenAI, cassettes, JUnit, retries,
-  `llm_judge`, `compare`, and friends are explicitly deferred (see `EPIC-001.md`). If a
+- **Scope discipline.** `llm_judge`, `compare`, an HTML report, `repeat`, export, streaming,
+  and any server/database are deferred to v0.3+ (see CLAUDE.md "Scope discipline"). If a
   change seems to need one, open an issue first.
 
 ## Pull requests

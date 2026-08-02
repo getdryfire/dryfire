@@ -1,6 +1,6 @@
 # dryfire — Architecture
 
-**Companion to:** `SPEC.md` (what it does) · `EPIC-001.md` + `TICKETS-*.md` (how it gets built)
+**Companion to:** `SPEC.md` (what it does)
 **This document:** how the code is shaped, and what the compiler and CI enforce.
 
 ---

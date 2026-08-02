@@ -27,11 +27,6 @@ in compose. Otherwise mounting the repo into the container shadows the Linux ven
 host's macOS one and every binary breaks. (terms-pilot solves this with selective per-dir
 mounts; a relocated venv is simpler for a single-package repo.)
 
-### Frozen spikes stay frozen
-`spikes/` is ruff-excluded (`extend-exclude`). They are verified reference implementations
-(19 passing fingerprint tests); reformatting or "fixing" them risks drift from what the
-spikes actually proved.
-
 ---
 
 ## What Doesn't Work
@@ -57,8 +52,8 @@ group — so plain `uv sync` installs no pytest/ruff/mypy. Always `uv sync --all
 - Banned synonyms (ARCHITECTURE §3): don't say test/example for Case, log/result for
   Trace, step for Turn, client/service for Gateway. A CI check will eventually enforce
   this; write with the ubiquitous language now.
-- Exit codes 0/1/2/3 are contractual (SPEC §7.1). `spikes/render.py` already honors
-  exit 2 for spec errors — `make spike-errors` masks it with `|| true` deliberately.
+- Exit codes 0/1/2/3 are contractual (SPEC §7.1): 0 pass · 1 assertion failure · 2 spec/config
+  error · 3 provider error. A spec error must be exit 2, never a crash/traceback.
 
 ---
 

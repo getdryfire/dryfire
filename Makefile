@@ -55,27 +55,6 @@ typecheck: ## Mypy --strict on dryfire/ (config in pyproject.toml)
 arch: ## Enforce the five architecture contracts (.importlinter)
 	uv run lint-imports
 
-## Spikes
-.PHONY: spike-tests
-spike-tests: ## SPIKE-002 fingerprint regression suite (19 tests)
-	uv run pytest spikes/test_stability.py -q
-
-.PHONY: spike-probe
-spike-probe: ## SPIKE-001 adapter probe, offline canned payloads
-	uv run python spikes/probe.py --provider anthropic --dry-run
-
-.PHONY: spike-errors
-spike-errors: ## SPIKE-003 positioned spec errors demo (exits 2 by design)
-	uv run python spikes/render.py spikes/sample_broken.eval.yaml || true
-
-.PHONY: spike-passthrough
-spike-passthrough: ## SPIKE-004 passthrough execution model (17 tests)
-	uv run pytest spikes/004_passthrough/test_passthrough.py -q
-
-.PHONY: spike-junit
-spike-junit: ## SPIKE-005 JUnit mapping — offline-decidable facts (asserts)
-	uv run python spikes/005_junit/verify.py
-
 ## Dependencies
 .PHONY: add
 add: ## Add a runtime dep (usage: make add pkg=httpx)
