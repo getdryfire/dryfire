@@ -23,22 +23,29 @@ Update this file when work ships, phases change, or priorities shift.
 
 > Actively building. Code is being written.
 
-### DF-208 — Extended assertions (`min_tool_calls`, `final_matches`, `final_json`) (implemented, PR open)
-Three assertions (SPEC §6.2), one new file (`domain/assertions/extended.py`) + one registry line. Gate
-green (409 tests + 2 live-skipped), loop unchanged.
-- **`min_tool_calls`** `{tool, count}` — at least N calls (the retry-recovery assertion; end-to-end test
-  against a `sequence` error-then-success mock). **`final_matches`** — a regex on the final text,
-  **compiled at validate time** (an invalid pattern is a positioned spec error, exit 2, before any run).
-- **`final_json` is pydantic-native** (design decision): a lightweight shape (`required` keys +
-  `fields: {name: type}`) is compiled to a `pydantic.create_model` and validated — **no new dependency**,
-  strictly domain-pure, and pydantic's structured errors cleanly distinguish *unparseable JSON* from a
-  *shape violation*. Documented as a JSON *shape*, not full JSON Schema (SPEC §6.2 amended). We chose this
-  over adding `jsonschema` as a core dep on a package whose pitch is a lean, fast install.
-- **`final_matches` is uncapped by design** (design decision): hard-capping a catastrophic regex is
-  impossible in-process — stdlib `re` holds the GIL during a match, so thread/signal timeouts never fire
-  (discovered when the thread-timeout attempt hung), and an input cap is useless (exponential in tiny
-  inputs). So a pathological pattern is the user's own regex in their own suite — the same no-sandbox
-  stance dryfire takes on passthrough mocks (SPIKE-004). Documented, not hidden.
+### SPIKE-004 — Passthrough mock execution model (complete, PR open)
+Half-day spike settling the execution model for `impl: pkg.mod:func` passthrough mocks — the deliverable
+DF-211 implements. Prototype in `spikes/004_passthrough/` (`resolver.py`, `invoke.py`, `sample_impls.py`,
+17 proving tests via `make spike-passthrough`) + `FINDINGS.md` with the **Verdict** and answers to all five
+questions. Package untouched.
+- **Verdict:** resolve via `importlib` + `getattr` (CWD on `sys.path`; editable installs reduce to the
+  sys.path case) **at validate time** so a bad `impl:` is a positioned spec error (exit 2) before any API
+  spend. **Sync callables run in a thread** (`asyncio.to_thread`), async awaited natively — users never
+  forced to write async. A raise → `ToolResult(is_error=True)`, run continues. **Per-call timeout, default
+  30 s.** Calling convention `func(args: dict)` (JSON keys aren't valid identifiers, so no `**kwargs`).
+- **Load-bearing finding:** `asyncio.wait_for` bounds the *wait*, not the *work* — Python can't kill a
+  thread, so a wedged **sync** impl runs to completion. While the loop lives the scheduler is bounded (other
+  cases proceed); at loop shutdown `asyncio.run` joins the abandoned thread, so the *process* pays its full
+  runtime once. Async impls cancel cleanly (no thread). Both directions proven by tests. Documented as the
+  honest cost of the no-sandbox stance, not hidden.
+- **Q4 (cacheability):** confirmed **not cacheable** — a `create_ticket`/`now()` impl makes replay a lie;
+  a passthrough case is excluded from cassette *recording* with a visible note (DF-211 AC).
+- **Flagged for DF-211:** invocation is I/O → an adapter behind a new async `ToolInvoker` port; the domain
+  resolver stays pure by returning a `Passthrough` *marker*. This forces **one contained branch in
+  `application/loop.py`** (it's already `async`). That is **not** the epic's gateway "loop unchanged" rule
+  (DF-201/204 only) — but the prior session froze the loop for all EPIC-002 work, so DF-211 needs the
+  owner's explicit sign-off before touching it. Open surface question (where `impl:` attaches in YAML) left
+  to DF-211; recommend a per-tool rule field.
 
 ---
 
@@ -46,8 +53,8 @@ green (409 tests + 2 live-skipped), loop unchanged.
 
 > Committed work, ready to start. Ordered by the EPIC-002 dependency graph (`EPIC-002.md`).
 
-1. **SPIKE-004** (passthrough execution model) → **DF-211** · **SPIKE-005** (JUnit mapping) → **DF-209**.
-   Two half-day spikes, then their tickets.
+1. **DF-211** (passthrough mocks) — SPIKE-004 settled the model; implement its verdict. · **SPIKE-005**
+   (JUnit mapping) → **DF-209**.
 2. **DF-210** GitHub Action (needs DF-209) · **DF-212** v0.2 release (needs all).
 
 ---
@@ -55,6 +62,15 @@ green (409 tests + 2 live-skipped), loop unchanged.
 ## Shipped
 
 > Working in the codebase. Committed and tested.
+
+### DF-208 — Extended assertions (`min_tool_calls`, `final_matches`, `final_json`) (2026-08-01, PR #28)
+Three assertions (SPEC §6.2), one new file (`domain/assertions/extended.py`) + one registry line; loop
+unchanged. `min_tool_calls` `{tool, count}` is the retry-recovery assertion. `final_matches` compiles its
+regex **at validate time** (bad pattern = spec error, exit 2). `final_json` is **pydantic-native** (a
+`required` + `fields` shape → `pydantic.create_model`) — no `jsonschema` dep, domain-pure, clean
+unparseable-vs-shape errors. `final_matches` is **uncapped by design**: stdlib `re` holds the GIL, so an
+in-process match timeout is impossible — a pathological pattern is the user's own regex (the no-sandbox
+stance, same as [SPIKE-004] passthrough).
 
 ### DF-207 — Budget assertions (2026-08-01, PR #27)
 `cost_under` (fails loudly + names the model on an unpriced model — advisory cost, SPEC §3.2) and
