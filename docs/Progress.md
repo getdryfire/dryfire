@@ -87,7 +87,14 @@ Update this file when work ships, phases change, or priorities shift.
 >   `prune` keeps/removes repetition cassettes by case validity (directory-based → no change). End-to-end
 >   record→replay through `composition.run`: 5 distinct cassettes, 0 live calls on replay. 21 new tests; 544 total.
 > - **This closes the `repeat` sub-track (SPIKE-007 + DF-305/306).**
-> - **Next:** DF-307 (`compare` execution) → DF-308 (compare matrix output) → DF-309 (HTML report) → DF-310 (release).
+> - **DF-307 (`compare` execution) — DONE.** `application/usecases/compare.py` is a pure, injected
+>   orchestrator (`run_compare(axis, labels, run_one)`) OVER `run_suites` — no second runner; per column:
+>   pass rate / total cost / mean latency / mean turns; a raised label is an isolated failed column, order
+>   is request order. `composition.compare()` plans per label (model override, or `system` override for
+>   `--prompts`), shows a pre-execution run estimate, and gates above a threshold (bypass `--yes`);
+>   `--models`+`--prompts` refused. CLI `dryfire compare`. Basic per-column text output (DF-308 makes it a
+>   matrix). `repeat`×`compare` allowed+warned via this estimate (SPIKE-007). 13 new tests; 557 total.
+> - **Next:** DF-308 (compare matrix output — the screenshot artifact) → DF-309 (HTML report) → DF-310 (release).
 
 ---
 

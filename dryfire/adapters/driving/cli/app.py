@@ -113,3 +113,39 @@ def trace(
         address, paths or [], model=model, debug=debug, out=sys.stdout, err=sys.stderr
     )
     raise typer.Exit(code)
+
+
+def _csv(value: str | None) -> list[str]:
+    """Split a comma-separated CLI value into trimmed, non-empty items."""
+    return [item.strip() for item in value.split(",") if item.strip()] if value else []
+
+
+@app.command()
+def compare(
+    paths: list[str] = typer.Argument(None, help="Suite files to compare."),
+    models: str = typer.Option(None, "--models", help="Comma-separated models (one axis)."),
+    prompts: str = typer.Option(
+        None, "--prompts", help="Comma-separated prompt files (the other axis)."
+    ),
+    concurrency: int = typer.Option(None, "--concurrency", help="Concurrent cases (default 4)."),
+    cassette_mode: str = typer.Option(
+        None, "--cassette-mode", help="auto | record | replay | off (default off)."
+    ),
+    max_retries: int = typer.Option(None, "--max-retries", help="Retries (default 3)."),
+    yes: bool = typer.Option(False, "--yes", help="Skip the cost-confirmation prompt."),
+    debug: bool = typer.Option(False, "--debug", help="Show tracebacks on internal errors."),
+) -> None:
+    """Run one suite across N models (or prompt variants) and print the matrix."""
+    code = composition.compare(
+        paths or [],
+        models=_csv(models),
+        prompts=_csv(prompts),
+        concurrency=concurrency,
+        cassette_mode=cassette_mode,
+        max_retries=max_retries,
+        yes=yes,
+        debug=debug,
+        out=sys.stdout,
+        err=sys.stderr,
+    )
+    raise typer.Exit(code)

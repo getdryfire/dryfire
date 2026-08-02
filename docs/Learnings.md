@@ -874,3 +874,22 @@ env indirection is the standard injection-safe pattern. Design the action so JUn
   that asserted the old shape (`isinstance(planned.gateway, CachingGateway)` → `planned.gateway_factory(0)`).
 - Repo convention: async gateways are driven with `asyncio.run(...)` in sync tests, NOT `@pytest.mark.asyncio`
   (pytest-asyncio isn't a dep).
+
+### 2026-08-02 — DF-307 (compare execution)
+- **compare is orchestration OVER run_suites, not a second runner.** The pure use case
+  `run_compare(axis, labels, run_one)` takes an injected `run_one(label)` coroutine and folds RunResults
+  into columns; composition's `run_one` reuses the SAME plan → wrap → run_suites path `run` uses (a small
+  `_compare_run_one` helper). `git diff` shows no new execution path — run_suites is untouched.
+- **A failing model is a failed column, two ways:** if `run_one` RAISES (planning error) → `run_compare`
+  catches it into a column with `error` set (application-level, tested with a fake). If the model is just
+  bad (API rejects it) → its cases get `provider_error` and the column completes but the compare exit code
+  is 3. Either way the other columns finish — never an aborted run.
+- **Cost estimate = run count, not a guessed dollar figure.** Tokens are unknowable pre-run, so the honest
+  estimate is `labels × Σ(case repeat)` (precise); the confirmation gate is built on it. Above the
+  threshold (and not free `replay`) without `--yes` → refuse with exit 2 in a non-TTY, so CI can't wander
+  into a huge bill. `--yes` bypasses.
+- **`--prompts` reuses a new `system` override in `resolve`** (explicit `"system" in ov` check, not `_pick`,
+  because a system prompt may legitimately be None). `--models` and `--prompts` together are refused (v0.3).
+- **Gotcha: two `test_compare.py` files (unit + integration) collide** under pytest's default import mode
+  (no `__init__.py` in tests) — duplicate module name. Renamed the integration one to `test_compare_e2e.py`.
+  Keep test basenames unique across the tree.
