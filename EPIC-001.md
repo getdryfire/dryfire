@@ -1,7 +1,7 @@
 # EPIC-001 — dryfire v0.1: Local-first agent trajectory eval runner
 
 **Spec:** `SPEC.md` §3–§8, §9 (v0.1)
-**Status:** Spikes complete — see `SPIKE-REPORT.md`. Ready for AC-001.
+**Status:** Shipped (v0.1 → v0.2 on PyPI).
 **Target:** shippable to PyPI
 
 ---
@@ -106,9 +106,8 @@ Rules for writing these prompts:
 
 ## 7. Spike tickets
 
-> **All three executed.** Verdicts in `spikes/*/FINDINGS.md`, consolidated in
-> `SPIKE-REPORT.md`. Six amendments applied to SPEC.md. One outstanding item: SPIKE-001's
-> live probe run (needs API keys) must complete before AC-002 closes.
+> **All three executed** and their verdicts applied — six amendments to SPEC.md. The reference
+> prototypes live in `spikes/` (excluded from ruff); their code was lifted into the package.
 
 
 ### SPIKE-001 — Provider normalization contract

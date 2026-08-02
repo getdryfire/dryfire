@@ -1,10 +1,5 @@
 # dryfire — Technical Product Specification
 
-> **Working name:** `dryfire`. It appears as the package name, CLI binary, and config
-> directory `.dryfire/`. If renamed, it is a single find-replace across the repo plus
-> `pyproject.toml`. Do not hardcode the name in user-facing strings — read it from
-> `dryfire.__about__.APP_NAME`.
-
 **Status:** Draft 1 — pre-implementation
 **Owner:** Carlos
 **License:** MIT

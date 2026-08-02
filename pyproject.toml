@@ -57,7 +57,7 @@ packages = ["dryfire"]
 [tool.ruff]
 line-length = 100
 target-version = "py312"
-# Spikes are frozen reference implementations (see SPIKE-REPORT.md), not maintained code.
+# Spikes are frozen reference implementations, not maintained code.
 extend-exclude = ["spikes"]
 
 [tool.ruff.lint]

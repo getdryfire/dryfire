@@ -54,8 +54,6 @@ group — so plain `uv sync` installs no pytest/ruff/mypy. Always `uv sync --all
 
 ## Repo Gotchas
 
-- `FINDINGS_2.md` is SPIKE-**003** and `FINDINGS_3.md` is SPIKE-**002** — the filenames
-  don't match the spike numbers.
 - Banned synonyms (ARCHITECTURE §3): don't say test/example for Case, log/result for
   Trace, step for Turn, client/service for Gateway. A CI check will eventually enforce
   this; write with the ubiquitous language now.

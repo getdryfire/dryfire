@@ -27,14 +27,12 @@ architectural rule of this epic: **caching and retrying are decorators over `Mod
 - **Authoritative docs** — read in this order when context is needed:
   1. `SPEC.md` — product spec: domain model, YAML spec format, agent loop, assertions, CLI, exit codes
   2. `ARCHITECTURE.md` — how code must be shaped (supersedes SPEC §8's package layout; migration table in its §12)
-  3. `EPIC-001.md` (v0.1, shipped) and `EPIC-002.md` (v0.2, active — DF-201…DF-212 written inline as test tables)
-  4. `TICKETS-AC-001-009.md`, `TICKETS-AC-010-019.md` — v0.1 implementation tickets (historical), written as test tables
-  5. `SPIKE-REPORT.md` + `FINDINGS_*.md` — spike results and amendments (note: `FINDINGS_2.md` is SPIKE-003 and `FINDINGS_3.md` is SPIKE-002)
+  3. `EPIC-001.md` (v0.1, shipped) and `EPIC-002.md` (v0.2, shipped — DF-201…DF-212 written inline as test tables)
 - **Living docs** (keep these current):
   - `docs/Progress.md` — what's in flight / up next / shipped / on ice. Update when work ships or priorities shift.
   - `docs/Learnings.md` — session-discovered pitfalls and patterns. Read before starting work; append when you hit something non-obvious.
-- **Spike prototypes** (`spikes/`) — frozen reference implementations to lift into the
-  package per SPIKE-REPORT's "Code to lift" table, not throwaway code. Excluded from ruff:
+- **Spike prototypes** (`spikes/`) — frozen reference implementations that were lifted into the
+  package, not throwaway code. Excluded from ruff:
   - SPIKE-001 (provider normalization): `neutral.py`, `adapters.py`, `probe.py`
   - SPIKE-002 (cassette fingerprint): `fingerprint.py`, `test_stability.py`
   - SPIKE-003 (spec error UX): `locate.py`, `render.py`, `sample_broken.eval.yaml`, `escalate_to_human.json`

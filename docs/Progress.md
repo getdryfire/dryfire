@@ -356,7 +356,7 @@ exposes every library built so far. TDD, gate green (270 tests + 1 live-skipped,
 
 ### Spikes 001–003 (pre-scaffold)
 - SPIKE-001 provider normalization, SPIKE-002 cassette fingerprint (19 tests),
-  SPIKE-003 positioned spec errors — reference code in `spikes/`, results in `SPIKE-REPORT.md`
+  SPIKE-003 positioned spec errors — reference code in `spikes/` (lifted into the package)
 
 ---
 
