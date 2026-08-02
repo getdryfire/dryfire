@@ -64,10 +64,10 @@ def test_models_axis_produces_a_column_per_model(
 ) -> None:
     code, out, _ = _compare(tmp_path, monkeypatch, _ByModel("opus"),
                             models=["opus", "haiku", "sonnet"])
-    # opus passes both cases; the others fail both. All three columns report.
+    # opus passes both cases; the others fail both. All three columns report (matrix).
     assert "opus" in out and "haiku" in out and "sonnet" in out
-    assert "100% pass" in out  # opus column
-    assert "0% pass" in out    # a losing column still reported, not aborted
+    assert "100%" in out  # opus column pass rate
+    assert "0%" in out    # a losing column still reported, not aborted
     assert code == composition.EXIT_ASSERTION  # some column had a failing case
 
 
@@ -75,8 +75,8 @@ def test_a_failing_model_is_a_failed_column_others_complete(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     code, out, _ = _compare(tmp_path, monkeypatch, _ByModel("opus"), models=["opus", "boom"])
-    assert "opus" in out and "boom" in out  # both columns present
-    assert "100% pass" in out               # opus still completed
+    assert "opus" in out and "boom" in out  # both columns present in the matrix
+    assert "100%" in out                    # opus still completed
     assert code == composition.EXIT_PROVIDER  # the boom column errored → exit 3
 
 

@@ -893,3 +893,18 @@ env indirection is the standard injection-safe pattern. Design the action so JUn
 - **Gotcha: two `test_compare.py` files (unit + integration) collide** under pytest's default import mode
   (no `__init__.py` in tests) — duplicate module name. Renamed the integration one to `test_compare_e2e.py`.
   Keep test basenames unique across the tree.
+
+### 2026-08-02 — DF-308 (compare matrix output)
+- **Disagreement must be distinct by CHARACTER, not just colour** (AC): a disagreement row (models
+  disagree, `0 < passes < columns`) is prefixed with `~` and its cells stay `✓`/`✗`, so it survives a
+  non-TTY CI log and a grep. Colour is layered on top only when `color=True`. Pad glyphs to column width
+  using the UNcoloured length — ANSI escapes have zero display width, so padding after colouring misaligns.
+- **Wide-matrix strategy (documented choice):** truncate long model names to keep columns aligned, and cap
+  at 8 columns with a `… N more — use --json-out` note. Transposition (cases-as-columns) was rejected —
+  suites usually have many cases, which reads worse wide. 6 models fit; >8 truncates.
+- **A "failed model" renders two ways:** a raised column (`run is None`) → `FAILED` summary + `·` cells; a
+  bad model whose cases error (`provider_error`) → the column completes with `✗` cells and 0% pass. The
+  renderer keys off `col.run is None` vs the per-case `passed`, so both are handled without special cases.
+- **Golden-file gotcha:** generate the fixture from the exact test input, eyeball it, commit it, then assert
+  byte-equality. Same `parents[2]` fixture-path rule as other adapter tests (`tests/unit/adapters/` → up 2 to
+  `tests/`). And keep test basenames unique tree-wide (the DF-307 `test_compare.py` clash).
