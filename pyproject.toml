@@ -46,7 +46,7 @@ dev = [
 dryfire = "dryfire.adapters.driving.cli.app:app"
 
 [project.urls]
-Repository = "https://github.com/dryfire/dryfire"
+Repository = "https://github.com/getdryfire/dryfire"
 
 [tool.hatch.version]
 path = "dryfire/__about__.py"

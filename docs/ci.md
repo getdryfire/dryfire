@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: dryfire/dryfire@v0.2.0
+      - uses: getdryfire/dryfire@v0.2.0
         with:
           suites: "evals/**/*.eval.yaml"
 ```

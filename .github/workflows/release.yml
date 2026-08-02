@@ -5,12 +5,12 @@ name: Release
 #
 # One-time setup on PyPI (Publishing → Add a pending publisher):
 #   PyPI project name : dryfire
-#   Owner             : csmatar
+#   Owner             : getdryfire
 #   Repository        : dryfire
 #   Workflow name     : release.yml
 #   Environment name  : pypi
 #
-# Then cut a release:  git tag v0.1.0 && git push origin v0.1.0
+# Then cut a release:  git tag v0.2.0 && git push origin v0.2.0
 
 on:
   push:
