@@ -58,8 +58,6 @@ uvx dryfire init && uvx dryfire run
 
 `init` scaffolds a keyless example whose model turns are pre-scripted, so `run` goes green offline in seconds. Point a suite at a real provider when you're ready.
 
-![demo](docs/demo.gif)
-
 ---
 
 ## Install
@@ -85,14 +83,14 @@ jobs:
   dryfire:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: getdryfire/dryfire@v0.2.0
+      - uses: actions/checkout@v5
+      - uses: getdryfire/dryfire@v0.2.1
         with:
           suites: "evals/**/*.eval.yaml"
 ```
 
 A failing trajectory turns the check red and names the offending tool call. Full details —
-exit codes, JUnit, inputs — in [`docs/ci.md`](docs/ci.md).
+exit codes, JUnit, inputs — in [`docs/ci.md`](https://github.com/getdryfire/dryfire/blob/main/docs/ci.md).
 
 ## The idea
 
@@ -130,17 +128,17 @@ dryfire is a pre-deployment unit test, and deliberately not more (SPEC §1.5):
 
 dryfire is a **unit test for tool-selection behaviour** — deterministic, mocked, reproducible, with nothing to instrument. That's the whole distinction: agent-eval tools (Promptfoo, DeepEval) score a **built, instrumented agent's** real runs, often with LLM-as-judge metrics; dryfire runs the loop itself, mocks the tools, and asserts on the exact trajectory — so you can test a prompt-and-schema *design* before the agent exists, and every run is free and identical.
 
-Full, dated head-to-heads (Promptfoo, DeepEval): [`COMPARISON.md`](COMPARISON.md).
+Full, dated head-to-heads (Promptfoo, DeepEval): [`COMPARISON.md`](https://github.com/getdryfire/dryfire/blob/main/COMPARISON.md).
 
 ## Documentation
 
-- [`docs/ci.md`](docs/ci.md) — running dryfire in CI: exit codes, JUnit, the GitHub Action.
-- [`docs/cassettes.md`](docs/cassettes.md) — record/replay, and what invalidates a cassette.
-- [`docs/mocks.md`](docs/mocks.md) — mock rules, including passthrough (`impl:`) and its security note.
-- [`COMPARISON.md`](COMPARISON.md) — how dryfire compares to Promptfoo and DeepEval.
-- [`SPEC.md`](SPEC.md) — product spec: domain model, YAML format, agent loop, assertions, exit codes.
-- [`ARCHITECTURE.md`](ARCHITECTURE.md) — how the code is shaped (hexagonal, three layers).
-- [`CHANGELOG.md`](CHANGELOG.md) · [`CONTRIBUTING.md`](CONTRIBUTING.md)
+- [`docs/ci.md`](https://github.com/getdryfire/dryfire/blob/main/docs/ci.md) — running dryfire in CI: exit codes, JUnit, the GitHub Action.
+- [`docs/cassettes.md`](https://github.com/getdryfire/dryfire/blob/main/docs/cassettes.md) — record/replay, and what invalidates a cassette.
+- [`docs/mocks.md`](https://github.com/getdryfire/dryfire/blob/main/docs/mocks.md) — mock rules, including passthrough (`impl:`) and its security note.
+- [`COMPARISON.md`](https://github.com/getdryfire/dryfire/blob/main/COMPARISON.md) — how dryfire compares to Promptfoo and DeepEval.
+- [`SPEC.md`](https://github.com/getdryfire/dryfire/blob/main/SPEC.md) — product spec: domain model, YAML format, agent loop, assertions, exit codes.
+- [`ARCHITECTURE.md`](https://github.com/getdryfire/dryfire/blob/main/ARCHITECTURE.md) — how the code is shaped (hexagonal, three layers).
+- [`CHANGELOG.md`](https://github.com/getdryfire/dryfire/blob/main/CHANGELOG.md) · [`CONTRIBUTING.md`](https://github.com/getdryfire/dryfire/blob/main/CONTRIBUTING.md)
 
 ## License
 
