@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Edge case: a run that matched zero cases (e.g. a glob that hit nothing, or
+     every case skipped for a missing key). A well-formed empty report — an empty
+     <testsuite> under the root. verify.py checks consumers do not choke and that
+     this is NOT silently read as "0 failures = green" without a visible note. -->
+<testsuites name="dryfire" tests="0" failures="0" errors="0" time="0.000">
+  <testsuite name="refunds" tests="0" failures="0" errors="0" time="0.000"
+             timestamp="2026-08-01T12:00:00"/>
+</testsuites>
