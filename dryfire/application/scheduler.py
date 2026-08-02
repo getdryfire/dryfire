@@ -66,6 +66,11 @@ class PlannedCase:
     case: ResolvedCase
     mocks: dict[str, list[MockRule]] = field(default_factory=dict)
     gateway: ModelGateway | None = None
+    # DF-306: a per-repetition gateway builder. When set (cassette-backed cases), the
+    # scheduler asks it for a fresh gateway per repetition, passing the repeat index so
+    # each repetition records/replays under its own cassette key. `None` (the common
+    # case) falls back to `gateway` / the run default — repeat: 1 is unaffected.
+    gateway_factory: Callable[[int], ModelGateway] | None = None
 
 
 @dataclass(frozen=True)
@@ -161,12 +166,19 @@ def _evaluate(expect: list[dict[str, Any]], trace: Trace) -> list[AssertionResul
 async def _process_case(
     planned: PlannedCase, provider: ModelGateway | None, price: PriceTrace | None,
     invoker: ToolInvoker | None = None, judge: JudgeTrace | None = None,
+    repeat_index: int = 0,
 ) -> CaseResult:
     case = planned.case
     try:
-        # Per-case gateway wins over the run default; a case with neither is a
-        # planning bug, surfaced as an isolated case error (never a crashed run).
-        gateway = planned.gateway if planned.gateway is not None else provider
+        # A per-repetition gateway (DF-306) wins, then the per-case gateway, then the run
+        # default; a case with none is a planning bug, isolated as a case error.
+        gateway: ModelGateway | None
+        if planned.gateway_factory is not None:
+            gateway = planned.gateway_factory(repeat_index)
+        elif planned.gateway is not None:
+            gateway = planned.gateway
+        else:
+            gateway = provider
         if gateway is None:
             raise RuntimeError(f"no gateway for case {case.suite_name}::{case.case_name}")
         # A fresh resolver per case: AC-008 sequence state must not bleed across
@@ -255,9 +267,9 @@ async def run_suites(
     # under the one worker set (not a nested pool) and the global concurrency bound spans
     # all repetitions of all cases. `repeat: 1` contributes exactly one unit → the v0.2
     # shape. A unit is just a case position; workers pull unit indices from one iterator.
-    units: list[int] = []
+    units: list[tuple[int, int]] = []
     for pos, pc in enumerate(cases):
-        units.extend([pos] * pc.case.repeat)
+        units.extend((pos, r) for r in range(pc.case.repeat))
     rep_slots: list[list[CaseResult | None]] = [[None] * pc.case.repeat for pc in cases]
     rep_filled = [0] * len(cases)
     case_results: list[CaseResult | None] = [None] * len(cases)
@@ -267,12 +279,14 @@ async def run_suites(
 
     async def worker() -> None:
         for ui in pending:
-            pos = units[ui]
-            rep = await _process_case(cases[pos], provider, price, invoker, judge)
-            # No await between here and the aggregate check → the slot bookkeeping is
-            # atomic per worker step, so concurrent repetitions of one case never race.
-            slot = rep_filled[pos]
-            rep_slots[pos][slot] = rep
+            pos, repeat_index = units[ui]
+            rep = await _process_case(
+                cases[pos], provider, price, invoker, judge, repeat_index
+            )
+            # The repeat index IS the slot, so a repetition's result lands deterministically
+            # (not in completion order) and its cassette key matches its slot. No await
+            # between here and the aggregate check → bookkeeping is atomic per worker step.
+            rep_slots[pos][repeat_index] = rep
             rep_filled[pos] += 1
             if rep_filled[pos] < cases[pos].case.repeat:
                 continue  # more repetitions of this case still to run

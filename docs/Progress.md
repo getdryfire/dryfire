@@ -77,8 +77,17 @@ Update this file when work ships, phases change, or priorities shift.
 >   require_pass_rate`. Terminal: `~` glyph + `k/N` + Wilson 95% CI for disagreeing cases only, wide-interval
 >   warning below N=5 (`domain/pass_rate.py`). JSON keeps all N traces (repeat:1 artifact byte-identical).
 >   18 new tests; 531 total.
-> - **Next:** DF-306 (SPIKE-007's keying on the real `FileCassetteStore` + `repeat_index` into the per-rep
->   `CachingGateway`; must-have test: `repeat: 5` replay yields 5 DISTINCT responses).
+> - **DF-306 (repetition-aware cassette keys) — DONE.** `storage_key(fp, i)` in `domain/fingerprint.py`
+>   (hash untouched → SPIKE-002's 19 tests pass unmodified); `CachingGateway` carries a per-run
+>   `repeat_index` and keys via `storage_key`, so a multi-turn repetition keys all its turns under one
+>   index. Composition sets a per-repetition `gateway_factory` (`_wrap_cases`); the scheduler passes the
+>   deterministic repeat index (which is also the aggregation slot). **`repeat: 5` replay yields 5 DISTINCT
+>   responses** (asserted individually), a committed v0.2 cassette fixture still replays (index 0 → bare
+>   key), partial cassettes behave per mode (replay errors on missing, auto backfills, off bypasses), and
+>   `prune` keeps/removes repetition cassettes by case validity (directory-based → no change). End-to-end
+>   record→replay through `composition.run`: 5 distinct cassettes, 0 live calls on replay. 21 new tests; 544 total.
+> - **This closes the `repeat` sub-track (SPIKE-007 + DF-305/306).**
+> - **Next:** DF-307 (`compare` execution) → DF-308 (compare matrix output) → DF-309 (HTML report) → DF-310 (release).
 
 ---
 

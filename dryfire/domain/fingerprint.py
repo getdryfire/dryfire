@@ -148,3 +148,34 @@ def fingerprint(**kwargs: Any) -> str:
     hash input, so bumping it invalidates every cassette globally by construction."""
     payload = canonical_json(hashable_request(**kwargs))
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()[:FINGERPRINT_LEN]
+
+
+# --------------------------------------------------------------------------
+# Repetition-aware storage key (DF-306, SPIKE-007)
+# --------------------------------------------------------------------------
+
+# `#` cannot occur in a 16-hex fingerprint, so the mapping stays unambiguous and
+# reversible, and a bare-fingerprint glob never matches a suffixed repetition file.
+REPEAT_SEP = "#"
+
+
+def storage_key(fingerprint: str, repeat_index: int) -> str:
+    """The cassette storage key for repetition `repeat_index` of a request whose
+    fingerprint is `fingerprint`. The repetition index lives HERE, in the storage key,
+    never in the hash — so `fingerprint()` is unchanged (every SPIKE-002 stability and
+    sensitivity property holds) and `repeat: 1` keys byte-for-byte as v0.2 did.
+
+    - `repeat_index == 0` → the bare fingerprint, so v0.2 cassettes stay valid.
+    - `repeat_index >= 1` → `fingerprint#<index>`, a distinct key per repetition, so a
+      `repeat: N` case stores N distinct responses instead of overwriting one N times.
+    """
+    if repeat_index < 0:
+        raise ValueError(f"repeat_index must be >= 0, got {repeat_index}")
+    return fingerprint if repeat_index == 0 else f"{fingerprint}{REPEAT_SEP}{repeat_index}"
+
+
+def parse_storage_key(key: str) -> tuple[str, int]:
+    """Inverse of `storage_key`: `(fingerprint, repeat_index)`. Lets tooling recognise a
+    repetition cassette as belonging to the same logical request."""
+    fp, sep, idx = key.partition(REPEAT_SEP)
+    return (fp, int(idx)) if sep else (fp, 0)

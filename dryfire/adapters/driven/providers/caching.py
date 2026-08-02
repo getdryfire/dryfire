@@ -31,7 +31,7 @@ from typing import Any
 from dryfire.adapters.driven.spec.models import CassetteMode
 from dryfire.application.ports.model_gateway import CompletionRequest, ModelGateway
 from dryfire.application.ports.response_cache import CassetteRecord, ResponseCache
-from dryfire.domain.fingerprint import fingerprint, hashable_request
+from dryfire.domain.fingerprint import fingerprint, hashable_request, storage_key
 from dryfire.domain.model.message import Message, ModelResponse
 
 
@@ -85,6 +85,7 @@ class CachingGateway:
         mode: CassetteMode,
         suite: str,
         case: str,
+        repeat_index: int = 0,
         now: Callable[[], datetime] = lambda: datetime.now(UTC),
     ) -> None:
         self._inner = inner
@@ -92,6 +93,10 @@ class CachingGateway:
         self._mode = mode
         self._suite = suite
         self._case = case
+        # One CachingGateway per repetition (DF-306): its `repeat_index` is fixed for
+        # every turn of that run, so a multi-turn repeated case keys all its turns under
+        # the same index and replay never mispairs. Index 0 → the bare v0.2 key.
+        self._repeat_index = repeat_index
         self._now = now
         self._turn = 0
         # Provider passes through so the fingerprint and downstream logic see the
@@ -108,7 +113,9 @@ class CachingGateway:
             return await self._inner.complete(request)
 
         args = _hash_args(request, self.name)
-        key = fingerprint(**args)
+        # The repetition index lives in the storage key, not the hash (SPIKE-007): the
+        # fingerprint is unchanged, and index 0 leaves the key byte-identical to v0.2.
+        key = storage_key(fingerprint(**args), self._repeat_index)
         turn = self._turn
         self._turn += 1
 

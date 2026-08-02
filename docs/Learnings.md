@@ -851,3 +851,26 @@ env indirection is the standard injection-safe pattern. Design the action so JUn
   (undercounts the N reps). Advisory cost only; fold a proper sum into a later ticket if it matters.
 - `repeat`/`require_pass_rate` are overridable at case/suite/defaults via the same `_pick` chain as every
   other setting; pydantic `Field(ge=1)` / `Field(ge=0,le=1)` give positioned spec errors for free.
+
+### 2026-08-02 — DF-306 (repetition-aware cassette keys)
+- **The repetition index must be CONSTANT across all turns of one repetition**, or a multi-turn case's
+  turns key under different indices and replay mispairs. A per-fingerprint occurrence counter fails this
+  under concurrency (reps interleave). Solution: one `CachingGateway` per repetition with a fixed
+  `repeat_index`; composition builds them via a `gateway_factory(i)` seam, the scheduler calls it with the
+  deterministic repeat index (which is also the aggregation slot). Each per-rep gateway has its own turn
+  counter → turns 0,1,2 within a rep; shared `inner` real gateway (stateless, safe).
+- **The store and prune needed ZERO changes.** `storage_key` puts the index in the key (`fp` / `fp#i`),
+  `#` is filesystem- and glob-safe, and `fp` is 16 hex so a bare-`fp` glob (`*-fp.json`) never matches a
+  suffixed `*-fp#1.json`. prune is directory-based (`<suite>/<case>/<file>`), so repetition cassettes in a
+  valid case dir are kept and orphaned ones removed automatically — just add tests, not code.
+- **The must-have test asserts responses INDIVIDUALLY, not by count** — `["r4"]*5` also has length 5. The
+  e2e (`composition.run` record→replay) is the real proof: 5 distinct cassette files, `forbidden.calls == 0`
+  on replay.
+- **Committed v0.2 cassette fixture:** compute the fingerprint for a fixed request once (via `_hash_args` +
+  `fingerprint`), hand-write the JSON at `tests/fixtures/cassettes_v0_2/<suite>/<case>/00-<fp>.json` with
+  cassette `schema_version: 1`, then a `repeat_index=0` replay must serve it. Store `get` is `rglob`, so
+  the fixture's suite/case dir names don't need to match the gateway's.
+- **`_wrap_cases` moved from setting `.gateway` to `.gateway_factory`** — updated the one passthrough test
+  that asserted the old shape (`isinstance(planned.gateway, CachingGateway)` → `planned.gateway_factory(0)`).
+- Repo convention: async gateways are driven with `asyncio.run(...)` in sync tests, NOT `@pytest.mark.asyncio`
+  (pytest-asyncio isn't a dep).
