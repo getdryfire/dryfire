@@ -32,14 +32,16 @@ class ToolSpec(_StrictModel):
     input_schema: dict[str, Any]
 
 
-_OUTCOME_FIELDS = ("returns", "error", "sequence")
+_OUTCOME_FIELDS = ("returns", "error", "sequence", "impl")
 
 
 class MockRule(_StrictModel):
-    """One declarative fake-tool rule. Exactly one of return/error/sequence.
+    """One declarative fake-tool rule. Exactly one of return/error/sequence/impl.
 
     `returns` carries the YAML key `return` (a Python keyword) via alias;
-    `populate_by_name` keeps `.returns` usable in code.
+    `populate_by_name` keeps `.returns` usable in code. `impl` names a real Python
+    callable (`pkg.mod:func`) for a passthrough mock (SPEC §4.4, DF-211); it is
+    resolved at validate time and invoked via the ToolInvoker port at run time.
     """
 
     model_config = ConfigDict(extra="forbid", populate_by_name=True)
@@ -48,6 +50,7 @@ class MockRule(_StrictModel):
     returns: Any | None = Field(default=None, alias="return")
     error: str | None = None
     sequence: list[dict[str, Any]] | None = None
+    impl: str | None = None
 
     @model_validator(mode="after")
     def _exactly_one_outcome(self) -> "MockRule":
@@ -55,7 +58,7 @@ class MockRule(_StrictModel):
         if len(set_outcomes) != 1:
             found = ", ".join(set_outcomes) if set_outcomes else "none"
             raise ValueError(
-                "a mock rule needs exactly one of return/error/sequence; found: " + found
+                "a mock rule needs exactly one of return/error/sequence/impl; found: " + found
             )
         return self
 

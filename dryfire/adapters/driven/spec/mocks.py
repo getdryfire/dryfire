@@ -17,7 +17,14 @@ from __future__ import annotations
 from typing import Any
 
 from dryfire.adapters.driven.spec.models import MockRule as SpecRule
-from dryfire.domain.mocking.resolver import Error, MockRule, Outcome, Return, Sequence
+from dryfire.domain.mocking.resolver import (
+    Error,
+    MockRule,
+    Outcome,
+    Passthrough,
+    Return,
+    Sequence,
+)
 
 
 def _step_outcome(step: dict[str, Any]) -> Return | Error:
@@ -33,6 +40,8 @@ def _outcome(rule: SpecRule) -> Outcome:
         return Return(rule.returns)
     if "error" in fields:
         return Error(rule.error or "")
+    if "impl" in fields:  # passthrough: invoke real code via the ToolInvoker port
+        return Passthrough(target=rule.impl or "")
     return Sequence(tuple(_step_outcome(step) for step in rule.sequence or []))
 
 

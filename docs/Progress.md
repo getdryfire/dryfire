@@ -23,26 +23,39 @@ Update this file when work ships, phases change, or priorities shift.
 
 > Actively building. Code is being written.
 
-### DF-209 — JUnit XML sink (implemented, PR open)
-Implements SPIKE-005's Candidate A verdict as an event-sink module (`adapters/driven/reporting/junit_sink.py`,
-mirroring `json_sink.py`): `render_junit` for `--reporter junit` (stdout) + atomic `write_junit` for the new
-`--junit-out PATH` file sink. **Loop, scheduler, and terminal reporter untouched** (AC + `git diff` empty).
-- **Mapping:** suite → `<testsuite>`, case → `<testcase>`, **one `<failure>` per failing case** with all
-  failed assertions concatenated in the failure text body + a one-line `message` summary; `<error>` (not
-  `<failure>`) for `provider_error`/`unmocked_tool`. `name`/`classname`/`time` emitted; `→`/`✗` survive as
-  literal UTF-8. Reuses `domain/assertions/trajectory.render_failure` for the body (no reimplementation).
-- **CLI surface (public-contract addition):** added `--junit-out PATH`, parallel to `--json-out`, so
-  `--reporter` picks the stdout format while `--json-out`/`--junit-out` are independent atomic file sinks —
-  terminal + JUnit file + JSON file all compose in one run. SPEC §7 flag list updated.
-- **Tests:** golden byte-for-byte fixtures (all-pass · one failure/three assertions · provider_error · a
-  zero-case run) + validation against a bundled JUnit **XSD** (new `xmlschema` dev dep — no stdlib XSD
-  validator) + parsed-content escaping assertions + atomic-write. Gate green (428 tests + 2 live-skipped),
-  `-W error` clean, dogfood OK, end-to-end smoke on a real fake-provider suite produced valid JUnit (incl.
-  the `provider_error` case as `<error>`).
-- **Zero-case parity:** a run matching no cases prints "no cases matched" (exit 0) and writes no file —
-  same early-return as `--json-out`; the empty-run golden is covered at the `render_junit` unit level.
-- **Owner's-hands remainder:** the "verified in a real GitHub Actions run + screenshot" AC needs a live
-  pipeline — folds into DF-210 (which builds the Action). Not fabricated here.
+### DF-211 — Passthrough mocks (`impl: pkg.mod:func`) (implemented, PR open)
+Implements SPIKE-004's verdict. A mock rule can carry `impl: pkg.mod:func` (a fourth one-of alongside
+`return`/`error`/`sequence`); dryfire imports the callable and invokes it with the tool args, and the
+return becomes the tool result. Full vertical slice, TDD'd layer by layer, gate green (458 tests + 2
+live-skipped), `-W error` clean, dogfood OK. End-to-end smoke: a real CWD-resolved impl ran through the
+loop and passed its assertions; a bad `impl:` gave a positioned `validate` error (line:col + caret).
+- **The loop decision (Option A, owner-approved 2026-08-02):** "keep `loop.py` frozen" and DF-211's
+  "concurrent passthroughs don't serialise" AC are mutually exclusive — the loop resolves tools with a
+  **sync** `resolver.resolve(call)` on one shared event loop, so non-blocking async invocation *requires*
+  an `await` at that seam. Approved the **one-branch** change: domain resolver returns a `Passthrough`
+  marker (stays pure); the loop adds `if isinstance(resolved, Passthrough): resolved = await
+  invoker.invoke(resolved, call)` via a new async **`ToolInvoker` port** + driven `PassthroughInvoker`
+  adapter. `loop.py` diff is +14/−1; this is NOT the gateway "loop unchanged" rule (DF-201/204 only).
+- **Execution model (SPIKE-004):** sync callables run off the loop (`asyncio.to_thread`, proven not to
+  serialise 4 concurrent), async awaited natively; raise/timeout → error result, run continues; per-call
+  30 s timeout (per-rule `timeout_s`); `func(args: dict)` convention.
+- **Validate-time resolution:** new loader pre-pass 3 (`check_passthrough_impls`) resolves every `impl:`
+  and reports a bad one as a positioned spec error (exit 2), zero network — mirrors the assertion-kind check.
+- **Cassette exclusion:** `_wrap_cases(exclude_passthrough=True)` leaves a passthrough case unwrapped by the
+  CachingGateway (results aren't cacheable — SPIKE-004 Q4) and prints a visible note.
+- **Docs:** new `docs/mocks.md` (with SPIKE-004's security paragraph); SPEC §4.4 + new §4.4a.
+- **Loose end flagged for owner:** `on_unmocked: passthrough` (a *global* fallback) is a reserved enum
+  value but NOT implemented — the per-tool `impl:` rule is the surface (SPIKE-004's recommended option b).
+  Documented as reserved; not a silent trap beyond the existing null-fallback behaviour.
+
+### DF-209 — JUnit XML sink (2026-08-02, PR #31)
+SPIKE-005's Candidate A as an event-sink module (`junit_sink.py`, mirroring `json_sink.py`): `render_junit`
+for `--reporter junit` (stdout) + atomic `write_junit` for a new `--junit-out PATH` file sink (parallel to
+`--json-out`; terminal + JUnit file + JSON file compose in one run). Suite → `<testsuite>`, case →
+`<testcase>`, one `<failure>` per failing case (failed assertions concatenated in the text body + one-line
+`message`); `<error>` for `provider_error`/`unmocked_tool`; `→`/`✗` literal UTF-8. Golden byte-for-byte
+fixtures + JUnit **XSD** validation (new `xmlschema` dev dep). Loop/scheduler/terminal untouched. SPEC §7
+updated. Live GitHub-Actions screenshot AC folds into DF-210.
 
 ---
 
@@ -50,10 +63,10 @@ mirroring `json_sink.py`): `render_junit` for `--reporter junit` (stdout) + atom
 
 > Committed work, ready to start. Ordered by the EPIC-002 dependency graph (`EPIC-002.md`).
 
-1. **DF-211** (passthrough mocks) — SPIKE-004 settled the model. **Owner's decision: keep `loop.py`
-   frozen** — realize invocation without editing the loop, or re-raise with the owner.
-2. **DF-210** GitHub composite Action (needs DF-209; now unblocked) · **DF-212** v0.2 release (needs all).
-   Both spikes' + DF-209's live-CI capture steps (throwaway repo) fold into DF-210/DF-212.
+1. **DF-210** GitHub composite Action (needs DF-209; unblocked). Must be tested in a throwaway repo
+   (owner's hands) — that run also captures the SPIKE-005/DF-209 live JUnit rendering.
+2. **DF-212** v0.2 release (needs all): README CI section, `docs/cassettes.md`, `docs/ci.md`, re-verify
+   `COMPARISON.md`, tag v0.2.0.
 
 ---
 
