@@ -4,10 +4,14 @@
 feature set and claimed trajectory assertions as a gap. That claim is false — Promptfoo
 ships a `trajectory:*` assertion family. Replace §1.4 with this document's content.
 
-**AC-019 requires this comparison to be fair.** The "where Promptfoo is better" section is
-not optional politeness — an unfair table gets the project dismissed by exactly the
-audience whose opinion carries. Verify every row against promptfoo.dev before publishing;
-their roadmap is now OpenAI's and moves faster than this file.
+**AC-019 requires this comparison to be fair.** The "where X is better" sections are not
+optional politeness — an unfair table gets the project dismissed by exactly the audience
+whose opinion carries.
+
+**Last verified: 2026-08-02**, against [promptfoo.dev](https://www.promptfoo.dev) and
+[deepeval.com](https://deepeval.com). Both move fast (Promptfoo's roadmap is now OpenAI's);
+re-verify every row on each release and correct — never quietly drop — any row that has gone
+stale.
 
 ---
 
@@ -112,6 +116,54 @@ Promptfoo.**
 
 The differentiator is not "we assert on trajectories." It is "we make trajectory
 assertions cheap enough to run on every commit."
+
+---
+
+## vs DeepEval
+
+The closest comparison — DeepEval is also Python-native, pytest-shaped, and evaluates agent
+trajectories and tool calls. The difference is **determinism and instrumentation**.
+
+| | dryfire | DeepEval |
+|---|---|---|
+| License | MIT | Apache-2.0 |
+| Runtime | Python (`uv` / `pip`) | Python (`pip`) |
+| Pytest-style, CI-shaped | ✅ (exit codes) | ✅ (`assert_test`, `deepeval test run`) |
+| Local-first, no account | ✅ | ✅ (Confident AI platform optional) |
+| **Trajectory / tool-call evaluation** | ✅ structural assertions | ✅ agent metrics (tool correctness, plan adherence, task completion) |
+| **How the trace is obtained** | Runs the loop itself, owns the trace | Instrument your agent (`@observe` / integration); it emits traces |
+| **Instrumentation required** | None | Yes — spans per LLM/tool/retriever |
+| **Deterministic tool mocking** | ✅ subset match, errors, sequences | ❌ evaluates the agent's real runs |
+| **Assertions need a judge model + key** | ❌ structural checks are exact and keyless | ✅ mostly — agent/quality metrics are LLM-as-judge |
+| Metric library | small, structural | 50+ (LLM-judge, RAG, safety, conversational, multimodal) |
+| What is under test | a prompt + tool-schema design, before an agent exists | your built, instrumented agent |
+| Red teaming / security | ❌ not planned | via metrics, not a dedicated product |
+
+### Where DeepEval is better
+
+- **A vastly larger metric library** — 50+ metrics including mature LLM-as-judge, RAG,
+  conversational, safety, and multimodal evaluation. dryfire has a handful of structural
+  assertions and won't grow a judge until v0.3.
+- **Evaluates the real, built agent** end to end, across reasoning/action/execution layers.
+- Framework integrations and an optional observability platform (Confident AI).
+
+**If you're scoring the quality of a built agent's outputs with judge-based metrics — plan
+quality, answer relevance, faithfulness — use DeepEval.**
+
+### Where dryfire is different
+
+- **Deterministic, and no judge required.** dryfire's structural trajectory assertions are
+  exact and need no model or API key; DeepEval's agent metrics are largely LLM-as-judge, so
+  they need a judge model and don't reproduce bit-for-bit. dryfire trades breadth for a gate
+  that is free and identical on every run.
+- **Nothing to instrument.** dryfire drives the loop and owns the trace; DeepEval evaluates
+  traces your instrumented agent emits.
+- **Tests a design before the agent exists** — mock the tools, assert the tool-selection
+  behaviour from a prompt-and-schema spec, with no agent to build or instrument first.
+
+> DeepEval scores how good your built agent's answers are, with a rich judge-based metric
+> library. dryfire is a deterministic, keyless gate on tool-selection behaviour you can run on
+> every commit before the agent exists.
 
 ---
 

@@ -1,0 +1,31 @@
+# A suite written against the v0.1 spec ONLY — every v0.1 feature, no v0.2 syntax.
+# Frozen as a backward-compatibility guard (DF-212): it must load and run green on
+# every v0.2+ release unchanged. If a change here is ever needed to keep it passing,
+# that change is a breaking spec change and belongs in a major version, not a minor.
+name: v0_1_compat
+provider: fake
+cases:
+  - name: all six v0.1 assertions and every mock kind
+    input: "look up order A-1 and refund it if allowed"
+    script:
+      - tool_call: {name: lookup_order, arguments: {order_id: "A-1"}}
+      - tool_call: {name: check_policy, arguments: {order_id: "A-1"}}
+      - tool_call: {name: issue_refund, arguments: {order_id: "A-1", amount: 20}}
+      - text: "Refund of $20 issued for order A-1."
+    mocks:
+      lookup_order:
+        - when: {order_id: "A-1"}          # deep-subset when match
+          return: {tier: "gold"}
+      check_policy:
+        - sequence:                         # error-then-success sequence
+            - error: "policy service warming up"
+            - return: {allowed: true}
+      issue_refund:
+        - return: {ok: true}
+    expect:
+      - calls_tool: lookup_order            # calls_tool
+      - not_calls_tool: escalate_to_human   # not_calls_tool
+      - tool_args: {tool: issue_refund, match: {order_id: "A-1"}}   # tool_args deep subset
+      - call_order: [lookup_order, check_policy, issue_refund]      # call_order subsequence
+      - max_turns: 10                       # max_turns
+      - final_contains: "Refund of $20"     # final_contains
