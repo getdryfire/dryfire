@@ -46,10 +46,13 @@ from dryfire.adapters.driven.spec.loader import load_suite
 from dryfire.adapters.driven.spec.mocks import map_mocks
 from dryfire.adapters.driven.spec.models import Case, CassetteConfig, CassetteMode, Defaults, Suite
 from dryfire.adapters.driven.spec.scripts import map_script
+from dryfire.application.judging.collect import collect_judge_requests
+from dryfire.application.judging.evaluator import DEFAULT_JUDGE_CONCURRENCY, JudgeEvaluator
 from dryfire.application.ports.model_gateway import CompletionRequest, ModelGateway
 from dryfire.application.ports.response_cache import ResponseCache
 from dryfire.application.scheduler import (
     CaseResult,
+    JudgeTrace,
     PlannedCase,
     PlannedSuite,
     RunResult,
@@ -373,6 +376,31 @@ def _make_price() -> Callable[[Trace, ResolvedCase], Trace]:
     return price
 
 
+def _suites_use_judge(suites: list[PlannedSuite]) -> bool:
+    """True if any runnable case carries an `llm_judge` assertion. When false, the run
+    passes `judge=None` and takes the exact v0.2 code path — structural-only suites pay
+    nothing for a feature they do not use (EPIC-003 success criterion 2)."""
+    return any(collect_judge_requests(pc.case) for suite in suites for pc in suite.cases)
+
+
+def _make_judge(*, concurrency: int = DEFAULT_JUDGE_CONCURRENCY) -> JudgeTrace:
+    """The judging enrichment callback for the scheduler (ARCHITECTURE §4.4). Closes
+    over ONE semaphore so judge concurrency is bounded across the whole run, and grades
+    each case through the case's own gateway — the CachingGateway in cassette modes — so
+    judge calls are cassette-backed and retried exactly like agent calls, with no second
+    client. Judge cost stays a separate channel (DF-304)."""
+    sem = asyncio.Semaphore(concurrency)
+
+    async def judge(trace: Trace, case: ResolvedCase, gateway: ModelGateway) -> Trace:
+        requests = collect_judge_requests(case)
+        if not requests:  # structural-only case: never touch the gateway
+            return trace
+        verdicts = await JudgeEvaluator(gateway=gateway, sem=sem).evaluate(trace, requests)
+        return trace.model_copy(update={"judge_verdicts": verdicts, "model": case.model})
+
+    return judge
+
+
 def _exit_code(run: RunResult) -> int:
     cases = [case for suite in run.suites for case in suite.cases]
     if any(c.trace is not None and c.trace.termination == "provider_error" for c in cases):
@@ -597,10 +625,11 @@ def run(
                     exclude_passthrough=True, out=out,
                 )
 
+        judge = _make_judge() if _suites_use_judge(runnable) else None
         result = asyncio.run(
             run_suites(runnable, default_gateway, price=_make_price(),
                        concurrency=concurrency or BUILTIN_CONCURRENCY, fail_fast=fail_fast,
-                       invoker=PassthroughInvoker())
+                       invoker=PassthroughInvoker(), judge=judge)
         )
         _report(result, reporter=reporter, json_out=json_out, junit_out=junit_out,
                 verbose=verbose, out=out, now=now or datetime.now(UTC))
@@ -647,8 +676,10 @@ def trace(
                 default_gateway = make_gateway(target.case.provider)
             except MissingCredentials as exc:
                 raise ConfigError(str(exc)) from exc
+        one = [target_suite(target)]
         result = asyncio.run(
-            run_suites([target_suite(target)], default_gateway, price=_make_price())
+            run_suites(one, default_gateway, price=_make_price(),
+                       judge=_make_judge() if _suites_use_judge(one) else None)
         )
         case_result = result.suites[0].cases[0]
         out.write(_render_trace(case_result))

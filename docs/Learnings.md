@@ -769,3 +769,25 @@ env indirection is the standard injection-safe pattern. Design the action so JUn
 - **`asyncio.Semaphore()` created outside the loop is fine in 3.12** — it binds lazily on first
   `await`, so building the evaluator in composition (before `asyncio.run`) and using it inside works,
   mirroring how `_make_price` is built before the run.
+
+### 2026-08-02 — DF-303 (llm_judge assertion + enrichment wiring)
+- **Content-addressed verdict keys, not positional.** `Trace.judge_verdicts` is keyed by
+  `judge_key(model, rubric_hash)`. Both the pure assertion and the application `collect_judge_requests`
+  compute it identically from the same inputs, so they can never disagree — and no positional index has
+  to be threaded into a pure assertion. Bonus: two identical judged assertions dedupe to one judge call.
+  Model is part of the key because the same rubric graded by two models is two non-comparable judgements.
+- **Key consistency depends on `trace.model`.** The assertion resolves its model as
+  `args.model or trace.model`; `collect` uses `args.model or case.model`. They match because the judge
+  enrichment sets `trace.model = case.model` in its `model_copy` (and `price` sets it too). If a verdict
+  key ever misses, the assertion fails LOUDLY ("judge did not run"), never silently passes.
+- **The scheduler seam is genuinely one line.** `_process_case` gained `if judge is not None: trace =
+  await judge(trace, case, gateway)` between `price(...)` and `_evaluate(...)` — the DF-207 shape,
+  now async. `loop.py` untouched. `judge=None` (structural-only) is the exact v0.2 path; composition
+  only builds the callback when `_suites_use_judge(runnable)`.
+- **Judge reuses the CASE's gateway** (passed through the seam), so judge calls are cassette-backed and
+  retried for free — no separate judge-gateway construction in composition. Limitation to document later:
+  a cross-provider judge model (case anthropic, judge openai) isn't supported yet; the default (judge =
+  case model, same provider) and same-provider overrides work.
+- **Offline e2e without monkeypatching `make_gateway`:** a `provider: fake` case whose `script:` lists
+  the agent turn(s) THEN the judge's JSON — the judge consumes the next script entry from the same fake
+  gateway. Remember `provider` is SUITE-level, `script`/`model` are case-level (bit me first try).

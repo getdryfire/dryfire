@@ -6,7 +6,8 @@ Pure: pydantic + stdlib only, no I/O — the model call that produces a verdict 
 the application layer (ARCHITECTURE §4.4, the judging enrichment seam).
 """
 
+from dryfire.domain.judging.keys import judge_key
 from dryfire.domain.judging.rubric import DEFAULT_JUDGE_THRESHOLD, Rubric
 from dryfire.domain.judging.verdict import JudgeVerdict
 
-__all__ = ["DEFAULT_JUDGE_THRESHOLD", "JudgeVerdict", "Rubric"]
+__all__ = ["DEFAULT_JUDGE_THRESHOLD", "JudgeVerdict", "Rubric", "judge_key"]

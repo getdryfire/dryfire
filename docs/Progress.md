@@ -44,9 +44,18 @@ Update this file when work ships, phases change, or priorities shift.
 >   `JudgeVerdict.error` on unparseable/provider failure, never a silent score 0; single shared
 >   semaphore bounds judge concurrency independently of case concurrency. Added the `error` field +
 >   `from_score`/`from_error` factories to `JudgeVerdict` (deferred from DF-301). 12 new tests; 486 total.
-> - **Next:** DF-303 (the pure `llm_judge` assertion + spec validation) — and the one-time SPIKE-006
->   enrichment wiring (scheduler seam + composition `_make_judge`) rides with it, as that's the first
->   ticket where a full judged run is exercisable end-to-end.
+> - **DF-303 (`llm_judge` assertion + the enrichment wiring) — DONE.** `domain/assertions/judge.py`:
+>   pure `LlmJudge` reads a verdict keyed by `judge_key(model, rubric_hash)` and applies the threshold;
+>   required non-empty `rubric` → positioned spec error at load (zero network); judge error and missing
+>   verdict are distinct failures, never a silent pass. Failure message carries score/threshold/reasoning/
+>   rubric-hash/trajectory. **Wiring (the sanctioned SPIKE-006 seam):** `scheduler._process_case` gained
+>   one `await judge(...)` line after `price(...)` (mirrors DF-207); `application/judging/collect.py`
+>   turns a case's `expect` into deduped `JudgeRequest`s; `composition._make_judge` closes over one shared
+>   semaphore and grades through the case's own gateway (cassette-backed for free); `judge=None` for
+>   structural-only runs (exact v0.2 path). Full offline e2e via a fake-provider script. `docs/judging.md`
+>   carries the cost/variance/merge-gate warning. 19 new tests; 505 total.
+> - **Next:** DF-304 (separate judge cost accounting — `judge_usage`/`judge_cost` as a distinct channel;
+>   `cost_under`/`latency_under_ms` must stay blind to it, with the regression test that is the point).
 
 ---
 

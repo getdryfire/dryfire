@@ -15,7 +15,7 @@ a **fresh `MockResolver`** so concurrent cases never share `sequence` state.
 from __future__ import annotations
 
 import asyncio
-from collections.abc import Callable
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -39,6 +39,14 @@ ProgressCallback = Callable[["CaseResult"], None]
 # `cost_under` can read it (DF-207). Injected by composition, which owns the
 # pricing catalog; the scheduler stays adapter-free.
 PriceTrace = Callable[[Trace, ResolvedCase], Trace]
+
+# Grades a case's `llm_judge` assertions and attaches the verdicts to the trace,
+# after pricing and *before* assertions run (ARCHITECTURE §4.4, the judging enrichment
+# seam / SPIKE-006 Model C). Async and gateway-backed — it receives the case's resolved
+# gateway so judge calls are cassette-backed exactly like agent calls. Injected by
+# composition; None (the structural-only default) takes the exact v0.2 path. The loop is
+# not in this call graph and does not change.
+JudgeTrace = Callable[[Trace, ResolvedCase, ModelGateway], Awaitable[Trace]]
 
 
 # -- Inputs: a run planned down to fresh-per-case domain mocks ---------------
@@ -116,7 +124,7 @@ def _evaluate(expect: list[dict[str, Any]], trace: Trace) -> list[AssertionResul
 
 async def _process_case(
     planned: PlannedCase, provider: ModelGateway | None, price: PriceTrace | None,
-    invoker: ToolInvoker | None = None,
+    invoker: ToolInvoker | None = None, judge: JudgeTrace | None = None,
 ) -> CaseResult:
     case = planned.case
     try:
@@ -132,6 +140,10 @@ async def _process_case(
         # Price the trace BEFORE assertions so cost_under (DF-207) can read it.
         if price is not None:
             trace = price(trace, case)
+        # Then grade any llm_judge assertions, attaching verdicts before evaluation
+        # (ARCHITECTURE §4.4). Uses the case's own gateway → cassette-backed for free.
+        if judge is not None:
+            trace = await judge(trace, case, gateway)
         assertions = _evaluate(case.expect, trace)
         passed = all(a.passed for a in assertions)
         return CaseResult(case.suite_name, case.case_name, trace, assertions, passed)
@@ -166,6 +178,7 @@ async def run_suites(
     on_progress: ProgressCallback | None = None,
     price: PriceTrace | None = None,
     invoker: ToolInvoker | None = None,
+    judge: JudgeTrace | None = None,
 ) -> RunResult:
     """Run every case concurrently (bounded to `concurrency`) and return results in
     spec order regardless of completion order.
@@ -186,7 +199,7 @@ async def run_suites(
 
     async def worker() -> None:
         for i in pending:
-            result = await _process_case(planned[i], provider, price, invoker)
+            result = await _process_case(planned[i], provider, price, invoker, judge)
             results[i] = result
             if on_progress is not None:
                 on_progress(result)
