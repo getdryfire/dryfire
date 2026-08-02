@@ -58,6 +58,8 @@ uvx dryfire init && uvx dryfire run
 
 `init` scaffolds a keyless example whose model turns are pre-scripted, so `run` goes green offline in seconds. Point a suite at a real provider when you're ready.
 
+![dryfire demo — init, run green, break a trajectory assertion, run red with the broken trajectory, fix, run green](https://raw.githubusercontent.com/getdryfire/dryfire/main/docs/demo.gif)
+
 ---
 
 ## Install
