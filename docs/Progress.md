@@ -37,8 +37,16 @@ Update this file when work ships, phases change, or priorities shift.
 >   key order, sensitive to any text/whitespace/threshold/examples change). `Trace.judge_verdicts`
 >   added (additive, default `{}`); json-artifact `SCHEMA_VERSION` 1→2 (capability signal; trace def
 >   was already permissive so the round-trip needed only the const bump). 12 new tests; 474 total.
-> - **Next:** DF-302 (`JudgeEnricher` in `application/judging/`, wired beside `_make_price`; adds the
->   `error` state to a verdict when the enricher can actually produce one).
+> - **DF-302 (judge evaluator) — DONE.** `application/judging/evaluator.py`: `JudgeEvaluator` grades a
+>   `Trace` against rubrics via the injected `ModelGateway` — same port as the agent under test, so
+>   judge calls are cassette-backed + retried for free (proved with a real `CachingGateway`
+>   record→replay test). `temperature=0` always; defensive parsing (markdown-fence tolerant) →
+>   `JudgeVerdict.error` on unparseable/provider failure, never a silent score 0; single shared
+>   semaphore bounds judge concurrency independently of case concurrency. Added the `error` field +
+>   `from_score`/`from_error` factories to `JudgeVerdict` (deferred from DF-301). 12 new tests; 486 total.
+> - **Next:** DF-303 (the pure `llm_judge` assertion + spec validation) — and the one-time SPIKE-006
+>   enrichment wiring (scheduler seam + composition `_make_judge`) rides with it, as that's the first
+>   ticket where a full judged run is exercisable end-to-end.
 
 ---
 
