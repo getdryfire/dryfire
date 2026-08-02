@@ -54,8 +54,15 @@ Update this file when work ships, phases change, or priorities shift.
 >   semaphore and grades through the case's own gateway (cassette-backed for free); `judge=None` for
 >   structural-only runs (exact v0.2 path). Full offline e2e via a fake-provider script. `docs/judging.md`
 >   carries the cost/variance/merge-gate warning. 19 new tests; 505 total.
-> - **Next:** DF-304 (separate judge cost accounting — `judge_usage`/`judge_cost` as a distinct channel;
->   `cost_under`/`latency_under_ms` must stay blind to it, with the regression test that is the point).
+> - **DF-304 (separate judge cost accounting) — DONE.** `Trace` gained `judge_usage`/`judge_cost` as a
+>   distinct channel; `JudgeVerdict` carries per-call `usage`; the enrichment totals judge usage
+>   (`sum_usage`) and prices judge cost by each verdict's own judge model, never folding it into
+>   `total_usage`/`total_cost_usd`. **`cost_under`/`latency_under_ms` are blind by construction** (judge
+>   calls are neither turns nor part of `total_usage`) — the regression test that is the point of the
+>   ticket pins it. Terminal shows a separate `judge:` summary line, absent entirely for structural-only
+>   runs (never a phantom `$0.0000`); JSON artifact keeps the channels apart. 8 new tests; 513 total.
+>   **This closes the judge sub-track (DF-301→304); `llm_judge` is complete.**
+> - **Next:** SPIKE-007 (repeat + cassette keying + pass-rate statistics), then DF-305/306 (`repeat: N`).
 
 ---
 

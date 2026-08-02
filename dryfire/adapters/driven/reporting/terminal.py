@@ -121,6 +121,18 @@ def _summary_line(run: RunResult) -> str:
     )
 
 
+def _judge_summary_line(run: RunResult) -> str | None:
+    """A separate summary line for judge cost — never merged into the case totals
+    (DF-304), and absent entirely when no judge ran (never a phantom $0.0000)."""
+    traces = [c.trace for suite in run.suites for c in suite.cases if c.trace]
+    if not any(t.judge_verdicts for t in traces):
+        return None  # no judged assertion in the whole run → no line at all
+    tokens = sum(t.judge_usage.input_tokens + t.judge_usage.output_tokens for t in traces)
+    costs = [t.judge_cost for t in traces if t.judge_cost is not None]
+    cost = _cost_str(sum(costs) if costs else None)
+    return f"judge: {cost}   {tokens} tokens (reported separately)"
+
+
 def render_report(run: RunResult, *, color: bool = False) -> str:
     """The full §7.2 report for a run. `color=False` emits zero ANSI (CI logs,
     non-TTY, NO_COLOR); `color=True` colours the pass/fail glyphs only."""
@@ -136,6 +148,9 @@ def render_report(run: RunResult, *, color: bool = False) -> str:
         # Never present a partial (fail-fast) run as a full one.
         lines.append("run incomplete — stopped on first failure (--fail-fast)")
     lines.append(_summary_line(run))
+    judge_line = _judge_summary_line(run)
+    if judge_line is not None:
+        lines.append(judge_line)
     return "\n".join(lines) + "\n"
 
 

@@ -72,7 +72,9 @@
         "judge_verdicts": {
           "type": "object",
           "additionalProperties": { "$ref": "#/$defs/judge_verdict" }
-        }
+        },
+        "judge_usage": { "$ref": "#/$defs/usage" },
+        "judge_cost": { "type": ["number", "null"] }
       }
     },
     "judge_verdict": {
