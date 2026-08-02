@@ -812,3 +812,21 @@ env indirection is the standard injection-safe pattern. Design the action so JUn
 - **Didn't touch loop.py to reuse its `_sum_usage`.** Added a public `sum_usage` in `message.py` for
   callers above the loop; the loop keeps its private one. The tiny duplication is cheaper than a diff to
   the frozen loop.
+
+### 2026-08-02 — SPIKE-007 (repeat keying + pass-rate stats)
+- **Repetition index goes in the STORAGE KEY, not the hash.** `storage_key(fp, 0) == fp`,
+  `storage_key(fp, i) == f"{fp}#{i}"`. Because `fingerprint()` is untouched, all 19 SPIKE-002
+  stability/sensitivity tests pass by construction and `repeat: 1` is byte-identical to v0.2. Putting
+  the index in the hash would either invalidate every cassette (always include) or add a special-case
+  branch inside the security-critical hasher (include-only-when>0) — both worse.
+- **The feared failure is a one-liner to demonstrate:** key every repetition by the bare fingerprint and
+  replay serves the last response N times → every pass rate is a comforting N/N lie. DF-306's must-have
+  test is `repeat: 5` replay yielding 5 DISTINCT responses, asserted individually (not by count).
+- **Partial cassettes need NO new policy** — with a per-index key, a missing repetition is just a
+  cassette miss, so DF-204's mode table applies per key: auto backfills live, **replay errors (exit 3)**
+  rather than fabricating a rate from fewer recordings. That is the SPEC §9 hand-wave made precise.
+- **Wilson interval, not naive normal:** stays in [0,1] and is honest at the boundary (5/5 → [0.57,1.0],
+  not [1.0,1.0]). Even N=20 at 80% is ±0.17; N=3 can't even express 0.8. Recommended min N=5, shown only
+  for disagreeing cases (0<k<N) so the merge-gate line stays clean. No dependency — it's arithmetic.
+- **`repeat`×`compare` decided ONCE here** (allowed+warned via DF-307's cost prompt), so DF-305 and
+  DF-307 defer rather than each inventing a rule — closes the drift risk I flagged after DF-303.
