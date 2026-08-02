@@ -14,7 +14,7 @@ from __future__ import annotations
 import asyncio
 import json
 import os
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from dataclasses import replace
 from datetime import UTC, datetime
 from pathlib import Path
@@ -55,6 +55,7 @@ from dryfire.application.scheduler import (
 from dryfire.domain.mocking.resolver import merge_mocks
 from dryfire.domain.model.case import ResolvedCase
 from dryfire.domain.model.message import ModelResponse
+from dryfire.domain.model.trace import Trace
 from dryfire.domain.pricing.calculator import calculate
 
 BUILTIN_MAX_RETRIES = 3  # DF-206; overridable via --max-retries
@@ -305,21 +306,20 @@ def _wrap_cases(
 # -- Cost attachment + exit code --------------------------------------------
 
 
-def _price(run: RunResult, resolved_by: dict[tuple[str, str], ResolvedCase]) -> RunResult:
+def _make_price() -> Callable[[Trace, ResolvedCase], Trace]:
+    """A pricing callback for the scheduler: attach advisory cost + the model to a
+    trace *before* assertions run, so `cost_under` (DF-207) can read it. Unknown
+    model → cost stays None (never a guess). The model is recorded so the
+    cost_under failure message can name it."""
     catalog = BundledPricingCatalog()
-    suites = []
-    for suite in run.suites:
-        cases = []
-        for case in suite.cases:
-            if case.trace is not None:
-                resolved = resolved_by.get((suite.name, case.case_name))
-                rates = catalog.rates(resolved.provider, resolved.model) if resolved else None
-                cost = calculate(case.trace.total_usage, rates) if resolved else None
-                total = float(cost.total) if cost is not None else None
-                case = replace(case, trace=case.trace.model_copy(update={"total_cost_usd": total}))
-            cases.append(case)
-        suites.append(replace(suite, cases=cases))
-    return replace(run, suites=suites)
+
+    def price(trace: Trace, case: ResolvedCase) -> Trace:
+        rates = catalog.rates(case.provider, case.model)
+        cost = calculate(trace.total_usage, rates)
+        total = float(cost.total) if cost is not None else None
+        return trace.model_copy(update={"total_cost_usd": total, "model": case.model})
+
+    return price
 
 
 def _exit_code(run: RunResult) -> int:
@@ -502,7 +502,7 @@ def run(
             return EXIT_CONFIG
 
         overrides = {"model": model} if model else {}
-        planned, resolved_by = _plan(
+        planned, _ = _plan(
             loaded, filter_text=filter_text, tags=tags, overrides=overrides
         )
         if not planned:
@@ -539,10 +539,9 @@ def run(
                 )
 
         result = asyncio.run(
-            run_suites(runnable, default_gateway,
+            run_suites(runnable, default_gateway, price=_make_price(),
                        concurrency=concurrency or BUILTIN_CONCURRENCY, fail_fast=fail_fast)
         )
-        result = _price(result, resolved_by)
         _report(result, reporter=reporter, json_out=json_out, verbose=verbose,
                 out=out, now=now or datetime.now(UTC))
         return _exit_code(result)
@@ -588,7 +587,9 @@ def trace(
                 default_gateway = make_gateway(target.case.provider)
             except MissingCredentials as exc:
                 raise ConfigError(str(exc)) from exc
-        result = asyncio.run(run_suites([target_suite(target)], default_gateway))
+        result = asyncio.run(
+            run_suites([target_suite(target)], default_gateway, price=_make_price())
+        )
         case_result = result.suites[0].cases[0]
         out.write(_render_trace(case_result))
         return _exit_code(result)
