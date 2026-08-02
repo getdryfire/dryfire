@@ -6,4 +6,4 @@ User-facing strings must read APP_NAME rather than hardcode the name
 
 APP_NAME = "dryfire"
 CONFIG_DIR = f".{APP_NAME}"
-__version__ = "0.2.1"
+__version__ = "0.2.2"
