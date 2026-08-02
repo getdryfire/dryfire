@@ -605,6 +605,19 @@ or its check silently starts failing. And make the decorator tolerate an inner *
 (getattr-default → not retryable) so unrelated test doubles wrapped by composition don't blow up.
 Composition order is fixed `Caching(Retrying(Real))`: cache hits skip retries; retries apply only live.
 
+### A cost assertion needs cost *before* assertions run — move pricing into the scheduler (DF-207)
+`cost_under` reads `trace.total_cost_usd`, but cost was attached **post-hoc** in `composition._price`,
+*after* the scheduler evaluated assertions — so the assertion would always see `None`. Fix: `run_suites`
+takes an injected `price(trace, case)` callback (composition builds it over the pricing catalog; the
+scheduler stays adapter-free) and `_process_case` prices the trace **before** `_evaluate`. Pricing also
+sets a new `Trace.model` field so the "pricing unavailable for model X" message can name it — and
+because `model` defaults None and is set only by the pricing step (via `model_copy`), the loop still
+never prices and `loop.py` stays byte-for-byte unchanged. General lesson: an assertion can only see
+what's on the `Trace` when the scheduler evaluates it; if a new assertion needs a derived value, produce
+it *before* evaluation, not in a post-hoc reporting pass. And keep the fail-loud rule for advisory data:
+`cost_under` on an unpriced model **fails** (naming the model), because a green check that proves
+nothing is worse than a red one.
+
 ## Session Notes
 
 ### 2026-07-30 — AC-001 + toolchain

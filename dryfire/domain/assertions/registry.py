@@ -58,4 +58,4 @@ def build(kind: str, raw: Any) -> Assertion:
 # Import the concrete assertions for their registration side effects, so the six
 # v0.1 kinds are always available. Adding a new assertion is a new file plus one
 # import line here — no changes to the loop, loader, or reporters (SPEC §6.3).
-from dryfire.domain.assertions import structural  # noqa: E402, F401
+from dryfire.domain.assertions import budget, structural  # noqa: E402, F401

@@ -23,21 +23,19 @@ Update this file when work ships, phases change, or priorities shift.
 
 > Actively building. Code is being written.
 
-### DF-206 — RetryingGateway + Clock port (implemented, PR open)
-Transient-failure retries as a **decorator over `ModelGateway`**, `application/loop.py` **unchanged** —
-**a retried call is still one turn** (SPEC §5 invariant). Gate green (389 tests + 2 live-skipped), dogfood
-green.
-- **Clock port** (prerequisite, surfaced in review): `application/ports/clock.py` (`async sleep`) +
-  `adapters/driven/clock/system.py` (`SystemClock`). A test `FrozenClock` records requested delays and
-  returns instantly, so backoff is asserted in microseconds.
-- `adapters/driven/providers/retrying.py` — `RetryingGateway` (exponential backoff + jitter, injectable
-  for deterministic tests; `--max-retries`, default 3; honours `Retry-After`; exhausted → the original
-  exception propagates → loop records `provider_error`). Retry **classification** lives in the provider
-  adapter (`is_retryable` added to the port; Anthropic/OpenAI share a duck-typed `default_retryable` —
-  429/5xx/connection/timeout, never 4xx-other; Fake/Caching return False). The decorator only *asks*.
-- Composition order is now **`Caching(Retrying(Real))`** — retries wrap only live calls; a cache hit
-  returns before the retry layer; replay never retries. `RetryingGateway` tolerates an inner without
-  `is_retryable` (getattr-default) so unrelated test doubles don't retry.
+### DF-207 — Budget assertions (`cost_under`, `latency_under_ms`) (implemented, PR open)
+Two new assertions (SPEC §6.2), added the OCP way — **one file + one registry line** (`domain/
+assertions/budget.py`). Gate green (396 tests + 2 live-skipped), loop unchanged.
+- **`cost_under`** fails **loudly** on an unpriced model: an unknown model has no cost, and cost is
+  advisory (SPEC §3.2), so a cost gate it can't satisfy fails and *names the model* — a green check that
+  proves nothing is worse than a red one. `latency_under_ms` sums **per-turn model latency** (excludes
+  mock resolution and retry backoff; under replay it's the recorded latency).
+- **Enabling infra:** cost was attached post-hoc in `composition._price`, *after* assertions ran, so
+  `cost_under` would have seen `None`. Moved pricing into the scheduler: `run_suites` gains an injected
+  `price` callback that the composition builds (over `BundledPricingCatalog`); `_process_case` prices
+  the trace (sets `total_cost_usd` + the new `Trace.model` field) **before** `_evaluate`. The loop still
+  never prices — `Trace.model` defaults None and is set only by the pricing step, so `loop.py` is
+  unchanged. End-to-end: `cost_under` passes for a priced model and fails for an unknown one.
 
 ---
 
@@ -45,8 +43,8 @@ green.
 
 > Committed work, ready to start. Ordered by the EPIC-002 dependency graph (`EPIC-002.md`).
 
-1. **DF-207/208** assertions — budget (`cost_under`, `latency_under_ms`) + extended (`min_tool_calls`,
-   `final_matches`, `final_json_schema`). Independent of the remaining spikes.
+1. **DF-208** extended assertions — `min_tool_calls`, `final_matches` (regex, compiled at validate
+   time), `final_json_schema`. Independent of the remaining spikes.
 2. **DF-209** JUnit (after SPIKE-005) · **DF-210** Action · **DF-211** passthrough (after SPIKE-004) ·
    **DF-212** release. Two half-day spikes remain: SPIKE-004 (passthrough), SPIKE-005 (JUnit).
 
@@ -55,6 +53,13 @@ green.
 ## Shipped
 
 > Working in the codebase. Committed and tested.
+
+### DF-206 — RetryingGateway + Clock port (2026-08-01, PR #26)
+Transient-failure retries as a decorator over `ModelGateway`, `loop.py` unchanged — a retried call is
+still one turn. New **Clock port** (+ `SystemClock`; a test `FrozenClock` asserts backoff in
+microseconds). `is_retryable` on the port (classification in the adapter; Anthropic/OpenAI share a
+duck-typed policy). Exponential backoff + jitter, `--max-retries`, honours `Retry-After`, exhausted →
+`provider_error`. Composition order now `Caching(Retrying(Real))`.
 
 ### DF-201 — OpenAI gateway (2026-08-01, PR #25)
 The second-provider proof of the hexagonal port: adding OpenAI changed **nothing** in `application/`.

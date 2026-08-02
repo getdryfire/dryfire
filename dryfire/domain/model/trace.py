@@ -49,6 +49,10 @@ class Trace(BaseModel):
     total_cost_usd: float | None
     duration_ms: int
     error: str | None = None
+    # The resolved model, attached with cost when the trace is priced (DF-207) —
+    # the loop does not set it, so pricing stays out of the loop. `cost_under`
+    # names it when pricing is unavailable.
+    model: str | None = None
 
     @field_validator("total_cost_usd")
     @classmethod

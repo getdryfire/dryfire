@@ -267,6 +267,32 @@ def test_missing_key_skips_the_case_with_a_note_not_a_failure(
     assert "ANTHROPIC_API_KEY" in result.output
 
 
+def test_cost_under_passes_for_a_priced_model(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # Pricing runs before assertions (DF-207), so cost_under sees a real cost.
+    _use_gateway(monkeypatch, _TextGateway("done"))
+    suite = (
+        "name: cost\nmodel: claude-sonnet-4-6\ncases:\n  - name: cheap\n    input: hi\n"
+        "    expect:\n      - cost_under: 1.0\n"
+    )
+    result = runner.invoke(app, ["run", _write(tmp_path, suite)])
+    assert result.exit_code == 0, result.output
+
+
+def test_cost_under_fails_loudly_for_an_unknown_model(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _use_gateway(monkeypatch, _TextGateway("done"))
+    suite = (
+        "name: cost\nmodel: gpt-9-does-not-exist\ncases:\n  - name: unpriced\n    input: hi\n"
+        "    expect:\n      - cost_under: 1.0\n"
+    )
+    result = runner.invoke(app, ["run", _write(tmp_path, suite)])
+    assert result.exit_code == 1  # must not silently pass
+    assert "pricing unavailable" in result.output
+
+
 def test_max_retries_zero_disables_retries(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

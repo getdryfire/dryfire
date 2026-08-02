@@ -34,6 +34,11 @@ DEFAULT_CONCURRENCY = 4  # SPEC §5; overridable via --concurrency (AC-015)
 # all output. Called once per completed case, in completion order.
 ProgressCallback = Callable[["CaseResult"], None]
 
+# Attaches advisory cost (and the model) to a trace before assertions run, so
+# `cost_under` can read it (DF-207). Injected by composition, which owns the
+# pricing catalog; the scheduler stays adapter-free.
+PriceTrace = Callable[[Trace, ResolvedCase], Trace]
+
 
 # -- Inputs: a run planned down to fresh-per-case domain mocks ---------------
 
@@ -108,7 +113,9 @@ def _evaluate(expect: list[dict[str, Any]], trace: Trace) -> list[AssertionResul
     return results
 
 
-async def _process_case(planned: PlannedCase, provider: ModelGateway | None) -> CaseResult:
+async def _process_case(
+    planned: PlannedCase, provider: ModelGateway | None, price: PriceTrace | None
+) -> CaseResult:
     case = planned.case
     try:
         # Per-case gateway wins over the run default; a case with neither is a
@@ -120,6 +127,9 @@ async def _process_case(planned: PlannedCase, provider: ModelGateway | None) -> 
         # concurrently-running cases.
         resolver = MockResolver(dict(planned.mocks))
         trace = await run_case(case, gateway, resolver)
+        # Price the trace BEFORE assertions so cost_under (DF-207) can read it.
+        if price is not None:
+            trace = price(trace, case)
         assertions = _evaluate(case.expect, trace)
         passed = all(a.passed for a in assertions)
         return CaseResult(case.suite_name, case.case_name, trace, assertions, passed)
@@ -152,6 +162,7 @@ async def run_suites(
     concurrency: int = DEFAULT_CONCURRENCY,
     fail_fast: bool = False,
     on_progress: ProgressCallback | None = None,
+    price: PriceTrace | None = None,
 ) -> RunResult:
     """Run every case concurrently (bounded to `concurrency`) and return results in
     spec order regardless of completion order.
@@ -172,7 +183,7 @@ async def run_suites(
 
     async def worker() -> None:
         for i in pending:
-            result = await _process_case(planned[i], provider)
+            result = await _process_case(planned[i], provider, price)
             results[i] = result
             if on_progress is not None:
                 on_progress(result)
