@@ -55,7 +55,13 @@ def build(kind: str, raw: Any) -> Assertion:
     return constructor(args)  # type: ignore[no-any-return]
 
 
-# Import the concrete assertions for their registration side effects, so the six
-# v0.1 kinds are always available. Adding a new assertion is a new file plus one
-# import line here — no changes to the loop, loader, or reporters (SPEC §6.3).
-from dryfire.domain.assertions import budget, extended, structural  # noqa: E402, F401
+# Import the concrete assertions for their registration side effects, so every kind
+# is always available. Adding a new assertion is a new file plus one import line here
+# — no changes to the loop, loader, or reporters (SPEC §6.3). `judge` (llm_judge, v0.3)
+# stays pure like the rest; its model call lives in the enrichment stage, not here.
+from dryfire.domain.assertions import (  # noqa: E402, F401
+    budget,
+    extended,
+    judge,
+    structural,
+)

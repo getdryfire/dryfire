@@ -62,10 +62,14 @@ class JudgeEvaluator:
     pricing callback), reused across every case."""
 
     def __init__(
-        self, *, gateway: ModelGateway, concurrency: int = DEFAULT_JUDGE_CONCURRENCY
+        self, *, gateway: ModelGateway, concurrency: int = DEFAULT_JUDGE_CONCURRENCY,
+        sem: asyncio.Semaphore | None = None,
     ) -> None:
         self._gateway = gateway
-        self._sem = asyncio.Semaphore(concurrency)
+        # A caller (composition) may inject ONE semaphore shared across per-case
+        # evaluators, so the concurrency bound spans the whole run rather than a
+        # single case. Absent an injected one, each evaluator bounds itself.
+        self._sem = sem if sem is not None else asyncio.Semaphore(concurrency)
 
     async def evaluate(
         self, trace: Trace, requests: list[JudgeRequest]
