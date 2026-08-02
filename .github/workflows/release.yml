@@ -63,4 +63,7 @@ jobs:
           name: dist
           path: dist/
       - name: Publish to PyPI
-        uses: pypa/gh-action-pypi-publish@release/v1
+        # SHA-pinned — this is the highest-privilege step (id-token: write → can
+        # publish to PyPI). Pinning to a full commit SHA removes the mutable-ref
+        # supply-chain risk. Bump deliberately (e.g. via Dependabot).
+        uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33 # v1.14.2
