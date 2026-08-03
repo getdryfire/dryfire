@@ -102,7 +102,17 @@ Update this file when work ships, phases change, or priorities shift.
 >   cap at 8 columns with a `--json-out` note (transposition rejected — documented). Golden-file test for the
 >   3×5 two-disagreement matrix. Composition now renders the matrix (TTY-aware colour). 10 new tests; 566 total.
 > - **This closes the `compare` sub-track (DF-307/308).**
-> - **Next:** DF-309 (HTML report — the first visual output) → DF-310 (docs + v0.3.0 release).
+> - **DF-309 (HTML report sink) — DONE.** `adapters/driven/reporting/html_sink.py`: `render_run_html` +
+>   `render_compare_html` produce ONE self-contained file — inlined CSS, **no JS** (expandable detail via
+>   native `<details>`/`<summary>`), no CDN/external refs → opens from `file://` air-gapped. The shell+CSS is
+>   an embedded module constant, not a packaged template file (guaranteed in the wheel; no package-data risk
+>   that would surface only after publish). Failing cases render open with full trajectory + tool args +
+>   assertion messages + judge reasoning. `dryfire report run.json [--html-out]` regenerates from the JSON
+>   artifact with no re-execution; `compare --html-out` writes the matrix as a table. <500KB/50 cases,
+>   HTML-escaped, valid markup. **No loop/scheduler/existing-reporter changes** (git diff proves it). 9 new
+>   tests; 575 total.
+> - **Next (final ticket):** DF-310 — docs (`judging.md`/`flakiness.md`/`compare.md`), `COMPARISON.md`
+>   re-verify, structural-only benchmark, README centre-of-gravity check, and the **v0.3.0 release**.
 
 ---
 

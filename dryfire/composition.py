@@ -31,7 +31,8 @@ from dryfire.adapters.driven.providers.caching import CachingGateway
 from dryfire.adapters.driven.providers.fake import FakeGateway
 from dryfire.adapters.driven.providers.retrying import RetryingGateway
 from dryfire.adapters.driven.reporting.compare_terminal import render_compare
-from dryfire.adapters.driven.reporting.json_sink import render_run, write_run
+from dryfire.adapters.driven.reporting.html_sink import render_compare_html, render_run_html
+from dryfire.adapters.driven.reporting.json_sink import deserialize_run, render_run, write_run
 from dryfire.adapters.driven.reporting.junit_sink import render_junit, write_junit
 from dryfire.adapters.driven.reporting.terminal import render_report, resolve_color
 from dryfire.adapters.driven.scaffold.writer import ScaffoldConflict, scaffold
@@ -809,9 +810,11 @@ def compare(
     max_retries: int | None = None,
     yes: bool = False,
     threshold: int = COMPARE_CONFIRM_THRESHOLD,
+    html_out: str | None = None,
     debug: bool = False,
     out: TextIO,
     err: TextIO,
+    now: datetime | None = None,
 ) -> int:
     """Run one suite across N models (or N prompt variants) and print the matrix.
     Orchestration over `run_suites` — a failing column never aborts the others."""
@@ -862,7 +865,42 @@ def compare(
 
         result = asyncio.run(run_compare(axis, labels, run_one))
         out.write(render_compare(result, color=resolve_color(out)))
+        if html_out is not None:  # the matrix as a self-contained, shareable HTML file
+            Path(html_out).write_text(
+                render_compare_html(result, generated_at=now or datetime.now(UTC)),
+                encoding="utf-8",
+            )
+            out.write(f"wrote {html_out}\n")
         return _compare_exit_code(result)
+    except ConfigError as exc:
+        err.write(f"error: {exc}\n")
+        return EXIT_CONFIG
+    except Exception as exc:  # noqa: BLE001 - unhandled → clean message, exit 2 (SPEC §7.1)
+        return _internal_error(exc, err=err, debug=debug)
+
+
+def report(
+    json_path: str, *, html_out: str | None = None, debug: bool = False,
+    out: TextIO, err: TextIO, now: datetime | None = None,
+) -> int:
+    """Regenerate an HTML report from a previously-recorded JSON artifact — no
+    re-execution, no network. `dryfire report run.json` writes the HTML to `--out` or
+    stdout, so an air-gapped machine can render a run recorded elsewhere."""
+    try:
+        try:
+            document = json.loads(Path(json_path).read_text(encoding="utf-8"))
+        except OSError as exc:
+            raise ConfigError(f"cannot read {json_path!r}: {exc}") from exc
+        except json.JSONDecodeError as exc:
+            raise ConfigError(f"{json_path!r} is not valid JSON: {exc}") from exc
+        run = deserialize_run(document)
+        html = render_run_html(run, generated_at=now or datetime.now(UTC))
+        if html_out is not None:
+            Path(html_out).write_text(html, encoding="utf-8")
+            out.write(f"wrote {html_out}\n")
+        else:
+            out.write(html)
+        return EXIT_OK
     except ConfigError as exc:
         err.write(f"error: {exc}\n")
         return EXIT_CONFIG
