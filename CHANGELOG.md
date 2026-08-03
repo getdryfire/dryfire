@@ -4,6 +4,40 @@ All notable changes to dryfire are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0] — 2026-08-02
+
+**Judgment & comparison.** Three capabilities for behaviour a structural check can't express
+— all opt-in, none of it on the default path. A suite with no `llm_judge` and no `repeat` runs
+at v0.2 speed and cost (benchmarked: `docs/benchmark.md`), and v0.1/v0.2 suites run unchanged
+(CI backward-compat test). The load-bearing rule held: `application/loop.py` did not change —
+judging is an enrichment stage *outside* the loop (`ARCHITECTURE.md` §4.4).
+
+### Added
+
+- **`llm_judge` assertion** — a rubric-graded assertion (`{rubric, model?, threshold?}`) for
+  behaviour structure can't capture. The judge call routes through the same `ModelGateway`, so
+  it's cassette-backed and retried for free; `temperature=0` always; an unparseable response or
+  provider error is a distinct judge *error*, never a silent score of 0. Every verdict pins the
+  judge-model version and a **rubric hash** so scores stay comparable over time. Judge cost is a
+  **separate channel** — never folded into case cost, so `cost_under` stays blind to it.
+  (`docs/judging.md`.)
+- **`repeat: N`** — run a case N times and report a `k/N` pass rate with a Wilson 95% confidence
+  interval, to catch flakiness a single run hides. `require_pass_rate` (default 1.0) governs the
+  build verdict; a disagreeing case is surfaced distinctly. Each repetition records/replays under
+  its own cassette key — five runs store five distinct responses, never one served five times.
+  (`docs/flakiness.md`.)
+- **`dryfire compare --models a,b,c` / `--prompts f1,f2`** — one suite across N models (or prompt
+  variants) → a matrix (pass rate, cost, latency, mean turns per model), with disagreements made
+  visually obvious. Orchestration over the existing runner; a failing model is an isolated failed
+  column. A cost estimate is shown before execution and gated above a threshold (`--yes` to
+  bypass). (`docs/compare.md`.)
+- **Self-contained HTML report** — `dryfire report run.json [--html-out]` regenerates an offline
+  HTML report (no CDN, no JS, opens from `file://`) from a JSON artifact with no re-execution;
+  `compare --html-out` writes the matrix as a table. Expandable per-case failure detail with
+  trajectory, tool args, assertion messages, and judge reasoning.
+- The run JSON artifact is now `schema_version: 2` — additive (`judge_verdicts`, `judge_usage`,
+  `judge_cost`, and repetition fields), so a structural-only run serialises identically to v0.2.
+
 ## [0.2.2] — 2026-08-02
 
 Docs-only patch (no code changes).
@@ -116,6 +150,7 @@ First release: the v0.1 trajectory runner (EPIC-001). Anthropic-only, local-firs
   `compare`, and cost/latency assertions are planned for v0.2+.
 - Cost is advisory; stale pricing is an accepted, documented limitation.
 
+[0.3.0]: https://github.com/getdryfire/dryfire/releases/tag/v0.3.0
 [0.2.2]: https://github.com/getdryfire/dryfire/releases/tag/v0.2.2
 [0.2.1]: https://github.com/getdryfire/dryfire/releases/tag/v0.2.1
 [0.2.0]: https://github.com/getdryfire/dryfire/releases/tag/v0.2.0

@@ -926,3 +926,24 @@ env indirection is the standard injection-safe pattern. Design the action so JUn
 - **AC "no loop/scheduler/reporter changes" is a `git diff` check** — html_sink is a new adapter; only
   composition (the `report` command + `compare --html-out`) and the CLI were touched. `git diff --stat
   main...HEAD -- loop.py scheduler.py terminal.py json_sink.py junit_sink.py` is empty.
+
+### 2026-08-02 — DF-310 (docs + v0.3.0 release prep)
+- **`cost_under` can't live in an offline compat fixture** — a `provider: fake` case has no pricing, so
+  cost is None and `cost_under` fails LOUDLY (by design, DF-207). The v0.2 backward-compat fixture uses
+  `latency_under_ms` (works offline) + the extended assertions; cost gating is inherently a real-provider
+  concern. Also: a fake-script case still needs a `mocks:` block — the script drives the model's tool
+  *calls*, but tool *results* come from mocks (else `unmocked_tool` termination).
+- **The benchmark's value is the invariants, not the milliseconds.** `scripts/benchmark_structural.py`
+  asserts `judge activity == 0` and `total cost == 0` for a structural-only run — those prove the fast path
+  architecturally; the wall-clock is machine-dependent noise. "No regression" is a code-path claim first
+  (judge=None, repeat=1 → v0.2 path), a timing second.
+- **README centre-of-gravity is a real constraint, not a vibe.** v0.3 features go in an *additive* section
+  below the structural-testing headline, explicitly framed as opt-in ("the merge gate stays structural").
+  Leading with LLM-as-judge would reposition the project into the crowded market it was built to avoid.
+- **COMPARISON.md: narrows a gap, doesn't close one.** Now that `llm_judge`/`compare` shipped, the honest
+  framing is that Promptfoo/DeepEval remain more mature (bigger judge/metric libraries) — say so plainly;
+  the fairness is what earns belief in the rest of the table. Update the "until v0.3" phrasings to "shipped
+  in v0.3 but younger/narrower here".
+- **Release flow (owner-gated):** bump `__about__.py` + CHANGELOG `[x.y.z]` + link ref in the PR; merge;
+  then `git tag vX.Y.Z && git push origin vX.Y.Z` → `release.yml` enforces tag==version, re-runs the gate,
+  publishes via Trusted Publishing. Never tag without the owner's go-ahead.

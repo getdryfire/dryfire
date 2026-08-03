@@ -59,7 +59,46 @@ rubric changes the hash because it may change the judgement.
 A failure message carries the score, the threshold, the judge's reasoning, and the rubric
 hash — enough to tell whether the agent was wrong or the rubric was.
 
-> Judge cost accounting, judge-model drift, and the full guidance on pinning versions land
-> with the rest of v0.3 (`docs/` will grow a dedicated section). For now: pin your judge
-> `model`, record cassettes for anything that gates CI, and treat a changed rubric hash as
-> a new measurement.
+## Judge cost is a separate channel
+
+Judge calls cost money, and that cost is reported **separately** from the case cost — never
+folded in. This is deliberate: if judging inflated a case's cost, `cost_under` would start
+failing for reasons that have nothing to do with the agent under test, and you'd debug the
+wrong thing. The terminal shows a `judge:` line only when a judge actually ran; a
+structural-only run shows nothing.
+
+## Judge drift — the failure mode most tools ignore
+
+This is the most important page in these docs, because it describes the way LLM-as-judge
+quietly lies to you over time.
+
+A team charts "agent quality" over six months. The line moves. But two things drift
+underneath a naive judge, and both move the line for reasons that have **nothing to do with
+the agent**:
+
+1. **The judge model changes.** `claude-opus-4-8` today is not byte-for-byte the model it
+   resolves to next quarter. A model update shifts scores a few points across the board.
+2. **The rubric changes.** Someone reworded the rubric, added an example, or even just
+   reformatted the whitespace. The judge now grades a slightly different thing.
+
+dryfire makes both **visible instead of silent**:
+
+- **Every verdict pins `judge_model_version`** — the exact version the provider served, not
+  just the alias you asked for. Two scores are only comparable if this matches. Pin your
+  judge `model:` explicitly (don't rely on a floating alias) if you chart quality over time.
+- **Every verdict carries a `rubric_hash`** — a stable hash of the rubric text (whitespace
+  included), its threshold, and any examples. **A score produced under one rubric hash is
+  not comparable to a score produced under a different one.** Reformatting a rubric changes
+  the hash *because it may change the judgement* — that is correct, not a bug. Treat a
+  changed rubric hash as a **new measurement**, not a continuation of the old series.
+
+The rule: **a score without its judge-model version and rubric hash is not a measurement.**
+dryfire refuses to construct a verdict without both.
+
+## Recommended workflow
+
+- **Pin the judge model** (`model: claude-opus-4-8-<dated-snapshot>`), don't float an alias.
+- **Record cassettes** for anything that gates CI (`--cassette-mode=replay`) — that makes the
+  judged run deterministic and free again, so it *is* merge-gate-safe.
+- **Treat a changed rubric hash as a reset** of your quality series, not a dip or a spike.
+- Keep the judge for behaviour structure can't express; keep the merge gate structural.

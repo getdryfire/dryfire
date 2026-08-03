@@ -116,6 +116,25 @@ You write cases; dryfire drives the loop and asserts on the **trace**:
 
 Adding an assertion is one new file plus one registry entry — no `if kind == …` chains.
 
+### Beyond structural (v0.3, all opt-in)
+
+The headline stays the same: **deterministic structural testing in CI.** v0.3 adds three
+capabilities *on top* of it, for behaviour a structural check can't express — each opt-in,
+none of it touching the default path (a suite with no judging and no `repeat` runs at v0.2
+speed and cost — [benchmark](https://github.com/getdryfire/dryfire/blob/main/docs/benchmark.md)):
+
+- **`llm_judge`** — a rubric-graded assertion for behaviour structure can't capture (*"did
+  the agent apologise before refunding?"*). Costs money, varies between runs; **cassette it
+  before you gate a merge on it.** Every verdict pins the judge-model version and a rubric
+  hash so scores stay comparable over time — [`docs/judging.md`](https://github.com/getdryfire/dryfire/blob/main/docs/judging.md).
+- **`repeat: N`** — run a case N times and report a `k/N` pass rate, to catch flakiness a
+  single green run hides — [`docs/flakiness.md`](https://github.com/getdryfire/dryfire/blob/main/docs/flakiness.md).
+- **`dryfire compare --models a,b,c`** — one suite across N models → a matrix (pass rate,
+  cost, latency per model). *Is the cheaper model good enough?* — [`docs/compare.md`](https://github.com/getdryfire/dryfire/blob/main/docs/compare.md).
+
+Plus a self-contained **HTML report** (`dryfire report run.json --html-out`): one file, no
+CDN, opens offline, with expandable per-case failure detail.
+
 ## Non-goals (permanent)
 
 dryfire is a pre-deployment unit test, and deliberately not more (SPEC §1.5):
@@ -137,6 +156,9 @@ Full, dated head-to-heads (Promptfoo, DeepEval): [`COMPARISON.md`](https://githu
 - [`docs/ci.md`](https://github.com/getdryfire/dryfire/blob/main/docs/ci.md) — running dryfire in CI: exit codes, JUnit, the GitHub Action.
 - [`docs/cassettes.md`](https://github.com/getdryfire/dryfire/blob/main/docs/cassettes.md) — record/replay, and what invalidates a cassette.
 - [`docs/mocks.md`](https://github.com/getdryfire/dryfire/blob/main/docs/mocks.md) — mock rules, including passthrough (`impl:`) and its security note.
+- [`docs/judging.md`](https://github.com/getdryfire/dryfire/blob/main/docs/judging.md) — `llm_judge`: cost, variance, merge-gate guidance, and judge drift.
+- [`docs/flakiness.md`](https://github.com/getdryfire/dryfire/blob/main/docs/flakiness.md) — `repeat: N`, pass rates, and what `3/5` actually means.
+- [`docs/compare.md`](https://github.com/getdryfire/dryfire/blob/main/docs/compare.md) — `compare` across models/prompts, the matrix, and the cost gate.
 - [`COMPARISON.md`](https://github.com/getdryfire/dryfire/blob/main/COMPARISON.md) — how dryfire compares to Promptfoo and DeepEval.
 - [`SPEC.md`](https://github.com/getdryfire/dryfire/blob/main/SPEC.md) — product spec: domain model, YAML format, agent loop, assertions, exit codes.
 - [`ARCHITECTURE.md`](https://github.com/getdryfire/dryfire/blob/main/ARCHITECTURE.md) — how the code is shaped (hexagonal, three layers).
