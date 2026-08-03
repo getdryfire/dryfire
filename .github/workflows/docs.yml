@@ -1,0 +1,53 @@
+name: Docs
+
+# Builds the MkDocs (Material) site and deploys it to GitHub Pages. No gh-pages
+# branch — the built site is served straight from the Actions artifact.
+#
+# One-time repo setup (owner): Settings → Pages → Source = "GitHub Actions".
+# The site then lands at https://getdryfire.github.io/dryfire/.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "docs/**"
+      - "mkdocs.yml"
+      - ".github/workflows/docs.yml"
+  workflow_dispatch:
+
+# Least privilege: only the deploy job needs pages/id-token.
+permissions:
+  contents: read
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: astral-sh/setup-uv@v7
+        with:
+          python-version: "3.12"
+      - name: Install docs dependencies
+        run: uv sync --all-extras
+      - name: Build (strict — warnings fail the build)
+        run: uv run mkdocs build --strict
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write # deploy to Pages
+      id-token: write # OIDC verification for the deploy
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

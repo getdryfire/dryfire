@@ -159,6 +159,9 @@ Full, dated head-to-heads (Promptfoo, DeepEval): [`COMPARISON.md`](https://githu
 
 ## Documentation
 
+📖 **Full docs site: [getdryfire.github.io/dryfire](https://getdryfire.github.io/dryfire/)** — start with the [**Getting started guide**](https://getdryfire.github.io/dryfire/guide/).
+
+- [`docs/guide.md`](https://github.com/getdryfire/dryfire/blob/main/docs/guide.md) — **getting started**: from zero to a green suite to CI, with an annotated example.
 - [`docs/ci.md`](https://github.com/getdryfire/dryfire/blob/main/docs/ci.md) — running dryfire in CI: exit codes, JUnit, the GitHub Action.
 - [`docs/cassettes.md`](https://github.com/getdryfire/dryfire/blob/main/docs/cassettes.md) — record/replay, and what invalidates a cassette.
 - [`docs/mocks.md`](https://github.com/getdryfire/dryfire/blob/main/docs/mocks.md) — mock rules, including passthrough (`impl:`) and its security note.

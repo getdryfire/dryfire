@@ -116,6 +116,16 @@ docker-smoke: ## Measure cold start in a clean Linux container (the fair number)
 docker-clean: ## Remove this project's containers and images
 	$(COMPOSE) --profile matrix down --rmi local --remove-orphans
 
+## Docs
+
+.PHONY: docs
+docs: ## Build the MkDocs site to site/ (strict — warnings are errors)
+	uv run mkdocs build --strict
+
+.PHONY: docs-serve
+docs-serve: ## Preview the docs site locally at http://127.0.0.1:8000
+	uv run mkdocs serve
+
 ## Build & clean
 .PHONY: build
 build: ## Build sdist + wheel into dist/
