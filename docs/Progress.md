@@ -129,10 +129,27 @@ cost (benchmarked). Published as `dryfire 0.3.0` → `0.3.1` on PyPI.
 
 ---
 
+## In Progress — v0.4 (Model Breadth)
+
+> Milestone [v0.4 Model Breadth](https://github.com/getdryfire/dryfire/milestone/1) — expand
+> provider support beyond Anthropic + OpenAI. Issues #71–78 (`provider` label). Splits cleanly:
+> the OpenAI-compatible family is a shared seam + data rows; Gemini is the one native adapter.
+
+- **#71 — OpenAI-compatible provider seam (+ Grok/xAI reference) — code complete, PR open.**
+  Generalized `OpenAIGateway` (`name` + `base_url` + `stop_reason_key`, all defaulting to today's
+  plain-OpenAI behavior byte-for-byte) and added an `OPENAI_COMPATIBLE` registry in
+  `composition.py` (`name → (base_url, env_var)`). Registered **`xai`** (the issue's reference)
+  **and `openrouter`** — the latter is the single-key path that fans out to every frontier +
+  open-weight model, and it backs the live smoke test. `application/loop.py` untouched; no new
+  adapter file (the `openai.py` translation is reused verbatim). **Pricing deliberately omitted**
+  for compat providers — parity with `openai`, which also ships unpriced (advisory cost → None;
+  never a guessed price). Next: #72/#73/#74 (Kimi/GLM/DeepSeek) are now one registry row + a
+  recorded-payload test each.
+
 ## Up Next
 
-- **v0.4 — not yet scoped.** No epic opened. dryfire stays a zero-infra local CLI (no server,
-  database, or account); see CLAUDE.md "Scope discipline" for what stays deferred.
+- **v0.4 remaining:** #75 (generic `openai_compatible` with user-supplied `base_url`), #76 (Gemini
+  spike — id-less tool loop), #77 (Gemini native adapter), #78 (provider matrix docs).
 - **Housekeeping candidates:** bump release-workflow actions off deprecated Node 20; consider
   flipping `.github/workflows/example-usage.yml` from `workflow_dispatch` to `push`/`pull_request`
   now that `getdryfire/dryfire@v0.2.0` resolves.

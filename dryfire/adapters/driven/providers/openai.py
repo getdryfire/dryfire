@@ -39,9 +39,16 @@ _INSTALL_HINT = (
 )
 
 
-def from_wire(raw: dict[str, Any], latency_ms: int) -> ModelResponse:
+def from_wire(
+    raw: dict[str, Any], latency_ms: int, *, stop_reason_key: str = "openai"
+) -> ModelResponse:
     """Translate an OpenAI Chat Completions response (``model_dump()``) into a
-    neutral ModelResponse. Malformed tool arguments are preserved, never raised."""
+    neutral ModelResponse. Malformed tool arguments are preserved, never raised.
+
+    `stop_reason_key` selects the finish-reason mapping table (#71): every
+    OpenAI-compatible provider (Grok/xAI, Kimi, GLM, DeepSeek, OpenRouter) speaks
+    the same finish reasons, so they all pass ``"openai"`` — the default keeps the
+    plain OpenAI path byte-identical."""
     choice = (raw.get("choices") or [{}])[0]
     message = choice.get("message") or {}
 
@@ -63,7 +70,7 @@ def from_wire(raw: dict[str, Any], latency_ms: int) -> ModelResponse:
     return ModelResponse(
         text=message.get("content"),
         tool_calls=calls,
-        stop_reason=map_stop_reason("openai", choice.get("finish_reason") or ""),
+        stop_reason=map_stop_reason(stop_reason_key, choice.get("finish_reason") or ""),
         usage=Usage(
             input_tokens=usage.get("prompt_tokens", 0),
             output_tokens=usage.get("completion_tokens", 0),
@@ -153,23 +160,41 @@ def _assistant_message(message: Message) -> dict[str, Any]:
 
 
 class OpenAIGateway:
-    """ModelGateway backed by the OpenAI Chat Completions API."""
+    """ModelGateway backed by the OpenAI Chat Completions API — and, via `name` +
+    `base_url`, any OpenAI-compatible provider (#71).
 
-    name = "openai"
+    The wire translation (`to_wire`/`from_wire`) is identical for every compatible
+    provider; only three data points differ: `name` (the provider identity that keys
+    `provider:model` pricing), `base_url` (where the compatible endpoint lives), and
+    the API key. Defaults reproduce the plain OpenAI path byte-for-byte."""
 
-    def __init__(self, api_key: str | None = None) -> None:
+    def __init__(
+        self,
+        api_key: str | None = None,
+        *,
+        name: str = "openai",
+        base_url: str | None = None,
+        stop_reason_key: str = "openai",
+    ) -> None:
+        self.name = name
+        self._stop_reason_key = stop_reason_key
         try:
             from openai import AsyncOpenAI
         except ImportError as exc:  # pragma: no cover - exercised via monkeypatch
             raise RuntimeError(_INSTALL_HINT) from exc
-        self._client = AsyncOpenAI(api_key=api_key) if api_key else AsyncOpenAI()
+        kwargs: dict[str, Any] = {}
+        if api_key is not None:
+            kwargs["api_key"] = api_key
+        if base_url is not None:
+            kwargs["base_url"] = base_url
+        self._client = AsyncOpenAI(**kwargs)
 
     async def complete(self, request: CompletionRequest) -> ModelResponse:
         payload = to_wire(request)
         start = time.monotonic()
         raw = (await self._client.chat.completions.create(**payload)).model_dump()
         latency_ms = int((time.monotonic() - start) * 1000)
-        return from_wire(raw, latency_ms)
+        return from_wire(raw, latency_ms, stop_reason_key=self._stop_reason_key)
 
     def is_retryable(self, exc: Exception) -> bool:
         from dryfire.adapters.driven.providers.retrying import default_retryable

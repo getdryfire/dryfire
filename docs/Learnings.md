@@ -947,3 +947,26 @@ env indirection is the standard injection-safe pattern. Design the action so JUn
 - **Release flow (owner-gated):** bump `__about__.py` + CHANGELOG `[x.y.z]` + link ref in the PR; merge;
   then `git tag vX.Y.Z && git push origin vX.Y.Z` → `release.yml` enforces tag==version, re-runs the gate,
   publishes via Trusted Publishing. Never tag without the owner's go-ahead.
+
+### 2026-08-03 — #71 (OpenAI-compatible provider seam)
+- **Most "new" frontier/open-weight models aren't new adapters — they're the OpenAI wire format at a
+  different `base_url`.** Grok/xAI, Kimi, GLM, DeepSeek, and aggregators (OpenRouter) all speak Chat
+  Completions with the same `finish_reason` values. The seam is three data points — `name`, `base_url`,
+  env var — reused through the existing `openai.py` `to_wire`/`from_wire`. Adding one is a registry row in
+  `composition.OPENAI_COMPATIBLE`, not a branch. Gemini is the sole exception (native `generateContent`,
+  id-less tool calls) — see #76/#77.
+- **Generalize in place, don't subclass.** `OpenAIGateway` grew `name`/`base_url`/`stop_reason_key`
+  kwargs, all defaulting to the plain-OpenAI behavior byte-for-byte (existing tests untouched, `name`
+  moved from class attr → instance attr — the `@runtime_checkable` Protocol still matches). No new class,
+  no inheritance (ARCHITECTURE max-one-level rule).
+- **Decouple provider *identity* from the *wire family*.** A compat gateway's `name` (e.g. `xai`) keys
+  `provider:model` pricing, but its finish reasons map through the `"openai"` table via a `stop_reason_key`
+  param on `from_wire` (default `"openai"`). This is why the stop-reason table needs **no** per-provider row.
+- **Compat providers ship unpriced, like `openai` already does.** `pricing.yaml` has only Anthropic rows;
+  the OpenAI adapter (v0.2) never added prices, so cost is advisory `None`. Fabricating xAI/OpenRouter
+  prices offline would violate "never a guess" and make `_meta.source` wrong. Pricing is a separate,
+  data-only follow-up (or user `pricing_file`), not part of wiring a provider.
+- **OpenRouter is the practical live/recording key.** One `OPENROUTER_API_KEY` reaches every model in the
+  epic, so the live smoke (`test_openrouter_live.py`) covers the compat path without per-provider keys;
+  point it at a specific model with `DRYFIRE_OPENROUTER_MODEL`. Offline determinism is unaffected — unit
+  tests fake the SDK via `sys.modules["openai"]` and assert the captured `base_url`/`api_key` kwargs.
