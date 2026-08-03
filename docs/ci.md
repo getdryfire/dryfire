@@ -19,7 +19,7 @@ jobs:
 
 Add `permissions: checks: write` at the workflow level so the JUnit result renders as a PR
 check (without it the run still uploads the report artifact and still gates the job on the
-exit code). The full working file is [`.github/workflows/example-usage.yml`](../.github/workflows/example-usage.yml).
+exit code). The full working file is [`.github/workflows/example-usage.yml`](https://github.com/getdryfire/dryfire/blob/main/.github/workflows/example-usage.yml).
 
 ## Exit codes are the contract
 

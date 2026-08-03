@@ -1,0 +1,72 @@
+site_name: dryfire
+site_description: Git-native regression testing for LLM agent tool loops — assert on the trajectory, not the prose.
+site_url: https://getdryfire.github.io/dryfire/
+repo_url: https://github.com/getdryfire/dryfire
+repo_name: getdryfire/dryfire
+copyright: MIT-licensed. A zero-infra local CLI.
+
+theme:
+  name: material
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: deep orange
+      accent: deep orange
+      toggle:
+        icon: material/weather-night
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: deep orange
+      accent: deep orange
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to light mode
+  features:
+    - navigation.sections
+    - navigation.top
+    - navigation.instant
+    - content.code.copy
+    - search.suggest
+    - search.highlight
+  icon:
+    repo: fontawesome/brands/github
+
+# Internal working docs — never part of the public site.
+exclude_docs: |
+  Progress.md
+  Learnings.md
+
+nav:
+  - Home: index.md
+  - Get started: guide.md
+  - Core:
+      - Mocks: mocks.md
+      - Cassettes: cassettes.md
+      - CI: ci.md
+  - Judgment & comparison:
+      - LLM-as-judge: judging.md
+      - Flakiness (repeat): flakiness.md
+      - Compare: compare.md
+      - Benchmark: benchmark.md
+  - Reference:
+      - Spec: https://github.com/getdryfire/dryfire/blob/main/SPEC.md
+      - Architecture: https://github.com/getdryfire/dryfire/blob/main/ARCHITECTURE.md
+      - Comparison: https://github.com/getdryfire/dryfire/blob/main/COMPARISON.md
+      - Changelog: https://github.com/getdryfire/dryfire/blob/main/CHANGELOG.md
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.superfences
+  - pymdownx.inlinehilite
+  - pymdownx.tabbed:
+      alternate_style: true
+
+plugins:
+  - search
