@@ -5,10 +5,16 @@ This is the canonical, dated comparison; SPEC §1.4 points here.
 **Keep it fair.** The "where X is better" sections are not optional politeness — an unfair
 table gets the project dismissed by exactly the audience whose opinion carries.
 
-**Last verified: 2026-08-02**, against [promptfoo.dev](https://www.promptfoo.dev) and
-[deepeval.com](https://deepeval.com). Both move fast (Promptfoo's roadmap is now OpenAI's);
+**Last verified: 2026-08-02** (v0.3 release), against [promptfoo.dev](https://www.promptfoo.dev)
+and [deepeval.com](https://deepeval.com). Both move fast (Promptfoo's roadmap is now OpenAI's);
 re-verify every row on each release and correct — never quietly drop — any row that has gone
 stale.
+
+> **v0.3 note.** dryfire now has `llm_judge`, `compare`, and `repeat`. That **narrows** the gap
+> on judging and model comparison — it does not close it. Promptfoo and DeepEval remain more
+> mature there (far larger judge/metric libraries, years of tuning), and this document says so
+> plainly below. dryfire's distinction is unchanged: a deterministic, keyless, mock-driven
+> **structural** gate that judging is layered *on top of*, not the centre of.
 
 ---
 
@@ -73,8 +79,8 @@ stale.
 | **Declarative tool mocking** | ✅ subset match, errors, sequences | ❌ real tools, or a custom provider |
 | **What is under test** | A prompt + tool-schema design, before an agent exists | Your built agent, wrapped in a custom provider |
 | Deterministic offline replay | ✅ v0.2 cassettes | Response caching |
-| Model comparison matrix | v0.3 | ✅ mature |
-| LLM-as-judge | v0.3 | ✅ mature |
+| Model comparison matrix | ✅ (v0.3, `compare`) | ✅ mature |
+| LLM-as-judge | ✅ (v0.3, `llm_judge`) | ✅ mature |
 | **Red teaming / security scanning** | ❌ not planned | ✅ OWASP LLM Top 10, NIST AI RMF, MITRE ATLAS |
 | Provider coverage | 2 (at v0.2) | Dozens |
 | Production monitoring | ❌ | ❌ |
@@ -87,7 +93,7 @@ State this plainly in the README. It is true, and saying it earns the right to b
 about everything else.
 
 - Mature project, large ecosystem, dozens of providers, far larger assertion library.
-- Model comparison and LLM-as-judge are mature there and unbuilt here until v0.3.
+- Model comparison and LLM-as-judge are mature there; dryfire shipped both in v0.3 but they are younger and narrower here.
 - Red teaming is an entire product dryfire will never have.
 - Backed by real resources post-acquisition.
 
@@ -140,7 +146,7 @@ trajectories and tool calls. The difference is **determinism and instrumentation
 
 - **A vastly larger metric library** — 50+ metrics including mature LLM-as-judge, RAG,
   conversational, safety, and multimodal evaluation. dryfire has a handful of structural
-  assertions and won't grow a judge until v0.3.
+  assertions; v0.3 added `llm_judge`, but DeepEval's judge-based metric library is far larger and more mature.
 - **Evaluates the real, built agent** end to end, across reasoning/action/execution layers.
 - Framework integrations and an optional observability platform (Confident AI).
 

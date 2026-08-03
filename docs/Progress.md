@@ -111,8 +111,26 @@ Update this file when work ships, phases change, or priorities shift.
 >   artifact with no re-execution; `compare --html-out` writes the matrix as a table. <500KB/50 cases,
 >   HTML-escaped, valid markup. **No loop/scheduler/existing-reporter changes** (git diff proves it). 9 new
 >   tests; 575 total.
-> - **Next (final ticket):** DF-310 — docs (`judging.md`/`flakiness.md`/`compare.md`), `COMPARISON.md`
->   re-verify, structural-only benchmark, README centre-of-gravity check, and the **v0.3.0 release**.
+> - **DF-310 (docs + v0.3.0 release prep) — DONE (release owner-gated).** Version bumped to `0.3.0` +
+>   CHANGELOG `[0.3.0]`. `docs/judging.md` expanded (judge drift: pinned versions, rubric hashing, why a
+>   score under a different rubric hash isn't comparable); new `docs/flakiness.md`, `docs/compare.md` (with
+>   the matrix screenshot), `docs/benchmark.md`. README gained an **additive** v0.3 section — centre of
+>   gravity unchanged (still leads with deterministic structural testing). `COMPARISON.md` re-verified
+>   (2026-08-02, competitor strengths stated: Promptfoo/DeepEval stay more mature on judging). Benchmark
+>   (`scripts/benchmark_structural.py`): 50 structural-only cases, **0 judge activity, $0 cost** — no
+>   regression. **v0.1 AND v0.2 backward-compat tests** (both suites run green on v0.3). 4 new tests; 577 total.
+> - **REMAINING (owner-gated):** tag `v0.3.0` → `release.yml` publishes via Trusted Publishing. Do NOT tag
+>   without the owner's go-ahead.
+
+---
+
+## v0.3 — EPIC-003 COMPLETE
+
+All 10 tickets shipped (SPIKE-006/007 + DF-301…310), each its own merged PR, `make check` green
+throughout. `application/loop.py` never changed. `llm_judge` (with rubric-hash provenance + separate cost),
+`repeat: N` (Wilson interval, per-repetition cassette keys), `compare` (matrix, cost gate), and a
+self-contained HTML report. Structural-only suites run at v0.2 speed and cost (benchmarked). Awaiting the
+owner's `v0.3.0` tag to publish.
 
 ---
 

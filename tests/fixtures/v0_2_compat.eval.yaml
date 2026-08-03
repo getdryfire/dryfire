@@ -1,0 +1,30 @@
+# A v0.2 suite exercising v0.2 features (extended + budget assertions, mocks, a fake
+# script) with NO v0.3 syntax (no llm_judge / repeat / require_pass_rate). Frozen: if
+# this ever needs editing to keep passing, that is a breaking spec change and belongs in
+# a major version, not a v0.3.x minor. Backward compatibility is a public contract.
+name: v0_2_compat
+provider: fake
+tools:
+  - name: lookup_order
+    input_schema: {type: object}
+  - name: issue_refund
+    input_schema: {type: object}
+mocks:
+  lookup_order:
+    - return: {order_id: "A-991", total: 42}
+  issue_refund:
+    - return: {refund_id: "R-1"}
+cases:
+  - name: refunds_within_limit
+    input: refund order A-991
+    script:
+      - tool_call: {name: lookup_order, arguments: {order_id: "A-991"}}
+      - tool_call: {name: issue_refund, arguments: {amount: 42}}
+      - text: '{"status": "refunded", "amount": 42}'
+    expect:
+      - calls_tool: lookup_order
+      - min_tool_calls: {tool: lookup_order, count: 1}   # v0.2 extended
+      - call_order: [lookup_order, issue_refund]
+      - final_matches: "refunded"                        # v0.2 extended (regex)
+      - final_json: {required: [status], fields: {status: str, amount: int}}  # v0.2 extended
+      - latency_under_ms: 100000                         # v0.2 budget (offline-safe)
