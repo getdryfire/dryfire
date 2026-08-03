@@ -135,6 +135,12 @@ speed and cost — [benchmark](https://github.com/getdryfire/dryfire/blob/main/d
 Plus a self-contained **HTML report** (`dryfire report run.json --html-out`): one file, no
 CDN, opens offline, with expandable per-case failure detail.
 
+![dryfire compare — one refund-policy suite across two models: the matrix shows the cheaper model held a policy the pricier one caved on under pressure (the ~ disagreement row), at a third of the cost](https://raw.githubusercontent.com/getdryfire/dryfire/main/docs/demo-compare.gif)
+
+*A real `compare` run (`docs/demo/refunds.eval.yaml`): same suite, two models. The `~` row is
+the finding — here the cheaper model resisted a policy-bypass the pricier one didn't, at ⅓ the
+cost. (Real model calls, so a re-record may differ; source in [`docs/demo-compare.tape`](https://github.com/getdryfire/dryfire/blob/main/docs/demo-compare.tape).)*
+
 ## Non-goals (permanent)
 
 dryfire is a pre-deployment unit test, and deliberately not more (SPEC §1.5):
