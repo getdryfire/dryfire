@@ -94,7 +94,15 @@ Update this file when work ships, phases change, or priorities shift.
 >   `--prompts`), shows a pre-execution run estimate, and gates above a threshold (bypass `--yes`);
 >   `--models`+`--prompts` refused. CLI `dryfire compare`. Basic per-column text output (DF-308 makes it a
 >   matrix). `repeat`×`compare` allowed+warned via this estimate (SPIKE-007). 13 new tests; 557 total.
-> - **Next:** DF-308 (compare matrix output — the screenshot artifact) → DF-309 (HTML report) → DF-310 (release).
+> - **DF-308 (compare matrix output) — DONE.** `adapters/driven/reporting/compare_terminal.py`: models as
+>   columns, cases as rows, a summary block (pass rate / cost / mean latency per model). **Disagreement is
+>   the finding** — a row where models disagree is marked with a `~` (a real character, grep-able in a CI
+>   log, not just colour) and its cells stay `✓`/`✗`. Pure function, zero ANSI unless `color=True`; unknown
+>   cost renders `—`; a failed column shows `FAILED` + `·` cells. Wide-matrix strategy: truncate long labels,
+>   cap at 8 columns with a `--json-out` note (transposition rejected — documented). Golden-file test for the
+>   3×5 two-disagreement matrix. Composition now renders the matrix (TTY-aware colour). 10 new tests; 566 total.
+> - **This closes the `compare` sub-track (DF-307/308).**
+> - **Next:** DF-309 (HTML report — the first visual output) → DF-310 (docs + v0.3.0 release).
 
 ---
 

@@ -30,6 +30,7 @@ from dryfire.adapters.driven.pricing.bundled import BundledPricingCatalog
 from dryfire.adapters.driven.providers.caching import CachingGateway
 from dryfire.adapters.driven.providers.fake import FakeGateway
 from dryfire.adapters.driven.providers.retrying import RetryingGateway
+from dryfire.adapters.driven.reporting.compare_terminal import render_compare
 from dryfire.adapters.driven.reporting.json_sink import render_run, write_run
 from dryfire.adapters.driven.reporting.junit_sink import render_junit, write_junit
 from dryfire.adapters.driven.reporting.terminal import render_report, resolve_color
@@ -798,23 +799,6 @@ def _compare_exit_code(result: CompareResult) -> int:
     return worst
 
 
-def _render_compare_basic(result: CompareResult) -> str:
-    """A minimal per-column summary. DF-308 replaces this with the screenshot matrix; the
-    execution contract (numbers + exit code) is what DF-307 pins."""
-    lines = [f"compare by {result.axis}:"]
-    for col in result.columns:
-        if col.metrics is None:
-            lines.append(f"  {col.label}: FAILED — {col.error}")
-            continue
-        m = col.metrics
-        cost = "—" if m.total_cost_usd is None else f"${m.total_cost_usd:.4f}"
-        lines.append(
-            f"  {col.label}: {m.pass_rate:.0%} pass   {cost}   "
-            f"{m.mean_latency_ms:.0f}ms   {m.mean_turns:.1f} turns   ({m.cases} cases)"
-        )
-    return "\n".join(lines) + "\n"
-
-
 def compare(
     paths: Sequence[str],
     *,
@@ -877,7 +861,7 @@ def compare(
             )
 
         result = asyncio.run(run_compare(axis, labels, run_one))
-        out.write(_render_compare_basic(result))
+        out.write(render_compare(result, color=resolve_color(out)))
         return _compare_exit_code(result)
     except ConfigError as exc:
         err.write(f"error: {exc}\n")
