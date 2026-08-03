@@ -4,6 +4,21 @@ All notable changes to dryfire are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.2] — 2026-08-03
+
+Docs/packaging patch (no code changes) — brands the project's public surfaces.
+
+### Added
+
+- A **project logo** on the README, and a **logo + favicon** on the documentation site.
+- A fuller PyPI **project-links sidebar** — Homepage, Documentation, and Changelog now sit
+  alongside Repository (`[project.urls]`).
+
+### Changed
+
+- The `--concurrency` / `--max-retries` help text now shows its default straight from the
+  underlying constant, so `--help` can't drift from the actual default.
+
 ## [0.3.1] — 2026-08-03
 
 Docs-only patch (no code changes) — refreshes the PyPI project page to point at the new
