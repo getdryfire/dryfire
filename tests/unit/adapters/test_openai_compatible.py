@@ -5,6 +5,11 @@ Kimi, GLM, DeepSeek, and aggregators like OpenRouter) reuse `openai.py`'s transl
 unchanged. A compat provider differs only in three data points — its `name` (identity +
 pricing key), its `base_url`, and the env var holding its key — never in code above the
 port. These tests pin that: the translation stays OpenAI's, only the client wiring moves.
+
+Coverage boundary (see #81): these fixtures are OpenAI-shaped, and the live path for these
+providers is OpenRouter — which normalizes every response back into OpenAI shape. So neither
+proves a provider's *native* wire quirks when a user calls it with the provider's *own* key.
+Direct-key support is OpenAI-assumed until #81 captures real native payloads per provider.
 """
 
 from __future__ import annotations
@@ -66,6 +71,22 @@ class TestCompatGatewayWiring:
         assert isinstance(gateway, ModelGateway)
         assert fake_openai_sdk.last_kwargs["base_url"] == "https://api.x.ai/v1"
         assert fake_openai_sdk.last_kwargs["api_key"] == "sk-x"
+
+
+class TestDeepSeekReasoner:
+    """#74 — DeepSeek's `deepseek-reasoner` adds a `reasoning_content` field alongside the
+    normal message. dryfire asserts on the *trajectory* (tool calls), so `from_wire` must
+    extract the tool call unchanged and ignore the chain-of-thought — never choke on the
+    extra field. The wire is otherwise plain OpenAI, so no adapter code is provider-specific."""
+
+    def test_tool_call_extracted_and_reasoning_ignored(self) -> None:
+        resp = from_wire(_fixture("deepseek_reasoner"), latency_ms=7)
+        assert resp.stop_reason == "tool_use"
+        assert [c.name for c in resp.tool_calls] == ["lookup_order"]
+        assert resp.tool_calls[0].arguments == {"order_id": "A-991"}
+        assert resp.tool_calls[0].malformed_arguments is None
+        # `reasoning_content` never leaks into the neutral response.
+        assert resp.text is None
 
 
 class TestStopReasonKey:

@@ -67,6 +67,29 @@ def test_unknown_provider_is_a_config_error() -> None:
         make_gateway("nope")
 
 
+# The exact (base_url, env_var) per compat provider — the real per-provider contract
+# (#72 Kimi, #73 GLM, #74 DeepSeek). A typo here silently points a provider at the wrong
+# host, so pin the data explicitly rather than trusting the shared construction path alone.
+@pytest.mark.parametrize(
+    ("provider", "base_url", "env_var"),
+    [
+        ("xai", "https://api.x.ai/v1", "XAI_API_KEY"),
+        ("openrouter", "https://openrouter.ai/api/v1", "OPENROUTER_API_KEY"),
+        ("moonshot", "https://api.moonshot.ai/v1", "MOONSHOT_API_KEY"),
+        ("zhipu", "https://api.z.ai/api/paas/v4", "ZHIPUAI_API_KEY"),
+        ("deepseek", "https://api.deepseek.com", "DEEPSEEK_API_KEY"),
+    ],
+)
+def test_compat_provider_wiring(
+    monkeypatch: pytest.MonkeyPatch, provider: str, base_url: str, env_var: str
+) -> None:
+    monkeypatch.setenv(env_var, "sk-test")
+    gateway = make_gateway(provider)
+    assert gateway.name == provider
+    assert _RecordingClient.last_kwargs["base_url"] == base_url
+    assert _RecordingClient.last_kwargs["api_key"] == "sk-test"
+
+
 def test_registry_is_data_not_code(monkeypatch: pytest.MonkeyPatch) -> None:
     # Adding a compat provider must be a registry row, not a new branch: every entry
     # shares one construction path. Prove the table is the source of truth.

@@ -1,0 +1,21 @@
+{
+  "id": "chatcmpl-ds-reasoner",
+  "object": "chat.completion",
+  "created": 1753900010,
+  "model": "deepseek-reasoner",
+  "choices": [
+    {
+      "index": 0,
+      "message": {
+        "role": "assistant",
+        "content": null,
+        "reasoning_content": "The user wants order A-991. I should call lookup_order with that id.",
+        "tool_calls": [
+          {"id": "call_R1", "type": "function", "function": {"name": "lookup_order", "arguments": "{\"order_id\": \"A-991\"}"}}
+        ]
+      },
+      "finish_reason": "tool_calls"
+    }
+  ],
+  "usage": {"prompt_tokens": 55, "completion_tokens": 40, "total_tokens": 95}
+}
