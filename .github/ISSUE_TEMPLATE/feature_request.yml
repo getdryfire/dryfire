@@ -1,0 +1,41 @@
+name: Feature request
+description: Suggest a capability or improvement for dryfire
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the idea. dryfire is deliberately small: a **zero-infra, local-first
+        CLI**. Some things are intentionally out of scope — export to other languages,
+        streaming, and any server / database / hosted / account feature. Proposals that
+        need one of those will be declined, so it's worth checking the
+        [scope discipline notes](https://github.com/getdryfire/dryfire/blob/main/CLAUDE.md)
+        first.
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem does this solve?
+      description: The concrete use case or pain point. What are you trying to do that dryfire doesn't let you do today?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: How you imagine it working — CLI surface, YAML spec change, new assertion, etc. Rough is fine.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Other approaches you weighed, or how you work around this today.
+    validations:
+      required: false
+  - type: checkboxes
+    id: scope
+    attributes:
+      label: Scope check
+      options:
+        - label: This keeps dryfire a zero-infra local CLI — it does **not** require a server, database, account, streaming, or cross-language export.
+          required: true

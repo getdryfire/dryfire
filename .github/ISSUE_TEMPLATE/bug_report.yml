@@ -1,0 +1,67 @@
+name: Bug report
+description: Something in dryfire behaves incorrectly (wrong trajectory, wrong exit code, a crash, …)
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for filing a bug. dryfire is deterministic and offline by design, so a
+        minimal, self-contained repro is usually enough to pin the problem.
+
+        **Security issue?** Do **not** file it here — report it privately via
+        [Security Advisories](https://github.com/getdryfire/dryfire/security/advisories/new)
+        (see [SECURITY.md](https://github.com/getdryfire/dryfire/blob/main/SECURITY.md)).
+  - type: checkboxes
+    id: preflight
+    attributes:
+      label: Preflight
+      options:
+        - label: I'm on the latest `dryfire` release and this still reproduces.
+          required: true
+        - label: I searched existing issues and this isn't a duplicate.
+          required: true
+  - type: input
+    id: version
+    attributes:
+      label: dryfire version
+      description: Output of `dryfire --version`.
+      placeholder: "0.3.2"
+    validations:
+      required: true
+  - type: input
+    id: env
+    attributes:
+      label: OS and Python version
+      placeholder: "macOS 15 / Python 3.12"
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Minimal reproduction
+      description: >
+        The smallest YAML suite and the exact command you ran. Because everything runs
+        offline against the fake provider, a full repro almost always fits here.
+      render: shell
+      placeholder: |
+        # suite.yaml
+        ...
+        # command
+        dryfire run suite.yaml
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      description: What you expected to happen — including the expected exit code, if relevant (0 pass, 1 assertion failure, 2 spec/config error, 3 provider error).
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+      description: What actually happened. Paste the terminal output / trace, and the exit code you got.
+      render: shell
+    validations:
+      required: true
