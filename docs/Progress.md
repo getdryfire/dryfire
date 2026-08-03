@@ -145,6 +145,13 @@ cost (benchmarked). Published as `dryfire 0.3.0` → `0.3.1` on PyPI.
   for compat providers — parity with `openai`, which also ships unpriced (advisory cost → None;
   never a guessed price). Next: #72/#73/#74 (Kimi/GLM/DeepSeek) are now one registry row + a
   recorded-payload test each.
+- **#72 Kimi (Moonshot) · #73 GLM (Zhipu) · #74 DeepSeek — code complete, PR open.** Three registry
+  rows in `OPENAI_COMPATIBLE` (`moonshot`→`api.moonshot.ai/v1`, `zhipu`→`api.z.ai/api/paas/v4`,
+  `deepseek`→`api.deepseek.com`), each with its env var. Contract coverage: a parametrized
+  `make_gateway` test pins every provider's exact `(base_url, env_var)` (a wrong host is the real
+  risk), plus a `deepseek-reasoner` fixture proving `from_wire` extracts the tool call and ignores
+  `reasoning_content`. Kimi/GLM chat are wire-identical to OpenAI (covered by the shared translation
+  tests) — no manufactured duplicate fixtures. Still unpriced (advisory `None`), same rationale as #71.
 
 ## Up Next
 

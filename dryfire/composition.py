@@ -119,6 +119,11 @@ class _CompatProvider(NamedTuple):
 OPENAI_COMPATIBLE: dict[str, _CompatProvider] = {
     "xai": _CompatProvider("https://api.x.ai/v1", "XAI_API_KEY"),
     "openrouter": _CompatProvider("https://openrouter.ai/api/v1", "OPENROUTER_API_KEY"),
+    "moonshot": _CompatProvider("https://api.moonshot.ai/v1", "MOONSHOT_API_KEY"),
+    # Zhipu GLM: the international Z.AI host. China users can override to
+    # https://open.bigmodel.cn/api/paas/v4 via a user gateway if needed.
+    "zhipu": _CompatProvider("https://api.z.ai/api/paas/v4", "ZHIPUAI_API_KEY"),
+    "deepseek": _CompatProvider("https://api.deepseek.com", "DEEPSEEK_API_KEY"),
 }
 
 

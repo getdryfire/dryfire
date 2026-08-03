@@ -68,6 +68,22 @@ class TestCompatGatewayWiring:
         assert fake_openai_sdk.last_kwargs["api_key"] == "sk-x"
 
 
+class TestDeepSeekReasoner:
+    """#74 — DeepSeek's `deepseek-reasoner` adds a `reasoning_content` field alongside the
+    normal message. dryfire asserts on the *trajectory* (tool calls), so `from_wire` must
+    extract the tool call unchanged and ignore the chain-of-thought — never choke on the
+    extra field. The wire is otherwise plain OpenAI, so no adapter code is provider-specific."""
+
+    def test_tool_call_extracted_and_reasoning_ignored(self) -> None:
+        resp = from_wire(_fixture("deepseek_reasoner"), latency_ms=7)
+        assert resp.stop_reason == "tool_use"
+        assert [c.name for c in resp.tool_calls] == ["lookup_order"]
+        assert resp.tool_calls[0].arguments == {"order_id": "A-991"}
+        assert resp.tool_calls[0].malformed_arguments is None
+        # `reasoning_content` never leaks into the neutral response.
+        assert resp.text is None
+
+
 class TestStopReasonKey:
     def test_from_wire_defaults_to_the_openai_table(self) -> None:
         # Byte-identical to today: no key argument → the "openai" mapping.
