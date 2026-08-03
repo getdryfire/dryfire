@@ -50,9 +50,27 @@ CI runs `checks` (Python 3.12 and 3.13) and a separate `dogfood` job. All three 
 
 ## Pull requests
 
+`main` is protected: you can't push to it directly. Open a PR from a branch or fork; it
+merges once the required checks (`checks (3.12)`, `checks (3.13)`, `dogfood`) are green, the
+branch is up to date, review conversations are resolved, and a code owner (@csmatar) approves.
+Merges are **squash-only**, so a PR lands as one commit on `main`.
+
 Fill in `.github/pull_request_template.md` honestly — it mirrors the rules above. Keep the
 gate green, keep public contracts (exit codes, YAML format, trace JSON) stable or flag the
 break, and update `docs/Progress.md` when work ships.
+
+## Your commit identity & email privacy
+
+Squash-merge **preserves you as the commit author** on `main` — that's how you get credit,
+and it's intended. Because this repo is public, any email in your commits becomes public
+too. If you'd rather keep yours private, use GitHub's noreply address before committing:
+
+- GitHub → **Settings → Emails** → enable **"Keep my email addresses private"** (and
+  **"Block command line pushes that expose my email"**). GitHub gives you an
+  `ID+username@users.noreply.github.com` address.
+- Point git at it: `git config user.email "ID+username@users.noreply.github.com"`
+
+You keep full attribution; only your real email stays private.
 
 ## License
 

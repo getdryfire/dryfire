@@ -1,0 +1,17 @@
+# Code owners for getdryfire/dryfire
+#
+# Every pull request requires review from an owner listed here before it can be
+# merged into `main` (enforced by the "protect-main" ruleset:
+# require_code_owner_review). Order matters — the last matching pattern wins.
+
+# Default owner for everything in the repo.
+*                       @csmatar
+
+# Architecture-critical surfaces — the load-bearing rules in CLAUDE.md.
+# Keep these explicit so a change to the contracts is never auto-owner-less.
+/dryfire/               @csmatar
+/dryfire/application/loop.py  @csmatar
+/SPEC.md                @csmatar
+/ARCHITECTURE.md        @csmatar
+/CLAUDE.md              @csmatar
+/.github/               @csmatar
