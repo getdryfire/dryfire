@@ -133,6 +133,7 @@ def compare(
     ),
     max_retries: int = typer.Option(None, "--max-retries", help="Retries (default 3)."),
     yes: bool = typer.Option(False, "--yes", help="Skip the cost-confirmation prompt."),
+    html_out: str = typer.Option(None, "--html-out", help="Write the matrix as HTML to PATH."),
     debug: bool = typer.Option(False, "--debug", help="Show tracebacks on internal errors."),
 ) -> None:
     """Run one suite across N models (or prompt variants) and print the matrix."""
@@ -144,8 +145,22 @@ def compare(
         cassette_mode=cassette_mode,
         max_retries=max_retries,
         yes=yes,
+        html_out=html_out,
         debug=debug,
         out=sys.stdout,
         err=sys.stderr,
+    )
+    raise typer.Exit(code)
+
+
+@app.command()
+def report(
+    json_path: str = typer.Argument(..., help="A run JSON artifact (from --json-out)."),
+    html_out: str = typer.Option(None, "--html-out", help="Write HTML to PATH (else stdout)."),
+    debug: bool = typer.Option(False, "--debug", help="Show tracebacks on internal errors."),
+) -> None:
+    """Regenerate a self-contained HTML report from a recorded JSON artifact — offline."""
+    code = composition.report(
+        json_path, html_out=html_out, debug=debug, out=sys.stdout, err=sys.stderr
     )
     raise typer.Exit(code)

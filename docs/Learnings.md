@@ -908,3 +908,21 @@ env indirection is the standard injection-safe pattern. Design the action so JUn
 - **Golden-file gotcha:** generate the fixture from the exact test input, eyeball it, commit it, then assert
   byte-equality. Same `parents[2]` fixture-path rule as other adapter tests (`tests/unit/adapters/` → up 2 to
   `tests/`). And keep test basenames unique tree-wide (the DF-307 `test_compare.py` clash).
+
+### 2026-08-02 — DF-309 (HTML report sink)
+- **No JavaScript needed for expandable detail** — native `<details>`/`<summary>` gives collapse/expand
+  for free, so the file works with scripting disabled and in an air-gap. Failing cases render `<details open>`,
+  passing ones collapsed.
+- **Embedded shell+CSS constant, NOT a packaged template file.** A separate `templates/report.html` would
+  ride on hatchling package-data inclusion — and if it were ever dropped from the wheel, `uvx dryfire report`
+  would fail at runtime, invisible to source-tree tests (which read from the tree). A `.py` module constant
+  always ships. Deliberate deviation from the epic's Files list; the self-contained/ships-to-PyPI constraint
+  favors it. (pricing.yaml proves .yaml IS packaged, but the risk asymmetry isn't worth it for the artifact.)
+- **Air-gap verified by proxy:** a regex asserts zero `https?://`, `<script`, `<link`, `@import`, `src=`,
+  `url(` — i.e. nothing that would make a browser reach the network. Plus `html.parser` confirms well-formed markup.
+- **`report` round-trips from the JSON artifact:** `deserialize_run(json) → render_run_html` equals rendering
+  the live run — the artifact is sufficient, so an air-gapped box renders a run recorded elsewhere with no
+  re-execution. Judge verdicts round-trip too (DF-301), so judge reasoning survives into the report.
+- **AC "no loop/scheduler/reporter changes" is a `git diff` check** — html_sink is a new adapter; only
+  composition (the `report` command + `compare --html-out`) and the CLI were touched. `git diff --stat
+  main...HEAD -- loop.py scheduler.py terminal.py json_sink.py junit_sink.py` is empty.
