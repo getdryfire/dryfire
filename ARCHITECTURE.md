@@ -239,10 +239,10 @@ Consequences, all binding:
 - **A judge failure is provider I/O**: it maps to exit 3 (provider error), never exit 1
   (assertion failure) or a score of 0. Unparseable judge output is a judge *error*.
 
-Reference implementation and the full rationale (the five decision questions) live in
-`spikes/006_async_assertions/FINDINGS.md`. Adding a *second* judge-style assertion, once this
-seam exists, is again just the two files of §6.3 — the seam is a one-time cost, like the
-`price` seam was.
+The reference implementation and the full rationale (the five decision questions) lived in the
+SPIKE-006 findings, pruned after v0.3 shipped — in git history if ever needed. Adding a *second*
+judge-style assertion, once this seam exists, is again just the two files of §6.3 — the seam is a
+one-time cost, like the `price` seam was.
 
 ---
 

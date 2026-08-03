@@ -1,6 +1,6 @@
 # Progress
 
-**Last Updated:** 2026-08-02 · **Status:** v0.3 in development (EPIC-003) — v0.2.2 on PyPI
+**Last Updated:** 2026-08-03 · **Status:** v0.3.1 on PyPI (EPIC-003 shipped)
 
 ---
 
@@ -11,26 +11,26 @@ Global tracker for dryfire. Answers three questions without digging through the 
 2. What's shipped and working?
 3. What's next?
 
-**Version:** `main` is at `0.2.0`, **published to PyPI** and tagged `v0.2.0`. Both epics (v0.1
-AC-001…019, v0.2 DF-201…212) are complete; their ticket/spike planning docs were pruned after
-release and live in git history.
+**Version:** `main` is at `0.3.1`, **published to PyPI** and tagged `v0.3.0`/`v0.3.1`. All three
+epics (v0.1 AC-001…019, v0.2 DF-201…212, v0.3 SPIKE-006/007 + DF-301…310) are complete; their
+ticket/spike planning docs were pruned after release and live in git history.
 
 Update this file when work ships, phases change, or priorities shift.
 
 ---
 
-## In Development
+## Delivered — v0.3 (EPIC-003)
 
-> **EPIC-003 (v0.3 — Judgment & Comparison).** Scoped in `EPIC-003.md` (inline test-table
-> tickets: SPIKE-006/007 → DF-301…310). Theme: measuring things that aren't boolean, without
-> regressing the deterministic/free/never-flaky core (a structural-only suite must run at v0.2
-> speed and cost).
+> **EPIC-003 (v0.3 — Judgment & Comparison) — shipped.** Tickets SPIKE-006/007 → DF-301…310
+> (the epic + spike planning docs were pruned after release; in git history). Theme: measuring
+> things that aren't boolean, without regressing the deterministic/free/never-flaky core (a
+> structural-only suite must run at v0.2 speed and cost).
 >
 > - **SPIKE-006 (async assertion seam) — DONE.** Verdict: **Model C** (judge as a pre-assertion
 >   enrichment stage), mirroring the DF-207 `price(trace, case)` seam but async + gateway-backed.
 >   Assertions stay pure and sync; `loop.py` unchanged; contract 3 kept. Reference impl +
->   8 passing proof tests in `spikes/006_async_assertions/`. See its `FINDINGS.md` for the 5
->   answers and the ARCHITECTURE §4.4 amendment.
+>   8 passing proof tests (spike pruned post-release; in git history). The 5 answers landed as
+>   the ARCHITECTURE §4.4 amendment.
 > - **DF-301 (judge domain model) — DONE.** `domain/judging/{verdict,rubric}.py`: `JudgeVerdict`
 >   with **required** `judge_model_version` + `rubric_hash` (a verdict without provenance is
 >   unconstructable), and `Rubric.hash()` reusing `fingerprint.canonical_json` (stable across dict
@@ -68,7 +68,7 @@ Update this file when work ships, phases change, or priorities shift.
 >   95% interval (`stats.py`, no dep) for `k/N`, shown only for disagreeing cases; recommended min N=5
 >   (warn, never refuse). Partial-cassette policy per mode (replay refuses to fabricate missing reps →
 >   exit 3). `repeat`×`compare` allowed+warned via DF-307's cost prompt (single source of truth). Full
->   prototype + 34 tests in `spikes/007_repeat/`; see its `FINDINGS.md`.
+>   prototype + 34 tests (spike pruned post-release; in git history).
 > - **DF-305 (`repeat: N` execution + pass rates) — DONE.** `repeat`/`require_pass_rate` resolve through
 >   the spec (case/suite/defaults precedence; positioned errors for `repeat<1` / `rate>1`). The scheduler
 >   expands each case into `repeat` units in the ONE worker pool (not a nested pool) and aggregates them —
@@ -119,26 +119,20 @@ Update this file when work ships, phases change, or priorities shift.
 >   (2026-08-02, competitor strengths stated: Promptfoo/DeepEval stay more mature on judging). Benchmark
 >   (`scripts/benchmark_structural.py`): 50 structural-only cases, **0 judge activity, $0 cost** — no
 >   regression. **v0.1 AND v0.2 backward-compat tests** (both suites run green on v0.3). 4 new tests; 577 total.
-> - **REMAINING (owner-gated):** tag `v0.3.0` → `release.yml` publishes via Trusted Publishing. Do NOT tag
->   without the owner's go-ahead.
+> - **RELEASED:** tagged `v0.3.0` then `v0.3.1`; `release.yml` published both via Trusted Publishing.
 
----
-
-## v0.3 — EPIC-003 COMPLETE
-
-All 10 tickets shipped (SPIKE-006/007 + DF-301…310), each its own merged PR, `make check` green
-throughout. `application/loop.py` never changed. `llm_judge` (with rubric-hash provenance + separate cost),
-`repeat: N` (Wilson interval, per-repetition cassette keys), `compare` (matrix, cost gate), and a
-self-contained HTML report. Structural-only suites run at v0.2 speed and cost (benchmarked). Awaiting the
-owner's `v0.3.0` tag to publish.
+**EPIC-003 complete.** All 10 tickets shipped (SPIKE-006/007 + DF-301…310), each its own merged PR,
+`make check` green throughout. `application/loop.py` never changed. `llm_judge` (with rubric-hash
+provenance + separate cost), `repeat: N` (Wilson interval, per-repetition cassette keys), `compare`
+(matrix, cost gate), and a self-contained HTML report. Structural-only suites run at v0.2 speed and
+cost (benchmarked). Published as `dryfire 0.3.0` → `0.3.1` on PyPI.
 
 ---
 
 ## Up Next
 
-- **v0.3 remaining** (per `EPIC-003.md`): DF-301→304 (llm_judge), SPIKE-007 + DF-305/306 (repeat),
-  DF-307/308 (compare), DF-309 (HTML report), DF-310 (docs + release). Still zero-infra — no
-  server/database.
+- **v0.4 — not yet scoped.** No epic opened. dryfire stays a zero-infra local CLI (no server,
+  database, or account); see CLAUDE.md "Scope discipline" for what stays deferred.
 - **Housekeeping candidates:** bump release-workflow actions off deprecated Node 20; consider
   flipping `.github/workflows/example-usage.yml` from `workflow_dispatch` to `push`/`pull_request`
   now that `getdryfire/dryfire@v0.2.0` resolves.
