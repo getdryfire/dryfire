@@ -6,3 +6,6 @@ contact_links:
   - name: 📖 Documentation
     url: https://getdryfire.github.io/dryfire/
     about: Getting-started guide, spec, and reference docs.
+  - name: 💬 Questions & ideas
+    url: https://github.com/getdryfire/dryfire/discussions
+    about: Open-ended questions and discussion.
