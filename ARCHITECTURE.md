@@ -5,30 +5,28 @@
 
 ---
 
-## 0. Decisions up front
+## 0. Architectural stance
 
-You asked for SOLID, OOP, TDD, DDD, Event Storming, Hexagonal/Clean architecture, and
-design patterns. Adopting all seven wholesale would produce a worse tool, so here is the
-honest split, with reasons. The rest of the document implements column 1.
+A broad set of established practices could apply to this codebase — SOLID, OOP, TDD, DDD, Event Storming, Hexagonal/Clean architecture, design patterns. Adopting all of them wholesale would produce a worse tool: dryfire is a small, single-bounded-context CLI, and much of the enterprise toolkit solves problems it does not have. The table below records the deliberate split — which practices this architecture **adopts**, **adapts**, or **declines**, and why. Each verdict follows from the shape of the problem, not from fashion. The rest of the document implements the *Adopt* and *Adapt* rows.
 
 | Practice | Verdict | Why |
 |---|---|---|
 | **Hexagonal (Ports & Adapters)** | **Adopt fully** | Near-perfect fit. This tool is a pure decision core surrounded by four kinds of I/O (LLM APIs, YAML files, terminal, cache). SPEC §3.1's `Provider` protocol is already a port. |
 | **SOLID** | **Adopt** | Already ~80% satisfied by the spec. Making it explicit and enforced costs nothing. |
-| **TDD** | **Adopt fully** | The domain is pure functions over data — the ideal TDD target. `FakeProvider` (AC-006) and offline-only tests are already specified. Tickets are already written as test tables. |
+| **TDD** | **Adopt fully** | The domain is pure functions over data — the ideal TDD target. A scriptable fake gateway and offline-only tests keep every run deterministic, so the tests are the design pressure. |
 | **Ubiquitous language** | **Adopt** | The single highest-value part of DDD here. Trace/Turn/Trajectory/Termination must mean exactly one thing across code, YAML, docs, and error messages. |
 | **Value objects & immutability** | **Adopt** | The domain model is entirely values. Frozen models eliminate a whole class of bug in a concurrent runner. |
 | **Design patterns** | **Adopt, where emergent** | Named where they already arise. Not imposed. |
-| **Event model** | **Adapt** | Keep the event *catalog* — it's the natural seam for reporting, cassettes, and v0.3 HTML/compare. Skip the event *bus*. |
-| **Event Storming (workshop)** | **Decline** | It is a collaborative discovery technique for unknown business domains with domain experts in the room. You are one person, the domain is one you invented, and it is already specified in 766 lines. Running it solo is theatre — you would be discovering your own decisions. §6 keeps the useful output and skips the ritual. |
-| **DDD tactical patterns** (aggregates, repositories, factories, specifications, anti-corruption layers) | **Decline** | These manage invariants across entity clusters under transactional consistency, in domains with competing subdomains and evolving business rules. This tool has no database, no transactions, no aggregate roots, one bounded context, and no domain experts. A `TraceRepository` over JSON files is ceremony with a cost and no benefit. |
+| **Event model** | **Adapt** | Keep the event *catalog* — it's the natural seam for reporting, cassettes, and the HTML/compare outputs. Skip the event *bus*. |
+| **Event Storming (workshop)** | **Decline** | A collaborative discovery technique for unknown business domains, run with domain experts in the room. Here the domain is small, singular, and already fully specified — there is nothing to discover collaboratively. §6 keeps the useful output (the event catalog) and skips the workshop. |
+| **DDD tactical patterns** (aggregates, repositories, factories, specifications, anti-corruption layers) | **Decline** | These manage invariants across entity clusters under transactional consistency, in domains with competing subdomains and evolving business rules. This tool has no database, no transactions, no aggregate roots, and one bounded context. A `TraceRepository` over JSON files is ceremony with a cost and no benefit. |
 | **CQRS / Event Sourcing** | **Decline** | No write model, no read model, no projections, no reason. |
-| **DI container** | **Decline** | A composition root (§8) is 40 lines and does the whole job. |
+| **DI container** | **Decline** | A composition root (§8) is a few dozen lines and does the whole job. |
 | **Inheritance-based polymorphism** | **Decline as default** | Protocols and composition throughout. See §7.5. |
 
-> **The real risk to this project is not under-architecture. It is a 4,000-line CLI wearing
-> twelve layers of enterprise scaffolding and never shipping.** Every structure below has to
-> earn its place; §11 lists the tripwires that say you have gone too far.
+> **The real risk to this project is not under-architecture. It is a small CLI wearing twelve
+> layers of enterprise scaffolding and never shipping.** Every structure below has to earn its
+> place; §11 lists the tripwires that say you have gone too far.
 
 ---
 
