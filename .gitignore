@@ -25,3 +25,9 @@ build/
 
 # mkdocs build output
 site/
+
+# coverage artifacts
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/

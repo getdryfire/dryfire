@@ -27,9 +27,12 @@ setup: ## One-time: install all deps including dev tools (uv sync --all-extras)
 .PHONY: check
 check: lint typecheck arch test ## Full gate — every ticket must pass this before it closes
 
+# Coverage floor — a ratchet, not a target. Raise it when coverage rises; never lower it.
+COV_MIN ?= 92
+
 .PHONY: test
-test: ## Run the offline test suite (no network, no API key)
-	uv run pytest
+test: ## Run the offline test suite with coverage gate (no network, no API key)
+	uv run pytest --cov=dryfire --cov-report=term-missing --cov-fail-under=$(COV_MIN)
 
 .PHONY: test-live
 test-live: ## Run live provider tests (needs ANTHROPIC_API_KEY; run before release)

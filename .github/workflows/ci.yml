@@ -26,8 +26,8 @@ jobs:
         run: uv run mypy
       - name: Architecture contracts
         run: uv run lint-imports
-      - name: Tests (offline, no API key)
-        run: uv run pytest
+      - name: Tests (offline, no API key) + coverage gate
+        run: make test
 
   # A separate job so a dogfood regression is distinguishable at a glance from a
   # unit-test failure (AC-018). dryfire runs its own eval suite against the

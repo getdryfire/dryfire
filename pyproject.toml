@@ -35,6 +35,7 @@ all = ["dryfire[anthropic,openai]"]
 dev = [
     "pytest>=8.3",
     "pytest-asyncio>=0.24",
+    "pytest-cov>=6.0",
     "ruff>=0.8",
     "mypy>=1.13",
     "import-linter>=2.1",
@@ -94,3 +95,21 @@ ignore_missing_imports = true
 testpaths = ["tests"]
 asyncio_mode = "auto"
 markers = ["live: requires API key and network access; skipped by default"]
+
+# Coverage is measured only when --cov is passed (see `make test` and CI), so the
+# documented single-test workflow (`uv run pytest tests/... -k ...`) stays fast and
+# never trips the threshold. The gate lives in the Makefile `test` target.
+[tool.coverage.run]
+branch = true
+source = ["dryfire"]
+omit = ["dryfire/__about__.py"]
+
+[tool.coverage.report]
+show_missing = true
+exclude_also = [
+    "if TYPE_CHECKING:",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "@(typing\\.)?overload",
+    "\\.\\.\\.",  # Protocol / port method stubs
+]
