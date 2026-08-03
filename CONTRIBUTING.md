@@ -21,7 +21,8 @@ make check        # lint + typecheck + arch + test
 ```
 
 That is: `ruff` (lint), `mypy --strict`, `import-linter` (architecture contracts), and the
-offline `pytest` suite. Also useful:
+offline `pytest` suite with a coverage floor (currently 92% — a ratchet, raise it when
+coverage rises, never lower it). Also useful:
 
 ```sh
 make dogfood      # dryfire runs its own eval suite against the fake provider
