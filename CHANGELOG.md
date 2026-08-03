@@ -4,6 +4,17 @@ All notable changes to dryfire are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.1] — 2026-08-03
+
+Docs-only patch (no code changes) — refreshes the PyPI project page to point at the new
+documentation site.
+
+### Added
+
+- A **getting-started guide** and a searchable **documentation site** (MkDocs + Material,
+  deployed to GitHub Pages): <https://getdryfire.github.io/dryfire/>. The README now links to
+  it; the site organises the existing per-feature docs behind a guided walkthrough.
+
 ## [0.3.0] — 2026-08-02
 
 **Judgment & comparison.** Three capabilities for behaviour a structural check can't express
@@ -150,6 +161,7 @@ First release: the v0.1 trajectory runner (EPIC-001). Anthropic-only, local-firs
   `compare`, and cost/latency assertions are planned for v0.2+.
 - Cost is advisory; stale pricing is an accepted, documented limitation.
 
+[0.3.1]: https://github.com/getdryfire/dryfire/releases/tag/v0.3.1
 [0.3.0]: https://github.com/getdryfire/dryfire/releases/tag/v0.3.0
 [0.2.2]: https://github.com/getdryfire/dryfire/releases/tag/v0.2.2
 [0.2.1]: https://github.com/getdryfire/dryfire/releases/tag/v0.2.1
