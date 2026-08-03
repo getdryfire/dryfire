@@ -116,6 +116,8 @@ class _CompatProvider(NamedTuple):
 # of truth — `make_gateway` iterates it, so a new compat provider (Kimi, GLM, DeepSeek)
 # is one row, not a new branch. OpenRouter is an aggregator reaching many models behind a
 # single key; it carries no bundled pricing (advisory cost stays None — never a guess).
+# Direct-key native wire quirks for these providers are OpenAI-assumed until #81 (OpenRouter
+# normalizes them away, so recorded payloads must come from each provider's own endpoint).
 OPENAI_COMPATIBLE: dict[str, _CompatProvider] = {
     "xai": _CompatProvider("https://api.x.ai/v1", "XAI_API_KEY"),
     "openrouter": _CompatProvider("https://openrouter.ai/api/v1", "OPENROUTER_API_KEY"),

@@ -5,6 +5,11 @@ Kimi, GLM, DeepSeek, and aggregators like OpenRouter) reuse `openai.py`'s transl
 unchanged. A compat provider differs only in three data points — its `name` (identity +
 pricing key), its `base_url`, and the env var holding its key — never in code above the
 port. These tests pin that: the translation stays OpenAI's, only the client wiring moves.
+
+Coverage boundary (see #81): these fixtures are OpenAI-shaped, and the live path for these
+providers is OpenRouter — which normalizes every response back into OpenAI shape. So neither
+proves a provider's *native* wire quirks when a user calls it with the provider's *own* key.
+Direct-key support is OpenAI-assumed until #81 captures real native payloads per provider.
 """
 
 from __future__ import annotations
