@@ -1,6 +1,10 @@
-# dryfire
+<p align="center">
+  <img src="https://raw.githubusercontent.com/getdryfire/dryfire/main/docs/assets/dryfire-lockup-dark.svg" alt="dryfire" width="320">
+</p>
 
-[![CI](https://github.com/getdryfire/dryfire/actions/workflows/ci.yml/badge.svg)](https://github.com/getdryfire/dryfire/actions/workflows/ci.yml)
+<p align="center">
+  <a href="https://github.com/getdryfire/dryfire/actions/workflows/ci.yml"><img src="https://github.com/getdryfire/dryfire/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+</p>
 
 **Regression testing for LLM agents. Assert on the _trajectory_ — the ordered tool calls — not the final text.**
 

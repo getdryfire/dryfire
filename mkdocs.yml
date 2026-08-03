@@ -7,6 +7,8 @@ copyright: MIT-licensed. A zero-infra local CLI.
 
 theme:
   name: material
+  logo: assets/dryfire-mark-ember.svg
+  favicon: assets/dryfire-mark-ember.svg
   palette:
     - media: "(prefers-color-scheme: light)"
       scheme: default

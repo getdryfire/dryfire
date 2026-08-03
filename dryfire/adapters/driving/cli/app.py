@@ -11,6 +11,8 @@ import typer
 from dryfire import composition
 from dryfire.__about__ import APP_NAME, __version__
 from dryfire.adapters.driven.pricing.bundled import BundledPricingCatalog
+from dryfire.adapters.driven.spec.config import BUILTIN_CONCURRENCY
+from dryfire.composition import BUILTIN_MAX_RETRIES
 
 app = typer.Typer(
     name=APP_NAME,
@@ -46,7 +48,10 @@ def run(
     filter_: str = typer.Option(None, "--filter", help="Substring match on case name."),
     tag: list[str] = typer.Option(None, "--tag", help="Filter by suite tag (repeatable)."),
     model: str = typer.Option(None, "--model", help="Override the model for this run."),
-    concurrency: int = typer.Option(None, "--concurrency", help="Concurrent cases (default 4)."),
+    concurrency: int = typer.Option(
+        None, "--concurrency",
+        help=f"Concurrent cases (default {BUILTIN_CONCURRENCY}).",
+    ),
     fail_fast: bool = typer.Option(False, "--fail-fast", help="Stop on first failing case."),
     reporter: str = typer.Option("terminal", "--reporter", help="terminal | json | junit."),
     json_out: str = typer.Option(None, "--json-out", help="Write full traces as JSON to PATH."),
@@ -55,7 +60,8 @@ def run(
         None, "--cassette-mode", help="auto | record | replay | off (default off)."
     ),
     max_retries: int = typer.Option(
-        None, "--max-retries", help="Retries on transient provider errors (default 3)."
+        None, "--max-retries",
+        help=f"Retries on transient provider errors (default {BUILTIN_MAX_RETRIES}).",
     ),
     verbose: bool = typer.Option(False, "-v", "--verbose", help="Print traces for failing cases."),
     debug: bool = typer.Option(False, "--debug", help="Show tracebacks on internal errors."),
@@ -127,11 +133,17 @@ def compare(
     prompts: str = typer.Option(
         None, "--prompts", help="Comma-separated prompt files (the other axis)."
     ),
-    concurrency: int = typer.Option(None, "--concurrency", help="Concurrent cases (default 4)."),
+    concurrency: int = typer.Option(
+        None, "--concurrency",
+        help=f"Concurrent cases (default {BUILTIN_CONCURRENCY}).",
+    ),
     cassette_mode: str = typer.Option(
         None, "--cassette-mode", help="auto | record | replay | off (default off)."
     ),
-    max_retries: int = typer.Option(None, "--max-retries", help="Retries (default 3)."),
+    max_retries: int = typer.Option(
+        None, "--max-retries",
+        help=f"Retries (default {BUILTIN_MAX_RETRIES}).",
+    ),
     yes: bool = typer.Option(False, "--yes", help="Skip the cost-confirmation prompt."),
     html_out: str = typer.Option(None, "--html-out", help="Write the matrix as HTML to PATH."),
     debug: bool = typer.Option(False, "--debug", help="Show tracebacks on internal errors."),

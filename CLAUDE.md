@@ -9,14 +9,19 @@ agent suites, executes the full tool-calling loop with deterministic mocked tool
 asserts on the **trajectory** (ordered tool calls), not the final text. Local-first: no
 server, no database, no account; exit codes are the API.
 
-## Current state: v0.2 shipped — `dryfire 0.2.0` on PyPI (repo: `getdryfire/dryfire`)
+## Current state: v0.3 shipped — `dryfire 0.3.1` on PyPI (repo: `getdryfire/dryfire`)
 
-Both epics are complete. **v0.1** was the local-first trajectory runner: Anthropic + a scriptable
+All three epics are complete. **v0.1** was the local-first trajectory runner: Anthropic + a scriptable
 fake, YAML spec + positioned-error loader, the tool-calling loop, deterministic mocks
 (subset/errors/sequences), the six structural assertions, terminal + JSON reporters, advisory
 cost, and the full `init`/`validate`/`run`/`trace` CLI. **v0.2 ("CI-grade")** added the OpenAI
 adapter, cassette record/replay, retries, budget + extra assertions, the JUnit reporter, a GitHub
-Action, and passthrough mocks — with a v0.1→v0.2 backward-compat test in CI.
+Action, and passthrough mocks — with a v0.1→v0.2 backward-compat test in CI. **v0.3 ("Judgment &
+Comparison")** added the `llm_judge` assertion (rubric-hash provenance, separately cost-accounted),
+`repeat: N` pass-rate flakiness measurement (Wilson interval, per-repetition cassette keys), the
+`compare` model/prompt matrix, and a self-contained HTML report — the deterministic/free structural
+core unchanged (`application/loop.py` never moved; structural-only suites benchmarked at v0.2 speed
+and cost), with v0.1 **and** v0.2 backward-compat tests in CI.
 
 **The load-bearing architectural rule** (governs all future work): caching and retrying are
 decorators over `ModelGateway`; **`application/loop.py` does not change**. The one sanctioned
@@ -30,8 +35,8 @@ off explicitly because non-blocking concurrent passthrough required a yield poin
   - `docs/Progress.md` — what's shipped / up next / on ice. Update when work ships or priorities shift.
   - `docs/Learnings.md` — session-discovered pitfalls and patterns. Read before starting work; append when you hit something non-obvious.
 
-(The v0.1/v0.2 epic + ticket definitions and the spike prototypes were historical planning
-artifacts, pruned after v0.2 shipped; they live in git history if ever needed.)
+(Every epic's ticket definitions and spike prototypes — v0.1, v0.2, and v0.3 — were historical
+planning artifacts, pruned after each epic shipped; they live in git history if ever needed.)
 
 ## Commands
 
@@ -107,8 +112,9 @@ Key rules that recur across tickets:
 
 ## Scope discipline
 
-Deferred to v0.3+ (not built): `llm_judge`, `compare` (model/prompt matrix), a self-contained
-HTML report, `repeat: N` flakiness measurement, export to other languages, streaming, and any
-server, database, or hosted/account features — dryfire stays a zero-infra local CLI. If a change
-seems to need one of these, stop and flag it instead of building forward. ARCHITECTURE §11 lists
-tripwires (repository classes, event buses, DI containers, …) that mean delete something.
+Still deferred (not built): export to other languages, streaming, and any server, database, or
+hosted/account features — dryfire stays a zero-infra local CLI. (v0.3 shipped what used to head this
+list: `llm_judge`, `compare`, the self-contained HTML report, and `repeat: N` flakiness measurement.)
+If a change seems to need one of the deferred items, stop and flag it instead of building forward.
+ARCHITECTURE §11 lists tripwires (repository classes, event buses, DI containers, …) that mean delete
+something.
