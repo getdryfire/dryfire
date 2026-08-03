@@ -20,7 +20,7 @@ from dataclasses import replace
 from datetime import UTC, datetime
 from decimal import Decimal
 from pathlib import Path
-from typing import Any, TextIO, cast
+from typing import Any, NamedTuple, TextIO, cast
 
 from dryfire.adapters.driven.cache.file_store import FileCassetteStore, sanitise
 from dryfire.adapters.driven.cache.prune import find_prunable, remove_empty_dirs
@@ -103,10 +103,29 @@ class MissingCredentials(Exception):
 # -- Gateway selection (monkeypatched in tests to avoid the network) --------
 
 
+class _CompatProvider(NamedTuple):
+    """A provider that speaks the OpenAI Chat Completions wire format (#71). Adding
+    one is a data row here — the shared OpenAIGateway translation is reused, not
+    re-implemented, so nothing above the port moves."""
+
+    base_url: str
+    env_var: str
+
+
+# OpenAI-compatible providers: name → (base_url, env_var). The registry is the source
+# of truth — `make_gateway` iterates it, so a new compat provider (Kimi, GLM, DeepSeek)
+# is one row, not a new branch. OpenRouter is an aggregator reaching many models behind a
+# single key; it carries no bundled pricing (advisory cost stays None — never a guess).
+OPENAI_COMPATIBLE: dict[str, _CompatProvider] = {
+    "xai": _CompatProvider("https://api.x.ai/v1", "XAI_API_KEY"),
+    "openrouter": _CompatProvider("https://openrouter.ai/api/v1", "OPENROUTER_API_KEY"),
+}
+
+
 def make_gateway(provider: str) -> ModelGateway:
-    """The one place a concrete real provider is chosen. v0.1 is Anthropic-only;
-    the SDK import is lazy so `validate` (which never calls this) needs no SDK.
-    Fake gateways are scripted per case and built in `_plan`, never here.
+    """The one place a concrete real provider is chosen. The SDK import is lazy so
+    `validate` (which never calls this) needs no SDK. Fake gateways are scripted per
+    case and built in `_plan`, never here.
 
     Raises `MissingCredentials` when the provider's key is absent, so composition
     can skip those cases rather than fail them."""
@@ -122,6 +141,16 @@ def make_gateway(provider: str) -> ModelGateway:
         from dryfire.adapters.driven.providers.openai import OpenAIGateway
 
         return OpenAIGateway()
+    compat = OPENAI_COMPATIBLE.get(provider)
+    if compat is not None:
+        key = os.environ.get(compat.env_var)
+        if not key:
+            raise MissingCredentials(provider, compat.env_var)
+        from dryfire.adapters.driven.providers.openai import OpenAIGateway
+
+        # Compatible providers reuse OpenAI's finish-reason mapping ("openai"); `name`
+        # keeps the provider identity that keys pricing.
+        return OpenAIGateway(api_key=key, name=provider, base_url=compat.base_url)
     raise ConfigError(f"unknown provider: {provider!r}")
 
 
