@@ -443,3 +443,46 @@ def test_mixed_run_fake_passes_while_keyless_anthropic_is_skipped(
     assert result.exit_code == 0, result.output
     assert "skip" in result.output.lower()
     assert "needs_key" in result.output
+
+
+# -- #75: user-defined OpenAI-compatible provider from dryfire.yaml `providers:` --------
+
+_CUSTOM_PROJECT = (
+    "version: 1\n"
+    "suites: ['*.eval.yaml']\n"
+    "providers:\n"
+    "  my-llm:\n"
+    "    base_url: https://ep.example/v1\n"
+    "    api_key_env: MY_LLM_API_KEY\n"
+)
+_CUSTOM_SUITE = (
+    "name: custom\nprovider: my-llm\n"
+    "cases:\n  - name: greets\n    input: hi\n"
+    "    expect:\n      - final_contains: done\n"
+)
+
+
+def test_user_defined_provider_from_dryfire_yaml_reaches_resolve_gateway(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # Proves the whole wiring: `providers:` parses, is mapped to the compat spec, and is
+    # threaded into resolve_gateway during a real run. The gateway itself is faked so the
+    # run stays offline.
+    (tmp_path / "dryfire.yaml").write_text(_CUSTOM_PROJECT, encoding="utf-8")
+    (tmp_path / "s.eval.yaml").write_text(_CUSTOM_SUITE, encoding="utf-8")
+    monkeypatch.chdir(tmp_path)
+
+    seen: dict[str, Any] = {}
+
+    def fake_resolve(provider: str, custom: Any = None) -> object:
+        seen["provider"] = provider
+        seen["custom"] = custom
+        return _TextGateway("done")
+
+    monkeypatch.setattr(composition, "resolve_gateway", fake_resolve)
+    result = runner.invoke(app, ["run"])
+
+    assert result.exit_code == 0, result.output
+    assert seen["provider"] == "my-llm"
+    assert seen["custom"]["my-llm"].base_url == "https://ep.example/v1"
+    assert seen["custom"]["my-llm"].env_var == "MY_LLM_API_KEY"

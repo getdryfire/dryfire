@@ -177,10 +177,18 @@ cost (benchmarked). Published as `dryfire 0.3.0` → `0.3.1` on PyPI.
   from "anthropic + fake" to the full eight-provider list. Documents the advisory-cost caveat
   (`pricing_file` override) and the direct-key vs OpenRouter boundary (#81). `make docs --strict` green.
 
+- **#75 — generic OpenAI-compatible provider (user-defined) — done, PR open.** A `providers:` block
+  in `dryfire.yaml` maps a name → `{base_url, api_key_env}` (spec model `CustomProvider`), letting
+  `provider: <name>` point at any Chat Completions-shaped endpoint (self-hosted vLLM/Ollama, other
+  aggregators, private gateways). Design choice: a **named map**, not a magic `provider:
+  openai_compatible` + inline `base_url` — preserves the one-gateway-per-name invariant. New
+  `resolve_gateway(provider, custom)` extends `make_gateway` (built-ins win; custom only fills unknown
+  names) and keeps the `make_gateway` monkeypatch seam intact. Threaded through `run`/`trace`/`compare`
+  via `_Loaded.providers`. Unpriced (advisory `None`); `pricing_file` for cost.
+
 ## Up Next
 
-- **v0.4 remaining:** #75 (generic `openai_compatible` with user-supplied `base_url`), #81 (direct-key
-  fixtures tech debt).
+- **v0.4 remaining:** #81 (direct-key fixtures tech debt — the last open item).
 - **Housekeeping candidates:** bump release-workflow actions off deprecated Node 20; consider
   flipping `.github/workflows/example-usage.yml` from `workflow_dispatch` to `push`/`pull_request`
   now that `getdryfire/dryfire@v0.2.0` resolves.

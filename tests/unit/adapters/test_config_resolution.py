@@ -2,6 +2,8 @@
 
 from pathlib import Path
 
+import pytest
+
 from dryfire.adapters.driven.spec.config import (
     discover_config,
     glob_suites,
@@ -190,6 +192,36 @@ class TestProjectConfigLoading:
         assert config.defaults is not None
         assert config.defaults.max_turns == 8
         assert config.suites == ["evals/**/*.eval.yaml"]
+
+    def test_loads_user_defined_openai_compatible_providers(self, tmp_path: Path) -> None:
+        # #75: a `providers:` block defines custom OpenAI-compatible endpoints by name.
+        cfg = tmp_path / "dryfire.yaml"
+        cfg.write_text(
+            "version: 1\n"
+            "providers:\n"
+            "  my-llm:\n"
+            "    base_url: https://ep.example/v1\n"
+            "    api_key_env: MY_LLM_API_KEY\n",
+            encoding="utf-8",
+        )
+        config = load_project_config(cfg)
+        assert config.providers["my-llm"].base_url == "https://ep.example/v1"
+        assert config.providers["my-llm"].api_key_env == "MY_LLM_API_KEY"
+
+    def test_custom_provider_rejects_unknown_keys(self, tmp_path: Path) -> None:
+        # Strict models: a typo'd field is a user error, not silently dropped (AC-003).
+        cfg = tmp_path / "dryfire.yaml"
+        cfg.write_text(
+            "version: 1\n"
+            "providers:\n"
+            "  my-llm:\n"
+            "    base_url: https://ep.example/v1\n"
+            "    api_key_env: MY_LLM_API_KEY\n"
+            "    baseurl: oops\n",
+            encoding="utf-8",
+        )
+        with pytest.raises(Exception, match="baseurl|extra|permitted|forbidden"):
+            load_project_config(cfg)
 
 
 class TestGlobbing:

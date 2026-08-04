@@ -15,7 +15,7 @@ import asyncio
 import glob
 import json
 import os
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import replace
 from datetime import UTC, datetime
 from decimal import Decimal
@@ -47,7 +47,14 @@ from dryfire.adapters.driven.spec.errors import SpecError
 from dryfire.adapters.driven.spec.errors import render as render_spec_errors
 from dryfire.adapters.driven.spec.loader import load_suite
 from dryfire.adapters.driven.spec.mocks import map_mocks
-from dryfire.adapters.driven.spec.models import Case, CassetteConfig, CassetteMode, Defaults, Suite
+from dryfire.adapters.driven.spec.models import (
+    Case,
+    CassetteConfig,
+    CassetteMode,
+    CustomProvider,
+    Defaults,
+    Suite,
+)
 from dryfire.adapters.driven.spec.scripts import map_script
 from dryfire.application.judging.collect import collect_judge_requests
 from dryfire.application.judging.evaluator import DEFAULT_JUDGE_CONCURRENCY, JudgeEvaluator
@@ -169,6 +176,39 @@ def make_gateway(provider: str) -> ModelGateway:
     raise ConfigError(f"unknown provider: {provider!r}")
 
 
+def resolve_gateway(
+    provider: str, custom: Mapping[str, _CompatProvider] | None = None
+) -> ModelGateway:
+    """Choose a gateway for `provider`, extending the built-in `make_gateway` with the
+    user-defined OpenAI-compatible providers from `dryfire.yaml` (#75). Built-ins win — a
+    custom entry only answers a name `make_gateway` doesn't recognise — so a `providers:`
+    block can never silently shadow `anthropic`/`openai`/`gemini`. Delegating (rather than
+    growing `make_gateway`'s signature) keeps the test seam that monkeypatches
+    `make_gateway` intact for built-in-provider cases."""
+    try:
+        return make_gateway(provider)
+    except ConfigError:
+        spec = (custom or {}).get(provider)
+        if spec is None:
+            raise
+        key = os.environ.get(spec.env_var)
+        if not key:
+            raise MissingCredentials(provider, spec.env_var) from None
+        from dryfire.adapters.driven.providers.openai import OpenAIGateway
+
+        return OpenAIGateway(api_key=key, name=provider, base_url=spec.base_url)
+
+
+def _custom_providers(
+    project_providers: Mapping[str, CustomProvider],
+) -> dict[str, _CompatProvider]:
+    """Map the `providers:` block (base_url + api_key_env) to the internal compat spec."""
+    return {
+        name: _CompatProvider(base_url=p.base_url, env_var=p.api_key_env)
+        for name, p in project_providers.items()
+    }
+
+
 # -- Spec loading (network never touched here) ------------------------------
 
 
@@ -180,12 +220,15 @@ class _Loaded:
         defaults: Defaults | None,
         cassettes: CassetteConfig | None = None,
         config_dir: Path | None = None,
+        providers: Mapping[str, _CompatProvider] | None = None,
     ) -> None:
         self.suites = suites
         self.errors = errors
         self.defaults = defaults
         self.cassettes = cassettes  # cassette dir/mode from project config (DF-204)
         self.config_dir = config_dir  # cassette paths resolve relative to this
+        # User-defined OpenAI-compatible providers from dryfire.yaml `providers:` (#75).
+        self.providers: Mapping[str, _CompatProvider] = providers or {}
 
 
 def _glob_cli_paths(patterns: Sequence[str | Path], cwd: Path) -> list[Path]:
@@ -220,6 +263,7 @@ def _load(paths: Sequence[str | Path], *, cwd: Path) -> _Loaded:
     defaults = project.defaults if project else None
     cassettes = project.cassettes if project else None
     config_dir = config_path.parent if config_path else None
+    providers = _custom_providers(project.providers) if project else {}
 
     if paths:
         suite_paths = _glob_cli_paths(paths, cwd)
@@ -239,7 +283,7 @@ def _load(paths: Sequence[str | Path], *, cwd: Path) -> _Loaded:
         errors.extend(errs)
         if suite is not None:
             loaded.append((path, suite))
-    return _Loaded(loaded, errors, defaults, cassettes, config_dir)
+    return _Loaded(loaded, errors, defaults, cassettes, config_dir, providers)
 
 
 def _render_errors(errors: list[SpecError]) -> str:
@@ -301,7 +345,8 @@ def _plan(
 
 
 def _partition_by_availability(
-    planned: list[PlannedSuite], *, out: TextIO
+    planned: list[PlannedSuite], *, out: TextIO,
+    custom: Mapping[str, _CompatProvider] | None = None,
 ) -> tuple[list[PlannedSuite], ModelGateway | None]:
     """Drop cases whose real provider has no credentials, printing a skip note for
     each (skipped ≠ failed, AC-016). Returns the runnable suites and the shared
@@ -312,7 +357,7 @@ def _partition_by_availability(
     skip_env: dict[str, str] = {}  # provider → env var, for the unavailable ones
     for provider in real_providers:
         try:
-            gateways[provider] = make_gateway(provider)
+            gateways[provider] = resolve_gateway(provider, custom)
         except MissingCredentials as exc:
             skip_env[provider] = exc.env_var
 
@@ -695,7 +740,9 @@ def run(
             )
             default_gateway: ModelGateway | None = None
         else:
-            runnable, real_gateway = _partition_by_availability(planned, out=out)
+            runnable, real_gateway = _partition_by_availability(
+                planned, out=out, custom=loaded.providers
+            )
             if not runnable:  # every case was skipped for want of credentials
                 return EXIT_OK
             # Retries wrap the live gateway; order is Caching(Retrying(Real)) — a
@@ -762,7 +809,7 @@ def trace(
         default_gateway: ModelGateway | None = None
         if target.gateway is None:
             try:
-                default_gateway = make_gateway(target.case.provider)
+                default_gateway = resolve_gateway(target.case.provider, loaded.providers)
             except MissingCredentials as exc:
                 raise ConfigError(str(exc)) from exc
         one = [target_suite(target)]
@@ -815,7 +862,9 @@ async def _compare_run_one(
         )
         default_gateway: ModelGateway | None = None
     else:
-        runnable, real_gateway = _partition_by_availability(planned, out=out)
+        runnable, real_gateway = _partition_by_availability(
+            planned, out=out, custom=loaded.providers
+        )
         default_gateway = (
             RetryingGateway(real_gateway, clock=SystemClock(), max_retries=max_retries)
             if real_gateway is not None else None

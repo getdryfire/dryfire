@@ -19,6 +19,7 @@ key. Add a provider only when you run against a real model.
 | `zhipu` | GLM | OpenAI-compatible | `dryfire[openai]` | `ZHIPUAI_API_KEY` | — |
 | `deepseek` | DeepSeek | OpenAI-compatible | `dryfire[openai]` | `DEEPSEEK_API_KEY` | — |
 | `openrouter` | many (aggregator) | OpenAI-compatible | `dryfire[openai]` | `OPENROUTER_API_KEY` | — |
+| _your name_ | any OpenAI-compatible endpoint | OpenAI-compatible | `dryfire[openai]` | _your choice_ | — |
 | `fake` | — (scripted turns) | — | none | none | n/a |
 
 Notes:
@@ -59,6 +60,32 @@ dryfire run suites/refund.eval.yaml
 ```
 
 Prefer to record once and replay free in CI? See [Cassettes](cassettes.md).
+
+## Custom OpenAI-compatible providers
+
+Any endpoint that speaks the OpenAI Chat Completions format — a self-hosted vLLM or Ollama server,
+another aggregator, a private gateway — works without waiting for a built-in row. Define it once
+under `providers:` in `dryfire.yaml`, then reference it by name anywhere `provider:` is accepted:
+
+```yaml
+# dryfire.yaml
+version: 1
+providers:
+  my-llm:
+    base_url: https://my-endpoint.example/v1   # the Chat Completions base URL
+    api_key_env: MY_LLM_API_KEY                 # env var holding the key (a missing key skips, as usual)
+```
+
+```yaml
+# a suite
+provider: my-llm
+model: my-org/my-finetune
+```
+
+The wire family is always OpenAI's, so tool calls, arguments, and finish reasons are translated
+exactly as for the built-in compatible providers. A custom name can't shadow a built-in
+(`anthropic`/`openai`/`gemini` always win), and custom endpoints have no bundled pricing — supply a
+`pricing_file` if you want cost.
 
 ## Cost is advisory
 
