@@ -15,7 +15,7 @@ from typing import Any
 import pytest
 
 from dryfire import composition
-from dryfire.composition import ConfigError, MissingCredentials, make_gateway
+from dryfire.composition import ConfigError, MissingCredentials, make_gateway, resolve_gateway
 
 
 class _RecordingClient:
@@ -81,6 +81,56 @@ def test_missing_gemini_key_is_a_skip_naming_its_env_var(
         make_gateway("gemini")
     assert exc.value.provider == "gemini"
     assert exc.value.env_var == "GEMINI_API_KEY"
+
+
+# -- resolve_gateway: built-ins + user-defined OpenAI-compatible providers (#75) --------
+
+
+def _custom(name: str, base_url: str, env_var: str) -> dict[str, Any]:
+    return {name: composition._CompatProvider(base_url=base_url, env_var=env_var)}
+
+
+def test_resolve_gateway_builds_a_user_defined_provider(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("MY_LLM_API_KEY", "sk-mine")
+    custom = _custom("my-llm", "https://ep.example/v1", "MY_LLM_API_KEY")
+    gateway = resolve_gateway("my-llm", custom)
+    assert gateway.name == "my-llm"
+    assert _RecordingClient.last_kwargs["base_url"] == "https://ep.example/v1"
+    assert _RecordingClient.last_kwargs["api_key"] == "sk-mine"
+
+
+def test_resolve_gateway_user_provider_missing_key_names_its_env_var(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.delenv("MY_LLM_API_KEY", raising=False)
+    with pytest.raises(MissingCredentials) as exc:
+        resolve_gateway("my-llm", _custom("my-llm", "https://ep.example/v1", "MY_LLM_API_KEY"))
+    assert exc.value.provider == "my-llm"
+    assert exc.value.env_var == "MY_LLM_API_KEY"
+
+
+def test_resolve_gateway_builtin_wins_over_a_user_definition(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # A `providers:` block must never shadow a built-in: `gemini` here keeps the native
+    # gateway, not the user's bogus OpenAI-compatible endpoint.
+    monkeypatch.setenv("GEMINI_API_KEY", "gm")
+    gateway = resolve_gateway("gemini", _custom("gemini", "https://bogus.example", "X"))
+    assert gateway.name == "gemini"
+    # The OpenAI-compatible path was never taken (its fake client recorded nothing).
+    assert _RecordingClient.last_kwargs == {}
+
+
+def test_resolve_gateway_delegates_builtins(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("XAI_API_KEY", "sk-x")
+    assert resolve_gateway("xai", {}).name == "xai"
+
+
+def test_resolve_gateway_unknown_is_a_config_error() -> None:
+    with pytest.raises(ConfigError, match="unknown provider"):
+        resolve_gateway("nope", _custom("my-llm", "https://ep.example/v1", "MY_LLM_API_KEY"))
 
 
 # The exact (base_url, env_var) per compat provider — the real per-provider contract

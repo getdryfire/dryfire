@@ -172,6 +172,16 @@ class CassetteConfig(_StrictModel):
     mode: CassetteMode | None = None
 
 
+class CustomProvider(_StrictModel):
+    """A user-defined OpenAI-compatible provider (#75). Lets `provider: <name>` point at
+    any Chat Completions-shaped endpoint (self-hosted vLLM/Ollama, another aggregator, a
+    private gateway) without a built-in registry row. The wire family is always OpenAI's;
+    only the base URL and the env var holding the key differ."""
+
+    base_url: str
+    api_key_env: str
+
+
 class ProjectConfig(_StrictModel):
     """`dryfire.yaml` at the repo root."""
 
@@ -180,3 +190,5 @@ class ProjectConfig(_StrictModel):
     suites: list[str] = []
     cassettes: CassetteConfig | None = None
     pricing_file: str | None = None
+    # User-defined OpenAI-compatible providers, keyed by the name used in `provider:` (#75).
+    providers: dict[str, CustomProvider] = {}

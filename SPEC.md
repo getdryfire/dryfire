@@ -433,8 +433,10 @@ at load time. Missing var is a spec error, not an empty string.
 
 **`provider`** — settable at the project default, suite, or run (`--model` is model-only)
 level. Recognised values: `anthropic`, `openai`, `gemini`, `xai`, `moonshot`, `zhipu`,
-`deepseek`, `openrouter`, and `fake` (each real provider needs its own `*_API_KEY` — see the
-[provider matrix](docs/providers.md)). Suite-level provider is what lets a keyless `fake` suite
+`deepseek`, `openrouter`, `fake`, and any user-defined name declared in the `providers:`
+block of `dryfire.yaml` (an OpenAI-compatible `base_url` + `api_key_env`; built-in names always
+win). Each real provider needs its own `*_API_KEY` — see the
+[provider matrix](docs/providers.md). Suite-level provider is what lets a keyless `fake` suite
 and a real provider suite live in one project. A case whose real provider has no key in the
 environment is **skipped** by `run` (a visible note, not a failure); `trace` surfaces it as an
 error.
