@@ -970,3 +970,37 @@ env indirection is the standard injection-safe pattern. Design the action so JUn
   epic, so the live smoke (`test_openrouter_live.py`) covers the compat path without per-provider keys;
   point it at a specific model with `DRYFIRE_OPENROUTER_MODEL`. Offline determinism is unaffected — unit
   tests fake the SDK via `sys.modules["openai"]` and assert the captured `base_url`/`api_key` kwargs.
+
+### 2026-08-03 — #76 SPIKE (Gemini native tool loop) — live-verified, GO for a native adapter
+Probed `generateContent` live with a real `GEMINI_API_KEY` (`models/gemini-flash-latest`). Findings
+overturn the ticket's central premise and settle the native-vs-compat question:
+
+- **GO on native `generateContent`.** It's alive on *current* models (`gemini-flash-latest`,
+  `gemini-3.5-flash` → 200), while older ones (`gemini-2.0-flash`, `gemini-2.5-*`) now 404 for new
+  keys with "use the Interactions API." Use `gemini-flash-latest` (stable alias) as the default; do
+  **not** pin a dated model — Google retires them out from under new keys.
+- **The "id-less tool loop" premise is obsolete.** `functionCall` now carries an **`id`**
+  (`{"name","args","id"}` — note `args`, not `arguments`). `functionResponse.id` is *optional* (a
+  no-id follow-up still 200s via name/order), but since the id is provided we thread it like the
+  other adapters. This removes the whole reason the spike existed.
+- **The real gotcha is `thoughtSignature`, and it's the Anthropic pattern.** Every part (text *and*
+  functionCall) comes with an opaque `thoughtSignature`; omitting it on the echoed model turn →
+  `400 "Function call is missing a thought_signature … required for tools to work correctly"`. So the
+  model turn must be echoed **verbatim** — exactly dryfire's existing `Message.raw` passthrough seam
+  (§9.3 sanctioned for Anthropic). #77 reuses it; no new mechanism.
+- **`finishReason` never signals tool use.** Gemini returns `STOP` for a tool-call turn. Map
+  `tool_use` from the presence of `functionCall` parts; otherwise map `finishReason`
+  (`STOP`→end_turn, `MAX_TOKENS`→max_tokens, `SAFETY`/`RECITATION`→refusal,
+  `MALFORMED_FUNCTION_CALL`/`OTHER`/unknown→error). This is a real `stop_reason.py` behavior, not a
+  table row — the mapping is *conditional*, unlike OpenAI/Anthropic.
+- **`functionResponse` needs the tool NAME, not just the id.** dryfire's `ToolResult` carries
+  `call_id` only, so `to_wire` must build an id→name map from the assistant turn's `tool_calls` in
+  the same request to emit `{"functionResponse":{"name",... }}`. The one genuinely new bit of adapter
+  logic for #77; everything else mirrors the existing adapters.
+- **Wire shape:** request = `contents[]` (roles `user`/`model` only; tool results go in a **`user`**
+  turn immediately after the model turn), `tools:[{functionDeclarations:[...]}]`, `systemInstruction`,
+  `generationConfig{temperature,topP,maxOutputTokens,stopSequences}`. Usage in `usageMetadata`
+  (`promptTokenCount`/`candidatesTokenCount`/`totalTokenCount`/`thoughtsTokenCount`).
+- Real payloads captured to `tests/fixtures/gemini/` (see its README) — these seed #77's offline
+  contract tests. Thinking models spend output budget on thoughts, so a small `maxOutputTokens`
+  yields `MAX_TOKENS` mid-answer — set it generously in the live test.

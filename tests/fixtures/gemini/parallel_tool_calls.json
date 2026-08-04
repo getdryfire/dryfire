@@ -1,0 +1,48 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "functionCall": {
+              "name": "lookup_order",
+              "args": {
+                "order_id": "A-991"
+              },
+              "id": "PwC2aydm"
+            },
+            "thoughtSignature": "EtYCCtMCARFNMg9uXc9FHupf0vInu+cLo9PUz32zLNaH7R7Ib+i4D9eaUxVAZTuEnnxpVZZC8B+A8ItrGV4XNFaifwafnXJ3S8kiC8YpXtdURm8+d9KtsROgEqJwVslRuFc/nLmGTD6qeEpz84250U+wniFqIKm8fIFXv2Er/eN39q4RZsA6cRP8Ch8aZ4dOPCz034dS1zH11y1x1t8dKWBLvJTppOnXjs5j9lj7kLl8YwTUh6nqiP43fNqIzeRpvSDv9Q7yZynk2l72Wcz/qPIZJJWc8AyyC2t6MBOoc5d80rMxNw9KVBZdrNivQp84stiiqWoEzg1C2SZS2Qf06rj7QpPgg156ZkHbt1vezXXQIFtroE+sdNeqdYkY2Ya+5Tx3bxXOX7QWp09KZfdkln+EtH+K3YRmsUfJdA3VEtG68kht/I2/PAVDdgoOW3mpYfY8E2sZ2LUq"
+          },
+          {
+            "functionCall": {
+              "name": "lookup_order",
+              "args": {
+                "order_id": "B-222"
+              },
+              "id": "ipsruvjy"
+            }
+          }
+        ],
+        "role": "model"
+      },
+      "finishReason": "STOP",
+      "index": 0,
+      "finishMessage": "Model generated function call(s)."
+    }
+  ],
+  "usageMetadata": {
+    "promptTokenCount": 78,
+    "candidatesTokenCount": 44,
+    "totalTokenCount": 201,
+    "promptTokensDetails": [
+      {
+        "modality": "TEXT",
+        "tokenCount": 78
+      }
+    ],
+    "thoughtsTokenCount": 79,
+    "serviceTier": "standard"
+  },
+  "modelVersion": "gemini-3.6-flash",
+  "responseId": "1U5xarj3JIaUmtkPpt718QI"
+}

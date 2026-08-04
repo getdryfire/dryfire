@@ -1,0 +1,32 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "Order A-991 has been delivered. Total: $780.",
+            "thoughtSignature": "ErcBCrQBARFNMg8nVrIa19PRvVIayMDYGLiecne/lCNvsFytvhjq3ff5Iamlp1qV+rFqDxB4jmIvnpRRh97s7iQsLapv2ybw+6/FKpM1tEiHbGi4QANYAMwcIkKnVpgIzJNI5X5o/URFM8gB2QY0CR40KqugznQgOfr4zB6jE/r2Bm56HTiqyqd0i44tF4yvcHscpnzkcFKE1jFhm9pFO+9ShpRhvS8RPjRvpeTCGWA7KrSutplcuTlL"
+          }
+        ],
+        "role": "model"
+      },
+      "finishReason": "STOP",
+      "index": 0
+    }
+  ],
+  "usageMetadata": {
+    "promptTokenCount": 153,
+    "candidatesTokenCount": 17,
+    "totalTokenCount": 206,
+    "promptTokensDetails": [
+      {
+        "modality": "TEXT",
+        "tokenCount": 153
+      }
+    ],
+    "thoughtsTokenCount": 36,
+    "serviceTier": "standard"
+  },
+  "modelVersion": "gemini-3.6-flash",
+  "responseId": "QkxxaqOtJ76Ez7IPuN-nyQU"
+}
