@@ -43,6 +43,7 @@ nav:
   - Home: index.md
   - Get started: guide.md
   - Core:
+      - Providers: providers.md
       - Mocks: mocks.md
       - Cassettes: cassettes.md
       - CI: ci.md

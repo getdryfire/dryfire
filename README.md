@@ -70,10 +70,17 @@ uvx dryfire init && uvx dryfire run
 
 ```sh
 pip install dryfire                 # or: uv add dryfire
-pip install 'dryfire[anthropic]'    # the Anthropic provider (an optional extra)
+pip install 'dryfire[anthropic]'    # Claude
+pip install 'dryfire[openai]'       # GPT — and the OpenAI-compatible providers (Grok, Kimi, GLM, DeepSeek, OpenRouter)
+# Gemini needs no extra; 'dryfire[all]' installs the Anthropic + OpenAI SDKs together
 ```
 
 Python 3.12+. Importing dryfire never requires a provider SDK; the entire test suite runs offline.
+
+**Providers:** Anthropic, OpenAI, Gemini, Grok (xAI), Kimi (Moonshot), GLM (Zhipu), DeepSeek, and
+OpenRouter (one key → many models). The same suite runs against any of them — see the
+[provider matrix](https://github.com/getdryfire/dryfire/blob/main/docs/providers.md) for the
+`provider:` value, env var, and install per model.
 
 ## In CI
 

@@ -22,7 +22,8 @@ Python 3.12+. Importing dryfire never pulls a provider SDK, and the offline exam
 needs **no API key**. Add a provider only when you run against a real model:
 
 ```sh
-pip install 'dryfire[anthropic]'   # or 'dryfire[openai]', or 'dryfire[all]'
+pip install 'dryfire[anthropic]'   # Claude; 'dryfire[openai]' also covers Grok/Kimi/GLM/DeepSeek/OpenRouter
+# Gemini needs no extra. Full list: see Providers.
 ```
 
 ---
