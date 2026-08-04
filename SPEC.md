@@ -432,10 +432,12 @@ with a visible note. Full behaviour and the security posture: `docs/mocks.md`.
 at load time. Missing var is a spec error, not an empty string.
 
 **`provider`** — settable at the project default, suite, or run (`--model` is model-only)
-level. v0.1 recognises `anthropic` (needs `ANTHROPIC_API_KEY`) and `fake`. Suite-level
-provider is what lets a keyless `fake` suite and a real `anthropic` suite live in one
-project. A case whose real provider has no key in the environment is **skipped** by `run`
-(a visible note, not a failure); `trace` surfaces it as an error.
+level. Recognised values: `anthropic`, `openai`, `gemini`, `xai`, `moonshot`, `zhipu`,
+`deepseek`, `openrouter`, and `fake` (each real provider needs its own `*_API_KEY` — see the
+[provider matrix](docs/providers.md)). Suite-level provider is what lets a keyless `fake` suite
+and a real provider suite live in one project. A case whose real provider has no key in the
+environment is **skipped** by `run` (a visible note, not a failure); `trace` surfaces it as an
+error.
 
 **`script`** — case-level, and only for `provider: fake`. It scripts the model's side of the
 conversation, one entry per turn, so a suite runs deterministically with no API key. This is

@@ -171,10 +171,16 @@ cost (benchmarked). Published as `dryfire 0.3.0` → `0.3.1` on PyPI.
   Tested offline against the real captured fixtures from #76, plus a live two-turn tool exchange
   (passed against `gemini-flash-latest`). `application/loop.py` untouched. Unpriced (advisory `None`).
 
+- **#78 — provider support matrix docs — done, PR open.** New `docs/providers.md` (support matrix:
+  `provider:` value × model family × wire family × install × env var × pricing) wired into the mkdocs
+  nav under Core. README install section + provider list, `docs/guide.md`, and SPEC §4.2 all updated
+  from "anthropic + fake" to the full eight-provider list. Documents the advisory-cost caveat
+  (`pricing_file` override) and the direct-key vs OpenRouter boundary (#81). `make docs --strict` green.
+
 ## Up Next
 
-- **v0.4 remaining:** #75 (generic `openai_compatible` with user-supplied `base_url`), #78 (provider
-  matrix docs — now covers 6 providers), #81 (direct-key fixtures tech debt).
+- **v0.4 remaining:** #75 (generic `openai_compatible` with user-supplied `base_url`), #81 (direct-key
+  fixtures tech debt).
 - **Housekeeping candidates:** bump release-workflow actions off deprecated Node 20; consider
   flipping `.github/workflows/example-usage.yml` from `workflow_dispatch` to `push`/`pull_request`
   now that `getdryfire/dryfire@v0.2.0` resolves.
