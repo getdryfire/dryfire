@@ -1,6 +1,6 @@
 # Progress
 
-**Last Updated:** 2026-08-03 · **Status:** v0.3.1 on PyPI (EPIC-003 shipped)
+**Last Updated:** 2026-08-04 · **Status:** v0.3.2 on PyPI; **v0.4.0 release prepared** (Model Breadth)
 
 ---
 
@@ -129,11 +129,13 @@ cost (benchmarked). Published as `dryfire 0.3.0` → `0.3.1` on PyPI.
 
 ---
 
-## In Progress — v0.4 (Model Breadth)
+## Delivered — v0.4 (Model Breadth) — milestone closed, release prepared
 
-> Milestone [v0.4 Model Breadth](https://github.com/getdryfire/dryfire/milestone/1) — expand
-> provider support beyond Anthropic + OpenAI. Issues #71–78 (`provider` label). Splits cleanly:
-> the OpenAI-compatible family is a shared seam + data rows; Gemini is the one native adapter.
+> Milestone [v0.4 Model Breadth](https://github.com/getdryfire/dryfire/milestone/1) — **closed,
+> 15/15**. Provider support expanded beyond Anthropic + OpenAI. The OpenAI-compatible family is a
+> shared seam + data rows; Gemini is a native adapter; users can define their own compat providers.
+> `__about__.py` bumped to `0.4.0` and CHANGELOG `[0.4.0]` written — **awaiting the owner's tag**
+> (`git tag v0.4.0 && git push origin v0.4.0` → `release.yml` gates + publishes via Trusted Publishing).
 
 - **#71 — OpenAI-compatible provider seam (+ Grok/xAI reference) — code complete, PR open.**
   Generalized `OpenAIGateway` (`name` + `base_url` + `stop_reason_key`, all defaulting to today's

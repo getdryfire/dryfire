@@ -4,6 +4,38 @@ All notable changes to dryfire are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0] — 2026-08-04
+
+**Model breadth.** Six new providers, plus user-defined ones — all speaking the trajectory
+contract unchanged. The deterministic structural core (`application/loop.py`) did not move;
+caching, retries, and every new provider remain decorators/data over the model gateway.
+
+### Added
+
+- **Gemini** provider — native `generateContent` over HTTP, needing **no SDK and no optional
+  extra** (`provider: gemini`, key from `GEMINI_API_KEY`).
+- **Grok (xAI)**, **Kimi (Moonshot)**, **GLM (Zhipu)**, **DeepSeek**, and **OpenRouter**
+  providers — all OpenAI Chat Completions-compatible, reachable via `dryfire[openai]`. OpenRouter
+  reaches many frontier and open-weight models behind a single key.
+- **User-defined OpenAI-compatible providers** — declare any Chat Completions endpoint
+  (self-hosted vLLM/Ollama, another aggregator, a private gateway) under a `providers:` block in
+  `dryfire.yaml` and reference it by name from any suite.
+- **Provider support matrix** documentation (`docs/providers.md`): the `provider:` value, wire
+  family, install, API-key env var, and pricing per model.
+
+### Changed
+
+- The `dryfire[openai]` extra now also covers the OpenAI-compatible providers (Grok, Kimi, GLM,
+  DeepSeek, OpenRouter) — no new dependency; they reuse the OpenAI adapter.
+
+### Notes
+
+- New providers are **additive**: existing suites, exit codes, YAML, and trace JSON are unchanged.
+- Only Anthropic ships bundled pricing; every other provider reports advisory `—` rather than a
+  guessed cost. Supply a `pricing_file` to add rates. Direct-key native wire quirks for the
+  OpenAI-compatible providers are OpenAI-assumed (they are exercised via OpenRouter, which
+  normalizes responses) — see the provider matrix.
+
 ## [0.3.2] — 2026-08-03
 
 Docs/packaging patch (no code changes) — brands the project's public surfaces.
@@ -176,6 +208,8 @@ First release: the v0.1 trajectory runner (EPIC-001). Anthropic-only, local-firs
   `compare`, and cost/latency assertions are planned for v0.2+.
 - Cost is advisory; stale pricing is an accepted, documented limitation.
 
+[0.4.0]: https://github.com/getdryfire/dryfire/releases/tag/v0.4.0
+[0.3.2]: https://github.com/getdryfire/dryfire/releases/tag/v0.3.2
 [0.3.1]: https://github.com/getdryfire/dryfire/releases/tag/v0.3.1
 [0.3.0]: https://github.com/getdryfire/dryfire/releases/tag/v0.3.0
 [0.2.2]: https://github.com/getdryfire/dryfire/releases/tag/v0.2.2
