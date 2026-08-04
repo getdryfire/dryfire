@@ -1,0 +1,32 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "It arrived on Tuesday.",
+            "thoughtSignature": "EpEICo4IARFNMg8QtFrRmF5XirvV7anF+w04Nr4TlA1USljRgRO9ZOfDJbfyYkswf10HU3nglP7wksUJf0JAFrIEiVRrUelFmjYpC2qWFlGiMWHRMEciMb0gKjjBOMy+2wyulEOQ7DbsHJ5YZDWyPYUsRbsKAxj3/v1SYD2V1SR1zSVFRT56rVFIfftOi63ot5gN82hj6J7Qk/mvLMPw8tj2jfGptFYqnobyQNPuGXyPcJzGHk2WmrMMT7zyfKyBZKP0VyBTK4e0HVMdaXWWWU0USzPa1M36yDof9AtOcQ07Pq70+gdQqhQ+u12c4C9XzUiX5NCzMhBLOC+EpRxikc4dCc3wSSho2wTwdDaZGKJUxag+WrVXkD5sGoXvdhuYTmwWwNCyuEPXrkKbJulvyBr0PIi93VuANDKjVAIj/ap7v676t5yz20hOLWIO6N1xYpOkUpd+B6q14BX085KJM1x1BEu4hbw1pmtd+7uYycjUjCXlaUN21M58fuNyqHX9Pzzf7WBE9BL/Rh78ksiV36qBZKB8z1DPz6QDf5B/D+jl+tSYQwOtNSHetY4bRoNtchHM6MPrpSfuOoJw6pdgktQI79CyrCnfTL4+86flZypgtowtr0+jkTHZdAE9dyMLNnmRQQTFF7TQy5b+9AcHKDzabwVTwodm9QRhRMwaIXMTahg5vkA0CaRphBeOVtbv+pOSrzEKSHGHvhJvpxlIETvND0eEsXi2C7SxL+LeATz3T2SgERQXExhdF3Hkxr5DOqZOl6lADfq3ZjErrtBJXYzCC7uPZWuZCgYQMc+XupZMaYFbWmzrlynfiQ0VhLdLA9jMFBAkd3NR2KkO7kbjfiKiwxCS6JByBab84ar/qvR9YL+utBb+2uxC0qcAAdZuAPzjWErqIKt6p3uENLN8Nvp/gLkqB9o0bxst/b2niXm6+qza0dA+5r720gQgoEjzhfLVgZDa8QluM3ffOXqjuPGpUkFSl2PzKKURZ3T9Uxe3ZjAIs+QesSF1QGTMJGjVaYkAodBVGbdLUNANwBXLTa4VUQ01BT0HGs9AMfQ4UYevwLiZIVyQnHS170DVN2TXnve2UTtHwExELuCG7fTp6s4EXtpRgeZnfW7d1D4QHSUaW6G2eEXDXlwY1fxz33ZJX64o3bukzl56Jne51YCwwY4hqZcmPAokrftScvLeW4MT7gmdGJn3iMEZ0sG75VMbWgEykFV24QRWWJFz+j0YGinEvsWMRV6obIpNSEE3oKE8VUtQcJGiw3cR+TAvnPnMJVqnsvdaWIVz39aXtp5tArAdS45okvFMbztrciqH8CkRGksGilI7MxIShpPCHuC+fP3i++8gJhgF8T+P1gHWWb4UTMRGbW7DH41YJb6YPbj2eNoy"
+          }
+        ],
+        "role": "model"
+      },
+      "finishReason": "STOP",
+      "index": 0
+    }
+  ],
+  "usageMetadata": {
+    "promptTokenCount": 16,
+    "candidatesTokenCount": 5,
+    "totalTokenCount": 283,
+    "promptTokensDetails": [
+      {
+        "modality": "TEXT",
+        "tokenCount": 16
+      }
+    ],
+    "thoughtsTokenCount": 262,
+    "serviceTier": "standard"
+  },
+  "modelVersion": "gemini-3.6-flash",
+  "responseId": "QE9xaqOwD-SJz7IPqqWMwAQ"
+}

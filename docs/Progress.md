@@ -153,10 +153,20 @@ cost (benchmarked). Published as `dryfire 0.3.0` → `0.3.1` on PyPI.
   `reasoning_content`. Kimi/GLM chat are wire-identical to OpenAI (covered by the shared translation
   tests) — no manufactured duplicate fixtures. Still unpriced (advisory `None`), same rationale as #71.
 
+- **#76 — Gemini spike — DONE (live-verified), PR open.** Probed `generateContent` with a real key.
+  **GO for a native adapter** (#77). The ticket's "id-less tool loop" premise is obsolete —
+  `functionCall` now returns an `id`. The real gotcha is **`thoughtSignature`** (must be echoed
+  verbatim → reuses the existing `Message.raw` seam, the Anthropic pattern) and that **`finishReason`
+  is `STOP` even for tool calls** (infer `tool_use` from `functionCall` parts). Use
+  `gemini-flash-latest` (Google 404s dated models for new keys). Real payloads captured to
+  `tests/fixtures/gemini/`; full findings in Learnings. #81's OpenRouter blind spot does not apply —
+  Gemini is native, driven by a direct key.
+
 ## Up Next
 
-- **v0.4 remaining:** #75 (generic `openai_compatible` with user-supplied `base_url`), #76 (Gemini
-  spike — id-less tool loop), #77 (Gemini native adapter), #78 (provider matrix docs).
+- **v0.4 remaining:** #77 (Gemini native adapter — now fully scoped by the spike), #75 (generic
+  `openai_compatible` with user-supplied `base_url`), #78 (provider matrix docs), #81 (direct-key
+  fixtures tech debt).
 - **Housekeeping candidates:** bump release-workflow actions off deprecated Node 20; consider
   flipping `.github/workflows/example-usage.yml` from `workflow_dispatch` to `push`/`pull_request`
   now that `getdryfire/dryfire@v0.2.0` resolves.
