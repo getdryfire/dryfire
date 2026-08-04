@@ -29,6 +29,21 @@ _TABLE: Final[dict[str, dict[str, StopReason]]] = {
         "length": "max_tokens",
         "content_filter": "refusal",
     },
+    # Gemini's `finishReason` is `STOP` even for a tool-call turn (#76 spike), so the
+    # adapter infers `tool_use` from the presence of functionCall parts *before*
+    # consulting this table — there is deliberately no "tool_use" key here.
+    "gemini": {
+        "STOP": "end_turn",
+        "MAX_TOKENS": "max_tokens",
+        "SAFETY": "refusal",
+        "RECITATION": "refusal",
+        "BLOCKLIST": "refusal",
+        "PROHIBITED_CONTENT": "refusal",
+        "SPII": "refusal",
+        "IMAGE_SAFETY": "refusal",
+        "MALFORMED_FUNCTION_CALL": "error",
+        "OTHER": "error",
+    },
 }
 
 

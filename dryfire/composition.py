@@ -148,6 +148,14 @@ def make_gateway(provider: str) -> ModelGateway:
         from dryfire.adapters.driven.providers.openai import OpenAIGateway
 
         return OpenAIGateway()
+    if provider == "gemini":
+        key = os.environ.get("GEMINI_API_KEY")
+        if not key:
+            raise MissingCredentials("gemini", "GEMINI_API_KEY")
+        from dryfire.adapters.driven.providers.gemini import GeminiGateway
+
+        # Native generateContent over httpx (a core dep) — no SDK, no optional extra (#77).
+        return GeminiGateway(api_key=key)
     compat = OPENAI_COMPATIBLE.get(provider)
     if compat is not None:
         key = os.environ.get(compat.env_var)

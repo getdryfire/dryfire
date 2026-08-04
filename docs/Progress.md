@@ -162,11 +162,19 @@ cost (benchmarked). Published as `dryfire 0.3.0` → `0.3.1` on PyPI.
   `tests/fixtures/gemini/`; full findings in Learnings. #81's OpenRouter blind spot does not apply —
   Gemini is native, driven by a direct key.
 
+- **#77 — Gemini native adapter — code complete + live-verified, PR open.** New
+  `adapters/driven/providers/gemini.py` (`to_wire`/`from_wire` + `GeminiGateway`) talking native
+  `generateContent` over **httpx** (a core dep) — so Gemini needs **no SDK and no optional extra**,
+  a deliberate deviation from the anthropic/openai pattern (documented). Reuses the `Message.raw`
+  echo seam for the mandatory `thoughtSignature`; infers `tool_use` from `functionCall` parts (a
+  conditional `stop_reason`, not a flat table row); builds an id→name map for `functionResponse`.
+  Tested offline against the real captured fixtures from #76, plus a live two-turn tool exchange
+  (passed against `gemini-flash-latest`). `application/loop.py` untouched. Unpriced (advisory `None`).
+
 ## Up Next
 
-- **v0.4 remaining:** #77 (Gemini native adapter — now fully scoped by the spike), #75 (generic
-  `openai_compatible` with user-supplied `base_url`), #78 (provider matrix docs), #81 (direct-key
-  fixtures tech debt).
+- **v0.4 remaining:** #75 (generic `openai_compatible` with user-supplied `base_url`), #78 (provider
+  matrix docs — now covers 6 providers), #81 (direct-key fixtures tech debt).
 - **Housekeeping candidates:** bump release-workflow actions off deprecated Node 20; consider
   flipping `.github/workflows/example-usage.yml` from `workflow_dispatch` to `push`/`pull_request`
   now that `getdryfire/dryfire@v0.2.0` resolves.
