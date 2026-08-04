@@ -67,6 +67,22 @@ def test_unknown_provider_is_a_config_error() -> None:
         make_gateway("nope")
 
 
+def test_gemini_resolves_to_the_native_gateway(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("GEMINI_API_KEY", "gm-test")
+    gateway = make_gateway("gemini")
+    assert gateway.name == "gemini"  # native generateContent over httpx; no SDK/extra
+
+
+def test_missing_gemini_key_is_a_skip_naming_its_env_var(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.delenv("GEMINI_API_KEY", raising=False)
+    with pytest.raises(MissingCredentials) as exc:
+        make_gateway("gemini")
+    assert exc.value.provider == "gemini"
+    assert exc.value.env_var == "GEMINI_API_KEY"
+
+
 # The exact (base_url, env_var) per compat provider — the real per-provider contract
 # (#72 Kimi, #73 GLM, #74 DeepSeek). A typo here silently points a provider at the wrong
 # host, so pin the data explicitly rather than trusting the shared construction path alone.
