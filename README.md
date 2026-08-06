@@ -176,6 +176,7 @@ Full, dated head-to-heads (Promptfoo, DeepEval): [`COMPARISON.md`](https://githu
 - [`docs/ci.md`](https://github.com/getdryfire/dryfire/blob/main/docs/ci.md) — running dryfire in CI: exit codes, JUnit, the GitHub Action.
 - [`docs/cassettes.md`](https://github.com/getdryfire/dryfire/blob/main/docs/cassettes.md) — record/replay, and what invalidates a cassette.
 - [`docs/mocks.md`](https://github.com/getdryfire/dryfire/blob/main/docs/mocks.md) — mock rules, including passthrough (`impl:`) and its security note.
+- [`docs/redteam.md`](https://github.com/getdryfire/dryfire/blob/main/docs/redteam.md) — safety regressions: `not_calls_tool`, prompt injection through tool results, and what green doesn't prove.
 - [`docs/judging.md`](https://github.com/getdryfire/dryfire/blob/main/docs/judging.md) — `llm_judge`: cost, variance, merge-gate guidance, and judge drift.
 - [`docs/flakiness.md`](https://github.com/getdryfire/dryfire/blob/main/docs/flakiness.md) — `repeat: N`, pass rates, and what `3/5` actually means.
 - [`docs/compare.md`](https://github.com/getdryfire/dryfire/blob/main/docs/compare.md) — `compare` across models/prompts, the matrix, and the cost gate.

@@ -199,6 +199,25 @@ cost (benchmarked). Published as `dryfire 0.3.0` → `0.3.1` on PyPI.
 
 ## Shipped
 
+### `docs/redteam.md` + red-team demo suite (2026-08-05) — docs only
+Safety-regression guide: `not_calls_tool` as the primitive, four attack shapes (control, indirect
+injection via a tool result, second-order injection via a retrieved document, and the safe path
+erroring out), `tool_args` for attacker-controlled arguments, and why safety cases want
+`repeat: 5` at `require_pass_rate: 1.0`. Backed by a runnable
+`docs/demo/redteam.eval.yaml` (6 cases), added to the mkdocs nav and the README index.
+
+Prompted by a LinkedIn question about driving self-optimising prompt loops off dryfire. The page
+answers it in a closing section rather than as its own tutorial: dryfire scores, it does not
+search — `run --json-out` + `compare` + `repeat` are the fitness signal, the proposer stays
+outside the tool. **Keep it that way**; an in-tool optimiser is a scope-discipline call, not a
+feature gap.
+
+Also closed a real gap the work exposed: `docs/demo/*.eval.yaml` was quoted in the docs but
+**validated nowhere**. `tests/acceptance/test_docs_demo_suites.py` now parses every demo suite
+inside `make check` (offline, keyless). Note the red-team cases are proven to *parse*, not proven
+green — nobody has run them against a live model, and the page is written so a red row reads as a
+finding rather than a broken example.
+
 ### v0.2.0 released to PyPI (2026-08-02) — EPIC-002 complete
 `dryfire 0.2.0` published via Trusted Publishing (`release.yml`) and tagged `v0.2.0`; verified with
 `uvx dryfire@0.2.0`. DF-212 landed the docs (README "In CI" section, `docs/cassettes.md`,

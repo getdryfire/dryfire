@@ -46,6 +46,7 @@ nav:
       - Providers: providers.md
       - Mocks: mocks.md
       - Cassettes: cassettes.md
+      - Red-teaming: redteam.md
       - CI: ci.md
   - Judgment & comparison:
       - LLM-as-judge: judging.md
